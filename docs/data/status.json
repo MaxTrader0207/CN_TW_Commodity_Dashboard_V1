@@ -1,0 +1,64 @@
+{
+ "run_at": "2026-10-28T16:31:14+08:00",
+ "session": "day",
+ "ok": true,
+ "error": "",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40657352571",
+ "sources": [
+  {
+   "id": "sina",
+   "name": "新浪財經 陸期主力連續（上期所／大商所／鄭商所）",
+   "url": "https://hq.sinajs.cn/list=nf_XX0",
+   "used_for": "商品漲跌 → 類股多空分數",
+   "status": "ok",
+   "rows": 52,
+   "data_date": "2026-10-28",
+   "note": "",
+   "fetched_at": "2026-10-28T16:31:16+08:00"
+  },
+  {
+   "id": "twse_info",
+   "name": "證交所 上市公司產業別",
+   "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
+   "used_for": "上市個股 → 類股",
+   "status": "ok",
+   "rows": 1088,
+   "data_date": "2026-10-27",
+   "note": "",
+   "fetched_at": "2026-10-28T16:31:17+08:00"
+  },
+  {
+   "id": "isin_otc",
+   "name": "證交所 ISIN 上櫃產業別",
+   "url": "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4",
+   "used_for": "上櫃個股 → 類股",
+   "status": "ok",
+   "rows": 896,
+   "data_date": null,
+   "note": "",
+   "fetched_at": "2026-10-28T16:34:43+08:00"
+  },
+  {
+   "id": "twse_quotes",
+   "name": "證交所 上市個股收盤",
+   "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+   "used_for": "上市個股漲跌 → 前5強／前5弱",
+   "status": "warn",
+   "rows": 1375,
+   "data_date": "2026-10-27",
+   "note": "資料日早於今天（尚未公布或休市）",
+   "fetched_at": "2026-10-28T16:34:45+08:00"
+  },
+  {
+   "id": "tpex_quotes",
+   "name": "櫃買中心 上櫃個股收盤",
+   "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
+   "used_for": "上櫃個股漲跌 → 前5強／前5弱",
+   "status": "ok",
+   "rows": 6639,
+   "data_date": "2026-10-28",
+   "note": "",
+   "fetched_at": "2026-10-28T16:34:55+08:00"
+  }
+ ]
+}
