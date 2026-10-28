@@ -10,12 +10,11 @@
  *   變數    ALLOW_ORIGIN https://maxtrader0207.github.io（可省略，預設此值）
  *
  * 路由：
- *   POST /trigger  觸發一次更新（3 分鐘冷卻，避免連按）
+ *   POST /trigger  觸發一次更新（全域 3 分鐘冷卻：以 GitHub 上最近一次執行為準，進行中也不重複觸發）
  *   GET  /status   回傳最近一次執行的狀態
  */
 const WORKFLOW = "daily.yml";
 const COOLDOWN_MS = 3 * 60 * 1000;
-let lastTrigger = 0; // 同一個 Worker 實例內的冷卻；GitHub 端另有 concurrency 排隊
 
 export default {
   async fetch(req, env) {
@@ -62,9 +61,18 @@ export default {
     }
 
     if (path === "/trigger" && req.method === "POST") {
-      const now = Date.now();
-      if (now - lastTrigger < COOLDOWN_MS) {
-        return reply({ ok: false, error: "剛觸發過，請稍候幾分鐘再試" }, 429);
+      // 全域冷卻：看 GitHub 上最近一次執行（不論是誰、從哪觸發），所有 Worker 實例共用同一個判斷
+      const last = await gh(`/actions/workflows/${WORKFLOW}/runs?per_page=1`);
+      if (!last.ok) return reply({ ok: false, error: `GitHub ${last.status}` }, 502);
+      const run = (await last.json()).workflow_runs?.[0];
+      if (run) {
+        if (run.status !== "completed") {
+          return reply({ ok: false, error: "已有更新正在執行，完成後會自動載入" }, 429);
+        }
+        const wait = COOLDOWN_MS - (Date.now() - Date.parse(run.created_at));
+        if (wait > 0) {
+          return reply({ ok: false, error: `剛更新過，請 ${Math.ceil(wait / 1000)} 秒後再試` }, 429);
+        }
       }
       const r = await gh(`/actions/workflows/${WORKFLOW}/dispatches`, {
         method: "POST",
@@ -73,8 +81,7 @@ export default {
       if (r.status !== 204) {
         return reply({ ok: false, error: `GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
       }
-      lastTrigger = now;
-      return reply({ ok: true, triggered_at: new Date(now).toISOString() });
+      return reply({ ok: true, triggered_at: new Date().toISOString() });
     }
 
     return reply({ ok: false, error: "not found" }, 404);
