@@ -62,6 +62,10 @@ for ind, items in SECTORS.items():
 # 讓產業別筆數超過快取門檻
 for k in range(600):
     tw_i.append({"公司代號": f"9{k:04d}", "產業別": "20"})
-for name, data in [("twse_quotes", tw_q), ("twse_info", tw_i), ("tpex_quotes", ot_q), ("tpex_info", ot_i)]:
+NAMES = {"02": "食品工業", "21": "化學工業", "23": "油電燃氣業", "26": "光電業", "28": "電子零組件業", "14": "建材營造業"}
+isin = "".join(f"<tr><td>{r['SecuritiesCompanyCode']}\u3000x</td><td>TW</td><td>2000/01/01</td><td>上櫃</td>"
+               f"<td>{NAMES[r['SecuritiesIndustryCode']]}</td><td>ES</td><td></td></tr>" for r in ot_i)
+(out / "isin_otc.html").write_text(f"<table>{isin}</table>", encoding="utf-8")
+for name, data in [("twse_quotes", tw_q), ("twse_info", tw_i), ("tpex_quotes", ot_q)]:
     (out / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 print("fixtures →", out)

@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       session:
-        description: "day = 日盤收盤版, night = 夜盤盤前版"
-        default: day
+        description: "auto = 依時間判斷, day = 日盤收盤版, night = 夜盤盤前版"
+        default: auto
 
 permissions:
   contents: write
@@ -32,12 +32,14 @@ jobs:
         shell: bash
         env:
           PYTHONUNBUFFERED: "1"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -o pipefail
           mkdir -p docs/data
           {
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python pipeline/build.py --session "${{ github.event.inputs.session }}"
+            S="${{ github.event.inputs.session }}"
+            if [ "$S" = "day" ] || [ "$S" = "night" ]; then python pipeline/build.py --session "$S"; else python pipeline/build.py; fi
           elif [ "${{ github.event.schedule }}" = "10 0 * * 2-6" ]; then
             python pipeline/build.py --session night
           else

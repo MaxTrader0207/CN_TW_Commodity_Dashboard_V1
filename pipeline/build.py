@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -39,8 +40,6 @@ SINA_URL = "https://hq.sinajs.cn/list="
 TWSE_QUOTES = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_QUOTES = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
-TPEX_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_O"
-TPEX_INFO_ALT = "https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O"
 ISIN_OTC = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
 
 
@@ -97,8 +96,7 @@ class FixtureSource:
         return (self.d / "sina.txt").read_text(encoding="utf-8")
 
     def json(self, url):
-        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info", TPEX_QUOTES: "tpex_quotes",
-                TPEX_INFO: "tpex_info", TPEX_INFO_ALT: "tpex_info"}[url]
+        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info", TPEX_QUOTES: "tpex_quotes"}[url]
         return json.loads((self.d / f"{name}.json").read_text(encoding="utf-8"))
 
 
@@ -146,12 +144,17 @@ def parse_sina(text):
 
 def commodity_board(src):
     symbols = [f"nf_{c[1]}0" for c in COMMODITIES]
-    quotes = {}
+    quotes, err = {}, ""
     for i in range(0, len(symbols), 30):          # 分批避免網址過長
-        text = src.sina(symbols[i:i + 30])
-        if i == 0:
-            print("新浪回應樣本：", text[:300].replace("\n", " | "))
-        quotes.update(parse_sina(text))
+        try:
+            quotes.update(parse_sina(src.sina(symbols[i:i + 30])))
+        except Exception as e:  # noqa: BLE001
+            err = str(e)[:160]
+    ds = sorted({q["date"] for q in quotes.values() if q.get("date")})
+    n, total = len(quotes), len(symbols)
+    record("sina", "新浪財經 陸期主力連續（上期所／大商所／鄭商所）", SINA_URL + "nf_XX0",
+           "商品漲跌 → 類股多空分數", "ok" if n == total else "warn" if n else "fail",
+           n, ds[-1] if ds else None, err or ("" if n == total else f"{total - n} 個商品缺報價"))
     board = []
     for ex, code, name, limit, links in COMMODITIES:
         q = quotes.get(code)
@@ -207,56 +210,56 @@ def parse_isin(html):
     return out
 
 
-def optional(src, url, label):
-    """櫃買資料抓不到時不中斷，只用上市股票。"""
-    try:
-        rows = src.json(url)
-        show_keys(label, rows)
-        return rows
-    except Exception as e:  # noqa: BLE001
-        print(f"⚠ {label} 取得失敗，本次略過上櫃股票：{e}")
-        return []
+SOURCES = []
 
 
-def show_keys(label, rows):
-    if rows:
-        print(f"{label}：{len(rows)} 筆，欄位 {list(rows[0].keys())[:12]}")
-    else:
-        print(f"{label}：0 筆")
+def record(sid, name, url, used_for, status, rows=None, data_date=None, note=""):
+    """記錄每個資料來源的更新情況，輸出到 latest.json 供儀表板顯示。"""
+    SOURCES.append({"id": sid, "name": name, "url": url, "used_for": used_for, "status": status,
+                    "rows": rows, "data_date": data_date, "note": note,
+                    "fetched_at": datetime.now(TPE).isoformat(timespec="seconds")})
+    print(f"[{status}] {name}：{rows if rows is not None else '-'} 筆 {data_date or ''} {note}")
+
+
+def rows_date(rows, key="Date"):
+    ds = {roc_to_iso(r.get(key)) for r in rows if r.get(key)}
+    ds.discard(None)
+    return max(ds) if ds else None
 
 
 def load_industry(src):
-    """回傳 {代號: 類股名稱}；失敗時用上次快取。"""
+    """回傳 {代號: 類股名稱}；上市用證交所 OpenAPI，上櫃用證交所 ISIN 頁；全部失敗時用上次快取。"""
     mapping = {}
     try:
-        twse_rows = src.json(TWSE_INFO)
-        show_keys("證交所公司資料", twse_rows)
-        tpex_rows = []  # 櫃買 OpenAPI 公司資料端點目前回傳網頁，改用下方 ISIN 頁
-        for row in twse_rows:
+        rows = src.json(TWSE_INFO)
+        n0 = len(mapping)
+        for row in rows:
             code = pick(row, "公司代號", "Code")
-            ind = pick(row, "產業別", "IndustryCode")
+            ind = INDUSTRY_CODE.get(str(pick(row, "產業別", "IndustryCode") or "").strip().zfill(2))
             if code and ind:
-                mapping[str(code).strip()] = INDUSTRY_CODE.get(str(ind).strip().zfill(2))
-        if not tpex_rows:
-            try:
-                otc = parse_isin(src.text(ISIN_OTC, "cp950"))
-                print(f"上櫃產業別(ISIN 頁)：{len(otc)} 檔")
-                mapping.update(otc)
-            except Exception as e:  # noqa: BLE001
-                print("⚠ ISIN 上櫃產業別取得失敗：", e)
-        for row in tpex_rows:
-            code = pick(row, "SecuritiesCompanyCode", "公司代號", "CompanyCode")
-            ind = pick(row, "SecuritiesIndustryCode", "產業別", "IndustryCode")
-            if code and ind:
-                mapping[str(code).strip()] = INDUSTRY_CODE.get(str(ind).strip().zfill(2))
-        mapping = {k: v for k, v in mapping.items() if v}
-        if len(mapping) > 500:
-            CACHE_FILE.write_text(json.dumps(mapping, ensure_ascii=False, indent=0), encoding="utf-8")
-            return mapping, "live"
+                mapping[str(code).strip()] = ind
+        record("twse_info", "證交所 上市公司產業別", TWSE_INFO, "上市個股 → 類股", "ok",
+               len(mapping) - n0, roc_to_iso(rows[0].get("出表日期")) if rows else None)
     except Exception as e:  # noqa: BLE001
-        print("⚠ 產業別抓取失敗，改用快取：", e)
+        record("twse_info", "證交所 上市公司產業別", TWSE_INFO, "上市個股 → 類股", "fail", note=str(e)[:160])
+    try:
+        otc = parse_isin(src.text(ISIN_OTC, "cp950"))
+        if not otc:
+            raise ValueError("頁面解析不到任何上櫃股票")
+        mapping.update(otc)
+        record("isin_otc", "證交所 ISIN 上櫃產業別", ISIN_OTC, "上櫃個股 → 類股", "ok", len(otc))
+    except Exception as e:  # noqa: BLE001
+        record("isin_otc", "證交所 ISIN 上櫃產業別", ISIN_OTC, "上櫃個股 → 類股", "fail", note=str(e)[:160])
+
+    if len(mapping) > 500:
+        CACHE_FILE.write_text(json.dumps(mapping, ensure_ascii=False, indent=0), encoding="utf-8")
+        return mapping
     if CACHE_FILE.exists():
-        return json.loads(CACHE_FILE.read_text(encoding="utf-8")), "cache"
+        cached = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        cached.update(mapping)
+        record("industry_cache", "產業別快取（上次成功資料）", "pipeline/industry_cache.json",
+               "即時來源失敗時補位", "warn", len(cached), note="即時產業別不足，改用快取")
+        return cached
     raise RuntimeError("無產業別資料且無快取")
 
 
@@ -269,30 +272,38 @@ def roc_to_iso(s):
     return None
 
 
-def load_quotes(src):
-    stocks, dates = {}, set()
-    for row in src.json(TWSE_QUOTES):
-        code = str(pick(row, "Code", "證券代號") or "").strip()
-        close, chg = num(pick(row, "ClosingPrice", "收盤價")), num(pick(row, "Change", "漲跌價差"))
-        vol = num(pick(row, "TradeVolume", "成交股數"))
-        if pick(row, "Date"):
-            dates.add(roc_to_iso(row["Date"]))
-        if code and close and chg is not None and close - chg > 0:
-            stocks[code] = {"code": code, "name": str(pick(row, "Name", "證券名稱")).strip(),
-                            "close": close, "chg_pct": round(chg / (close - chg) * 100, 2),
-                            "lots": int((vol or 0) / 1000), "mkt": "上市"}
-    for row in optional(src, TPEX_QUOTES, "櫃買收盤行情"):
-        code = str(pick(row, "SecuritiesCompanyCode", "代號") or "").strip()
-        close, chg = num(pick(row, "Close", "收盤")), num(pick(row, "Change", "漲跌"))
-        vol = num(pick(row, "TradingShares", "TradeVolume", "成交股數"))
-        if pick(row, "Date"):
-            dates.add(roc_to_iso(row["Date"]))
-        if code and close and chg is not None and close - chg > 0:
-            stocks[code] = {"code": code, "name": str(pick(row, "CompanyName", "名稱")).strip(),
-                            "close": close, "chg_pct": round(chg / (close - chg) * 100, 2),
-                            "lots": int((vol or 0) / 1000), "mkt": "上櫃"}
-    dates.discard(None)
-    print("台股各來源資料日：", sorted(dates))
+def load_quotes(src, today):
+    stocks, dates = {}, []
+    specs = [
+        ("twse_quotes", "證交所 上市個股收盤", TWSE_QUOTES, "上市",
+         ("Code", "證券代號"), ("Name", "證券名稱"), ("ClosingPrice", "收盤價"), ("Change", "漲跌價差"),
+         ("TradeVolume", "成交股數")),
+        ("tpex_quotes", "櫃買中心 上櫃個股收盤", TPEX_QUOTES, "上櫃",
+         ("SecuritiesCompanyCode", "代號"), ("CompanyName", "名稱"), ("Close", "收盤"), ("Change", "漲跌"),
+         ("TradingShares", "TradeVolume", "成交股數")),
+    ]
+    for sid, name, url, mkt, k_code, k_name, k_close, k_chg, k_vol in specs:
+        try:
+            rows = src.json(url)
+            n = 0
+            for row in rows:
+                code = str(pick(row, *k_code) or "").strip()
+                close, chg = num(pick(row, *k_close)), num(pick(row, *k_chg))
+                if code and close and chg is not None and close - chg > 0:
+                    stocks[code] = {"code": code, "name": str(pick(row, *k_name)).strip(), "close": close,
+                                    "chg_pct": round(chg / (close - chg) * 100, 2),
+                                    "lots": int((num(pick(row, *k_vol)) or 0) / 1000), "mkt": mkt}
+                    n += 1
+            d = rows_date(rows)
+            dates.append(d)
+            stale = bool(d and d < today)
+            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "warn" if stale else "ok", n, d,
+                   "資料日早於今天（尚未公布或休市）" if stale else "")
+        except Exception as e:  # noqa: BLE001
+            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "fail", note=str(e)[:160])
+    dates = [d for d in dates if d]
+    if not stocks:
+        raise RuntimeError("上市櫃行情皆取得失敗")
     return stocks, (max(dates) if dates else None)
 
 
@@ -370,13 +381,30 @@ def write_outputs(payload):
     idx_file.write_text(json.dumps(idx), encoding="utf-8")
 
 
+def write_status(now, session, ok, error=""):
+    """不論成功或失敗都寫出，讓儀表板顯示每個資料來源的最新狀態。"""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    status = {"run_at": now.isoformat(timespec="seconds"), "session": session, "ok": ok,
+              "error": error, "run_url": os.environ.get("RUN_URL"), "sources": SOURCES}
+    (DATA_DIR / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def main():
+    now = datetime.now(TPE)
+    try:
+        session = run(now)
+        write_status(now, session, True)
+    except BaseException as e:
+        write_status(now, "-", False, f"{type(e).__name__}: {e}"[:300])
+        raise
+
+
+def run(now):
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", choices=["day", "night"])
     ap.add_argument("--fixtures")
     a = ap.parse_args()
 
-    now = datetime.now(TPE)
     session = a.session or ("night" if now.hour < 12 else "day")
     src = FixtureSource(a.fixtures) if a.fixtures else Source()
 
@@ -384,13 +412,11 @@ def main():
     ok = sum(c["status"] == "ok" for c in board)
     print(f"陸期：{ok}/{len(board)} 個商品取得報價")
     if ok < len(board) * 0.5:
-        raise SystemExit("陸期報價過少，停止更新以免覆蓋舊資料")
+        raise RuntimeError("陸期報價過少，停止更新以免覆蓋舊資料")
 
-    industry, ind_src = load_industry(src)
-    stocks, tw_date = load_quotes(src)
-    if session == "day" and tw_date and tw_date < now.strftime("%Y-%m-%d"):
-        print(f"⚠ 台股資料日 {tw_date} 早於今天，可能尚未公布或今日休市")
-    print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別（{ind_src}），資料日 {tw_date}")
+    industry = load_industry(src)
+    stocks, tw_date = load_quotes(src, now.strftime("%Y-%m-%d"))
+    print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
     sectors, bull, bear = score_sectors(board, industry, stocks)
     payload = {
@@ -401,10 +427,13 @@ def main():
         "tw_date": tw_date,
         "demo": bool(a.fixtures),
         "params": {"min_lots": MIN_LOTS, "limit_bonus": LIMIT_BONUS},
+        "sources": SOURCES,
+        "run_url": os.environ.get("RUN_URL"),
         "commodities": board, "sectors": sectors, "bull": bull, "bear": bear,
     }
     write_outputs(payload)
     print("多頭：", bull, "空頭：", bear)
+    return session
 
 
 if __name__ == "__main__":

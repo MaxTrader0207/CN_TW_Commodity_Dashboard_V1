@@ -66,6 +66,20 @@ summary{cursor:pointer;font-weight:600}
 .map td{white-space:normal;vertical-align:top;padding:5px 4px}
 .map th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px;border-bottom:1px solid var(--line)}
 .foot{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.7}
+.btn{background:var(--accent);color:#1a1200;border:0;border-radius:6px;padding:5px 12px;font:inherit;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.55;cursor:wait}
+.upd{font-size:12px;color:var(--muted)}
+.src-list{list-style:none;margin:0;padding:0}
+.src-list li{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;padding:8px 0;border-bottom:1px dashed var(--line);align-items:start}
+.src-list li:last-child{border-bottom:0}
+.sdot{width:9px;height:9px;border-radius:50%;margin-top:6px}
+.s-ok{background:var(--dn)} .s-warn{background:var(--accent)} .s-fail{background:var(--up)}
+.src-name{font-weight:600}
+.src-sub{grid-column:2/4;color:var(--muted);font-size:12px}
+.src-sub a{color:var(--muted)}
+.src-stat{font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
+.src-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px}
+.src-head b{color:var(--fg)}
 #tip{position:fixed;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -78,9 +92,19 @@ summary{cursor:pointer;font-weight:600}
       <span class="pill" id="m-time">—</span>
       <span class="pill" id="m-tw">—</span>
       <select id="hist" aria-label="歷史資料"></select>
+      <button class="btn" id="refresh">⟳ 立即更新</button>
+      <span class="upd" id="upd"></span>
     </div>
   </header>
   <div class="demo" id="demo">⚠ 目前顯示的是離線示範資料，並非真實行情。GitHub Actions 首次執行後會自動換成實際數據。</div>
+
+  <section style="margin-top:0;margin-bottom:16px">
+    <details class="card" id="src-box" style="margin:0">
+      <summary><span id="src-summary">資料來源狀態</span></summary>
+      <div class="src-head" id="src-head"></div>
+      <ul class="src-list" id="src-list"></ul>
+    </details>
+  </section>
 
   <div class="grid2">
     <div class="bull"><p class="col-h"><span class="dot"></span>多頭助攻 前3類股</p><div id="bull"></div></div>
@@ -113,6 +137,7 @@ summary{cursor:pointer;font-weight:600}
 </div>
 <div id="tip"></div>
 
+<script src="config.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
@@ -234,6 +259,96 @@ function render(d) {
   });
 }
 
+const ST_LABEL = { ok: '正常', warn: '注意', fail: '失敗' };
+function fmtTime(t) { return t ? t.replace('T', ' ').slice(0, 16) : '—'; }
+
+function renderSources(st) {
+  const list = $('#src-list'); list.replaceChildren();
+  const srcs = st.sources || [];
+  const bad = srcs.filter(x => x.status === 'fail').length, warn = srcs.filter(x => x.status === 'warn').length;
+  const okAll = st.ok && !bad && !warn;
+  $('#src-summary').textContent = `資料來源狀態　${okAll ? '● 全部正常' : st.ok ? `● ${bad} 失敗／${warn} 注意` : '● 最近一次更新失敗'}`;
+  $('#src-summary').className = okAll ? 'dn' : st.ok && !bad ? '' : 'up';
+  if (!okAll) $('#src-box').open = true;
+
+  const head = $('#src-head'); head.replaceChildren();
+  const add = (k, v) => { const sp = el('span'); sp.append(document.createTextNode(k + ' ')); sp.append(el('b', null, v)); head.append(sp); };
+  add('最近執行', fmtTime(st.run_at));
+  add('結果', st.ok ? '成功' : '失敗');
+  if (st.error) add('錯誤', st.error);
+  if (st.run_url) { const a = el('a', null, '查看執行紀錄 ↗'); a.href = st.run_url; a.target = '_blank'; a.rel = 'noopener'; a.style.color = 'var(--muted)'; head.append(a); }
+
+  srcs.forEach(x => {
+    const li = el('li');
+    li.append(el('span', 'sdot s-' + x.status));
+    li.append(el('span', 'src-name', x.name));
+    const stat = el('span', 'src-stat');
+    stat.append(el('span', x.status === 'ok' ? 'dn' : x.status === 'warn' ? '' : 'up', ST_LABEL[x.status] || x.status));
+    stat.append(document.createTextNode(x.rows != null ? `　${x.rows.toLocaleString()} 筆` : ''));
+    li.append(stat);
+    const sub = el('span', 'src-sub');
+    sub.textContent = `用途：${x.used_for}　資料日：${x.data_date || '—'}　抓取：${fmtTime(x.fetched_at)}${x.note ? '　｜ ' + x.note : ''}`;
+    li.append(sub);
+    list.append(li);
+  });
+  if (!srcs.length) list.append(el('li', 'empty', '尚無來源紀錄，下次更新後會出現。'));
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch('data/status.json?t=' + Date.now());
+    if (!r.ok) throw 0;
+    const st = await r.json(); renderSources(st); return st;
+  } catch (e) { return null; }
+}
+
+// ── 立即更新 ──
+const CFG = window.DASH_CONFIG || {};
+let polling = null;
+function setUpd(t) { $('#upd').textContent = t; }
+async function waitForNewRun(prevRunAt) {
+  const started = Date.now();
+  clearInterval(polling);
+  polling = setInterval(async () => {
+    const mins = Math.floor((Date.now() - started) / 60000);
+    let runTxt = '';
+    if (CFG.triggerUrl) {
+      try {
+        const s = await (await fetch(CFG.triggerUrl.replace(/\/$/, '') + '/status')).json();
+        if (s.run) runTxt = { queued: '排隊中', in_progress: '執行中', completed: '收尾中' }[s.run.status] || s.run.status;
+      } catch (e) {}
+    }
+    setUpd(`更新${runTxt || '中'}… ${mins} 分`);
+    const st = await loadStatus();
+    if (st && st.run_at !== prevRunAt) {
+      clearInterval(polling); $('#refresh').disabled = false;
+      setUpd(st.ok ? '✓ 已更新 ' + fmtTime(st.run_at) : '✗ 更新失敗，見資料來源狀態');
+      $('#hist').value = ''; load('');
+    } else if (Date.now() - started > 12 * 60000) {
+      clearInterval(polling); $('#refresh').disabled = false; setUpd('等待逾時，請稍後重新整理');
+    }
+  }, 15000);
+}
+
+$('#refresh').onclick = async () => {
+  const btn = $('#refresh'); btn.disabled = true;
+  const prev = (await loadStatus())?.run_at;
+  if (CFG.triggerUrl) {
+    setUpd('觸發中…');
+    try {
+      const r = await fetch(CFG.triggerUrl.replace(/\/$/, '') + '/trigger', { method: 'POST' });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || r.status);
+      setUpd('已觸發，約 1–2 分鐘完成…');
+      waitForNewRun(prev);
+    } catch (e) { btn.disabled = false; setUpd('觸發失敗：' + e.message); }
+  } else {
+    window.open(CFG.actionsUrl, '_blank', 'noopener');
+    setUpd('請在 GitHub 按 Run workflow，完成後自動載入…');
+    waitForNewRun(prev);
+  }
+};
+
 async function load(key) {
   const url = key ? `data/history/${key}.json` : 'data/latest.json';
   try {
@@ -256,6 +371,7 @@ async function load(key) {
     sel.onchange = () => load(sel.value);
   } catch (e) { $('#hist').style.display = 'none'; }
   load('');
+  loadStatus();
 })();
 </script>
 </body>

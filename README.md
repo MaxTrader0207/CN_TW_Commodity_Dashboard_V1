@@ -38,3 +38,20 @@
 - 個股排行只計成交量 ≥ 100 張（`MIN_LOTS`）
 
 漲跌停幅度 `limit` 為一般值，交易所會依行情調整，可在 `mapping.py` 更新。
+
+## 立即更新按鈕
+
+儀表板右上角「⟳ 立即更新」：
+
+- **未設定 Worker**（預設）：開啟 GitHub Actions 頁面，按 Run workflow 後，儀表板會自動偵測並載入新資料。
+- **設定 Worker 後**：按一下直接觸發更新，約 1–2 分鐘自動載入，不用離開頁面。
+
+設定 Worker：
+1. GitHub → Settings → Developer settings → Fine-grained tokens → 新增 token，Repository access 只選本 repo，權限 **Actions: Read and write**。
+2. Cloudflare → Workers → 新建 Worker，貼上 `worker/trigger-worker.js`，部署。
+3. Worker → Settings → Variables and Secrets → 新增 Secret `GH_TOKEN` = 上一步的 token。
+4. 把 Worker 網址填進 `docs/config.js` 的 `triggerUrl`。
+
+## 資料來源狀態
+
+每次執行都會寫出 `docs/data/status.json`（成功或失敗都會寫），儀表板上方「資料來源狀態」逐一列出：新浪陸期、證交所上市產業別、ISIN 上櫃產業別、證交所上市收盤、櫃買上櫃收盤，各自的狀態（正常／注意／失敗）、筆數、資料日與抓取時間。
