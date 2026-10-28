@@ -33,7 +33,8 @@ TOP_N_STOCKS = 5
 LIMIT_BONUS = 1.5       # 漲跌停商品訊號放大倍數
 HISTORY_KEEP = 90
 
-UA = {"User-Agent": "Mozilla/5.0 (cn-tw-commodity-dashboard)"}
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*"}
 SINA_URL = "https://hq.sinajs.cn/list="
 TWSE_QUOTES = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
@@ -69,7 +70,12 @@ class Source:
         return r.text
 
     def json(self, url):
-        return self._get(url).json()
+        r = self._get(url)
+        try:
+            return r.json()
+        except ValueError:
+            print(f"⚠ {url} 非 JSON（HTTP {r.status_code}, {r.headers.get('content-type')}）：{r.text[:200]!r}")
+            raise
 
 
 class FixtureSource:
@@ -155,6 +161,17 @@ def commodity_board(src):
 
 
 # ───────────────────────── 台股 ─────────────────────────
+def optional(src, url, label):
+    """櫃買資料抓不到時不中斷，只用上市股票。"""
+    try:
+        rows = src.json(url)
+        show_keys(label, rows)
+        return rows
+    except Exception as e:  # noqa: BLE001
+        print(f"⚠ {label} 取得失敗，本次略過上櫃股票：{e}")
+        return []
+
+
 def show_keys(label, rows):
     if rows:
         print(f"{label}：{len(rows)} 筆，欄位 {list(rows[0].keys())[:12]}")
@@ -166,14 +183,15 @@ def load_industry(src):
     """回傳 {代號: 類股名稱}；失敗時用上次快取。"""
     mapping = {}
     try:
-        show_keys("證交所公司資料", src.json(TWSE_INFO))
-        show_keys("櫃買公司資料", src.json(TPEX_INFO))
-        for row in src.json(TWSE_INFO):
+        twse_rows = src.json(TWSE_INFO)
+        show_keys("證交所公司資料", twse_rows)
+        tpex_rows = optional(src, TPEX_INFO, "櫃買公司資料")
+        for row in twse_rows:
             code = pick(row, "公司代號", "Code")
             ind = pick(row, "產業別", "IndustryCode")
             if code and ind:
                 mapping[str(code).strip()] = INDUSTRY_CODE.get(str(ind).strip().zfill(2))
-        for row in src.json(TPEX_INFO):
+        for row in tpex_rows:
             code = pick(row, "SecuritiesCompanyCode", "公司代號", "CompanyCode")
             ind = pick(row, "SecuritiesIndustryCode", "產業別", "IndustryCode")
             if code and ind:
@@ -210,7 +228,7 @@ def load_quotes(src):
             stocks[code] = {"code": code, "name": str(pick(row, "Name", "證券名稱")).strip(),
                             "close": close, "chg_pct": round(chg / (close - chg) * 100, 2),
                             "lots": int((vol or 0) / 1000), "mkt": "上市"}
-    for row in src.json(TPEX_QUOTES):
+    for row in optional(src, TPEX_QUOTES, "櫃買收盤行情"):
         code = str(pick(row, "SecuritiesCompanyCode", "代號") or "").strip()
         close, chg = num(pick(row, "Close", "收盤")), num(pick(row, "Change", "漲跌"))
         vol = num(pick(row, "TradingShares", "TradeVolume", "成交股數"))
