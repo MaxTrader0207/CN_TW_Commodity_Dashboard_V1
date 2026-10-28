@@ -41,6 +41,7 @@ TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_QUOTES = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 TPEX_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_O"
 TPEX_INFO_ALT = "https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O"
+ISIN_OTC = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
 
 
 # ───────────────────────── 取數 ─────────────────────────
@@ -70,6 +71,11 @@ class Source:
         r.encoding = "gbk"
         return r.text
 
+    def text(self, url, encoding):
+        r = self._get(url)
+        r.encoding = encoding
+        return r.text
+
     def json(self, url):
         r = self._get(url)
         try:
@@ -82,6 +88,10 @@ class Source:
 class FixtureSource:
     def __init__(self, d):
         self.d = Path(d)
+
+    def text(self, url, encoding):
+        f = self.d / "isin_otc.html"
+        return f.read_text(encoding="utf-8") if f.exists() else ""
 
     def sina(self, symbols):
         return (self.d / "sina.txt").read_text(encoding="utf-8")
@@ -162,6 +172,41 @@ def commodity_board(src):
 
 
 # ───────────────────────── 台股 ─────────────────────────
+ISIN_NAME_FIX = {"電腦及週邊設備業": "電腦週邊", "其他業": "其他", "生技醫療業": "生技醫療"}
+
+
+def isin_industry(name):
+    name = name.strip()
+    if name in ISIN_NAME_FIX:
+        return ISIN_NAME_FIX[name]
+    base = name
+    for suf in ("工業", "業"):
+        if name.endswith(suf) and name not in INDUSTRY_CODE.values():
+            base = name[: -len(suf)]
+            break
+    names = INDUSTRY_CODE.values()
+    if name in names:
+        return name
+    if base in names:
+        return base
+    hits = [v for v in names if name.startswith(v)]
+    return max(hits, key=len) if hits else None
+
+
+def parse_isin(html):
+    """證交所 ISIN 公開查詢頁：每列 代號　名稱 | ISIN | 上市日 | 市場別 | 產業別 | CFI | 備註"""
+    out = {}
+    for row in re.findall(r"<tr>(.*?)</tr>", html, re.S | re.I):
+        cells = [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S | re.I)]
+        if len(cells) < 5:
+            continue
+        m = re.match(r"^([0-9A-Z]{4,6})[\u3000\s]", cells[0])
+        sec = isin_industry(cells[4]) if m and cells[4] else None
+        if m and sec:
+            out[m.group(1)] = sec
+    return out
+
+
 def optional(src, url, label):
     """櫃買資料抓不到時不中斷，只用上市股票。"""
     try:
@@ -192,6 +237,13 @@ def load_industry(src):
             ind = pick(row, "產業別", "IndustryCode")
             if code and ind:
                 mapping[str(code).strip()] = INDUSTRY_CODE.get(str(ind).strip().zfill(2))
+        if not tpex_rows:
+            try:
+                otc = parse_isin(src.text(ISIN_OTC, "cp950"))
+                print(f"上櫃產業別(ISIN 頁)：{len(otc)} 檔")
+                mapping.update(otc)
+            except Exception as e:  # noqa: BLE001
+                print("⚠ ISIN 上櫃產業別取得失敗：", e)
         for row in tpex_rows:
             code = pick(row, "SecuritiesCompanyCode", "公司代號", "CompanyCode")
             ind = pick(row, "SecuritiesIndustryCode", "產業別", "IndustryCode")
