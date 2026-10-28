@@ -231,7 +231,7 @@ def load_industry(src):
     try:
         twse_rows = src.json(TWSE_INFO)
         show_keys("證交所公司資料", twse_rows)
-        tpex_rows = optional(src, TPEX_INFO, "上櫃公司資料") or optional(src, TPEX_INFO_ALT, "上櫃公司資料(備援)")
+        tpex_rows = []  # 櫃買 OpenAPI 公司資料端點目前回傳網頁，改用下方 ISIN 頁
         for row in twse_rows:
             code = pick(row, "公司代號", "Code")
             ind = pick(row, "產業別", "IndustryCode")
