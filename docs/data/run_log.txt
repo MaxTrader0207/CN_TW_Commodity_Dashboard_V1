@@ -1,0 +1,13 @@
+新浪回應樣本： var hq_str_nf_CU0="铜连续,150000,109010.000,109500.000,108950.000,109200.000,109180.000,109200.000,109200.000,109200.000,108640.000,2,11,195587.000,79060,沪,铜,2026-10-28,1,,,,,,,,,109205.568,109170.000,13,109160.000,13,109150.000,7,109140.000,19,109210.000,24,109220.000,14,109230.000,63,109240.000,6"; | v
+陸期：52/52 個商品取得報價
+證交所公司資料：1098 筆，欄位 ['出表日期', '公司代號', '公司名稱', '公司簡稱', '外國企業註冊地國', '產業別', '住址', '營利事業統一編號', '董事長', '總經理', '發言人', '發言人職稱']
+⚠ 產業別抓取失敗，改用快取： Expecting value: line 1 column 1 (char 0)
+Traceback (most recent call last):
+  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 337, in <module>
+    main()
+  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 317, in main
+    industry, ind_src = load_industry(src)
+                        ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 189, in load_industry
+    raise RuntimeError("無產業別資料且無快取")
+RuntimeError: 無產業別資料且無快取
