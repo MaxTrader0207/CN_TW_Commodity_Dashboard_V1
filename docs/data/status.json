@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-28T23:58:31+08:00",
- "session": "day",
+ "run_at": "2026-10-29T01:05:33+08:00",
+ "session": "night",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40721317915",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40732332042",
  "sources": [
   {
    "id": "sina",
@@ -12,9 +12,9 @@
    "used_for": "商品漲跌 → 類股多空分數",
    "status": "ok",
    "rows": 52,
-   "data_date": "2026-10-28",
+   "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-28T23:58:32+08:00"
+   "fetched_at": "2026-10-29T01:05:35+08:00"
   },
   {
    "id": "twse_info",
@@ -25,7 +25,7 @@
    "rows": 1088,
    "data_date": "2026-10-27",
    "note": "",
-   "fetched_at": "2026-10-28T23:58:35+08:00"
+   "fetched_at": "2026-10-29T01:05:38+08:00"
   },
   {
    "id": "isin_otc",
@@ -36,7 +36,7 @@
    "rows": 896,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-28T23:58:40+08:00"
+   "fetched_at": "2026-10-29T01:05:42+08:00"
   },
   {
    "id": "twse_quotes",
@@ -47,18 +47,18 @@
    "rows": 1375,
    "data_date": "2026-10-27",
    "note": "資料日早於今天（尚未公布或休市）",
-   "fetched_at": "2026-10-28T23:58:40+08:00"
+   "fetched_at": "2026-10-29T01:05:42+08:00"
   },
   {
    "id": "tpex_quotes",
    "name": "櫃買中心 上櫃個股收盤",
    "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
    "used_for": "上櫃個股漲跌 → 前5強／前5弱",
-   "status": "ok",
+   "status": "warn",
    "rows": 6639,
    "data_date": "2026-10-28",
-   "note": "",
-   "fetched_at": "2026-10-28T23:58:49+08:00"
+   "note": "資料日早於今天（尚未公布或休市）",
+   "fetched_at": "2026-10-29T01:05:53+08:00"
   }
  ]
 }
