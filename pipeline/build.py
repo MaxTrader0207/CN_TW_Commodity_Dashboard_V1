@@ -38,6 +38,7 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
       "Accept": "application/json, text/plain, */*"}
 SINA_URL = "https://hq.sinajs.cn/list="
 TWSE_QUOTES = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+TWSE_RWD = "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json"
 TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_QUOTES = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 ISIN_OTC = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
@@ -96,7 +97,8 @@ class FixtureSource:
         return (self.d / "sina.txt").read_text(encoding="utf-8")
 
     def json(self, url):
-        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info", TPEX_QUOTES: "tpex_quotes"}[url]
+        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info", TPEX_QUOTES: "tpex_quotes",
+                TWSE_RWD: "twse_rwd"}[url]
         return json.loads((self.d / f"{name}.json").read_text(encoding="utf-8"))
 
 
@@ -272,19 +274,60 @@ def roc_to_iso(s):
     return None
 
 
-def load_quotes(src, today):
+def expected_trade_date(now):
+    """此刻應該已有的最新交易日：平日 14:30 後為當天，否則為前一個平日（未計國定假日）。"""
+    d = now.date()
+    if not (d.weekday() < 5 and (now.hour, now.minute) >= (14, 30)):
+        d -= timedelta(days=1)
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+    return d.isoformat()
+
+
+def twse_rwd_rows(src):
+    """證交所官網每日收盤（比 OpenAPI 更新得快），轉成與 OpenAPI 相同欄位。"""
+    j = src.json(TWSE_RWD)
+    if j.get("stat") != "OK" or not j.get("data"):
+        raise ValueError(f"stat={j.get('stat')}")
+    f = {name: i for i, name in enumerate(j["fields"])}
+    return [{"Date": j.get("date"), "Code": r[f["證券代號"]], "Name": r[f["證券名稱"]],
+             "ClosingPrice": r[f["收盤價"]], "Change": r[f["漲跌價差"]], "TradeVolume": r[f["成交股數"]]}
+            for r in j["data"]]
+
+
+def load_twse_rows(src):
+    """官網與 OpenAPI 都抓，取資料日較新的一份。"""
+    cands, errs = [], []
+    for label, url, fn in (("官網", TWSE_RWD, lambda: twse_rwd_rows(src)),
+                           ("OpenAPI", TWSE_QUOTES, lambda: src.json(TWSE_QUOTES))):
+        try:
+            rows = fn()
+            cands.append((rows_date(rows) or "", label, url, rows))
+        except Exception as e:  # noqa: BLE001
+            errs.append(f"{label}失敗：{str(e)[:80]}")
+    if not cands:
+        raise RuntimeError("；".join(errs))
+    cands.sort(key=lambda c: c[0], reverse=True)
+    d, label, url, rows = cands[0]
+    other = "、".join(f"{c[1]} {c[0] or '—'}" for c in cands[1:]) + ("；" if errs and len(cands) > 1 else "")
+    return rows, url, f"採用{label}" + (f"（另：{other}{'；'.join(errs)}）" if len(cands) > 1 or errs else "")
+
+
+def load_quotes(src, now):
+    expect = expected_trade_date(now)
     stocks, dates = {}, []
     specs = [
-        ("twse_quotes", "證交所 上市個股收盤", TWSE_QUOTES, "上市",
+        ("twse_quotes", "證交所 上市個股收盤", "上市", lambda: load_twse_rows(src),
          ("Code", "證券代號"), ("Name", "證券名稱"), ("ClosingPrice", "收盤價"), ("Change", "漲跌價差"),
          ("TradeVolume", "成交股數")),
-        ("tpex_quotes", "櫃買中心 上櫃個股收盤", TPEX_QUOTES, "上櫃",
+        ("tpex_quotes", "櫃買中心 上櫃個股收盤", "上櫃", lambda: (src.json(TPEX_QUOTES), TPEX_QUOTES, ""),
          ("SecuritiesCompanyCode", "代號"), ("CompanyName", "名稱"), ("Close", "收盤"), ("Change", "漲跌"),
          ("TradingShares", "TradeVolume", "成交股數")),
     ]
-    for sid, name, url, mkt, k_code, k_name, k_close, k_chg, k_vol in specs:
+    for sid, name, mkt, fetch, k_code, k_name, k_close, k_chg, k_vol in specs:
+        url = TWSE_QUOTES if mkt == "上市" else TPEX_QUOTES
         try:
-            rows = src.json(url)
+            rows, url, note = fetch()
             n = 0
             for row in rows:
                 code = str(pick(row, *k_code) or "").strip()
@@ -296,9 +339,10 @@ def load_quotes(src, today):
                     n += 1
             d = rows_date(rows)
             dates.append(d)
-            stale = bool(d and d < today)
-            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "warn" if stale else "ok", n, d,
-                   "資料日早於今天（尚未公布或休市）" if stale else "")
+            stale = bool(d and d < expect)
+            if stale:
+                note = f"資料日早於應有的 {expect}（尚未公布或休市）" + (f"；{note}" if note else "")
+            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "warn" if stale else "ok", n, d, note)
         except Exception as e:  # noqa: BLE001
             record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "fail", note=str(e)[:160])
     dates = [d for d in dates if d]
@@ -415,7 +459,7 @@ def run(now):
         raise RuntimeError("陸期報價過少，停止更新以免覆蓋舊資料")
 
     industry = load_industry(src)
-    stocks, tw_date = load_quotes(src, now.strftime("%Y-%m-%d"))
+    stocks, tw_date = load_quotes(src, now)
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
     sectors, bull, bear = score_sectors(board, industry, stocks)
