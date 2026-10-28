@@ -10,6 +10,8 @@ on:
     inputs:
       session:
         description: "auto = 依時間判斷, day = 日盤收盤版, night = 夜盤盤前版"
+        type: choice
+        options: [auto, day, night]
         default: auto
 
 permissions:
@@ -33,14 +35,20 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # 輸入值只經環境變數傳入，不直接嵌進 shell 指令，避免指令注入
+          IN_SESSION: ${{ github.event.inputs.session }}
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           set -o pipefail
           mkdir -p docs/data
           {
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            S="${{ github.event.inputs.session }}"
-            if [ "$S" = "day" ] || [ "$S" = "night" ]; then python pipeline/build.py --session "$S"; else python pipeline/build.py; fi
-          elif [ "${{ github.event.schedule }}" = "10 0 * * 2-6" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            case "$IN_SESSION" in
+              day|night) python pipeline/build.py --session "$IN_SESSION" ;;
+              *) python pipeline/build.py ;;
+            esac
+          elif [ "$SCHEDULE" = "10 0 * * 2-6" ]; then
             python pipeline/build.py --session night
           else
             python pipeline/build.py --session day
