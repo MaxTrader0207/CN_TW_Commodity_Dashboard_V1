@@ -70,9 +70,9 @@ for name, data in [("twse_quotes", tw_q), ("twse_info", tw_i), ("tpex_quotes", o
     (out / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 print("fixtures →", out)
 
-# 證交所官網格式（較 OpenAPI 新一天，用來測試「取較新來源」）
-rwd = {"stat": "OK", "date": "20261029",
-       "fields": ["證券代號", "證券名稱", "成交股數", "成交金額", "開盤價", "最高價", "最低價", "收盤價", "漲跌價差", "成交筆數"],
-       "data": [[r["Code"], r["Name"], r["TradeVolume"], "0", r["ClosingPrice"], r["ClosingPrice"], r["ClosingPrice"],
-                 r["ClosingPrice"], r["Change"], "1"] for r in tw_q]}
-(out / "twse_rwd.json").write_text(json.dumps(rwd, ensure_ascii=False), encoding="utf-8")
+# 證交所官網 CSV 格式（較 OpenAPI 新一天，用來測試「取較新來源」）
+lines = ["日期,證券代號,證券名稱,成交股數,成交金額,開盤價,最高價,最低價,收盤價,漲跌價差,成交筆數"]
+for r in tw_q:
+    c = r["ClosingPrice"]
+    lines.append(f'"1151029","{r["Code"]}","{r["Name"]}","{r["TradeVolume"]}","0","{c}","{c}","{c}","{c}","{r["Change"]}","1"')
+(out / "twse_rwd.csv").write_text("\r\n".join(lines), encoding="utf-8")

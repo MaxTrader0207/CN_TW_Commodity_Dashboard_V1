@@ -38,7 +38,7 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
       "Accept": "application/json, text/plain, */*"}
 SINA_URL = "https://hq.sinajs.cn/list="
 TWSE_QUOTES = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-TWSE_RWD = "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=json"
+TWSE_RWD = "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=open_data"
 TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_QUOTES = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
 ISIN_OTC = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
@@ -90,7 +90,10 @@ class FixtureSource:
         self.d = Path(d)
 
     def text(self, url, encoding):
-        f = self.d / "isin_otc.html"
+        name = "twse_rwd.csv" if url == TWSE_RWD else "isin_otc.html"
+        f = self.d / name
+        if url == TWSE_RWD and not f.exists():
+            raise FileNotFoundError(name)
         return f.read_text(encoding="utf-8") if f.exists() else ""
 
     def sina(self, symbols):
@@ -285,14 +288,22 @@ def expected_trade_date(now):
 
 
 def twse_rwd_rows(src):
-    """證交所官網每日收盤（比 OpenAPI 更新得快），轉成與 OpenAPI 相同欄位。"""
-    j = src.json(TWSE_RWD)
-    if j.get("stat") != "OK" or not j.get("data"):
-        raise ValueError(f"stat={j.get('stat')}")
-    f = {name: i for i, name in enumerate(j["fields"])}
-    return [{"Date": j.get("date"), "Code": r[f["證券代號"]], "Name": r[f["證券名稱"]],
-             "ClosingPrice": r[f["收盤價"]], "Change": r[f["漲跌價差"]], "TradeVolume": r[f["成交股數"]]}
-            for r in j["data"]]
+    """證交所官網每日收盤（比 OpenAPI 更新得快）。官網回 CSV（open_data）或 JSON，都轉成 OpenAPI 欄位。"""
+    import csv
+    import io
+    text = src.text(TWSE_RWD, "utf-8").lstrip("\ufeff")
+    if text.lstrip().startswith("{"):
+        j = json.loads(text)
+        if j.get("stat") != "OK" or not j.get("data"):
+            raise ValueError(f"stat={j.get('stat')}")
+        recs = [dict(zip(j["fields"], r), 日期=j.get("date")) for r in j["data"]]
+    else:
+        recs = list(csv.DictReader(io.StringIO(text)))
+    if not recs or "收盤價" not in recs[0]:
+        raise ValueError(f"官網格式無法辨識：{text[:80]!r}")
+    return [{"Date": r.get("日期"), "Code": r["證券代號"], "Name": r["證券名稱"],
+             "ClosingPrice": r["收盤價"], "Change": r["漲跌價差"], "TradeVolume": r["成交股數"]}
+            for r in recs]
 
 
 def load_twse_rows(src):
