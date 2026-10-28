@@ -29,7 +29,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - name: Build data
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
         run: |
+          set -o pipefail
+          mkdir -p docs/data
+          {
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python pipeline/build.py --session "${{ github.event.inputs.session }}"
           elif [ "${{ github.event.schedule }}" = "10 0 * * 2-6" ]; then
@@ -37,7 +43,9 @@ jobs:
           else
             python pipeline/build.py --session day
           fi
+          } 2>&1 | tee docs/data/run_log.txt
       - name: Commit
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

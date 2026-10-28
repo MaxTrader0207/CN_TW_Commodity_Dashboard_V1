@@ -131,7 +131,10 @@ def commodity_board(src):
     symbols = [f"nf_{c[1]}0" for c in COMMODITIES]
     quotes = {}
     for i in range(0, len(symbols), 30):          # 分批避免網址過長
-        quotes.update(parse_sina(src.sina(symbols[i:i + 30])))
+        text = src.sina(symbols[i:i + 30])
+        if i == 0:
+            print("新浪回應樣本：", text[:300].replace("\n", " | "))
+        quotes.update(parse_sina(text))
     board = []
     for ex, code, name, limit, links in COMMODITIES:
         q = quotes.get(code)
@@ -152,10 +155,19 @@ def commodity_board(src):
 
 
 # ───────────────────────── 台股 ─────────────────────────
+def show_keys(label, rows):
+    if rows:
+        print(f"{label}：{len(rows)} 筆，欄位 {list(rows[0].keys())[:12]}")
+    else:
+        print(f"{label}：0 筆")
+
+
 def load_industry(src):
     """回傳 {代號: 類股名稱}；失敗時用上次快取。"""
     mapping = {}
     try:
+        show_keys("證交所公司資料", src.json(TWSE_INFO))
+        show_keys("櫃買公司資料", src.json(TPEX_INFO))
         for row in src.json(TWSE_INFO):
             code = pick(row, "公司代號", "Code")
             ind = pick(row, "產業別", "IndustryCode")
