@@ -5,8 +5,9 @@
 ⚠ 上櫃公司資料 取得失敗，本次略過上櫃股票：Expecting value: line 1 column 1 (char 0)
 ⚠ https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O 非 JSON（HTTP 200, text/html）：'<!DOCTYPE html><html lang="zh-Hant-tw"><head><title>è\xad\x89å\x88¸æ«\x83æª¯è²·è³£ä¸\xadå¿\x83</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-sc'
 ⚠ 上櫃公司資料(備援) 取得失敗，本次略過上櫃股票：Expecting value: line 1 column 1 (char 0)
+上櫃產業別(ISIN 頁)：896 檔
 櫃買收盤行情：13186 筆，欄位 ['Date', 'SecuritiesCompanyCode', 'CompanyName', 'Close', 'Change', 'Open', 'High', 'Low', 'Average', 'TradingShares', 'TransactionAmount', 'TransactionNumber']
 台股各來源資料日： ['2026-10-27']
 ⚠ 台股資料日 2026-10-27 早於今天，可能尚未公布或今日休市
-台股：7092 檔報價、1088 檔產業別（live），資料日 2026-10-27
+台股：7092 檔報價、1984 檔產業別（live），資料日 2026-10-27
 多頭： ['塑膠', '化學工業', '油電燃氣'] 空頭： ['航運', '建材營造', '造紙']
