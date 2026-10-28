@@ -1,13 +1,8 @@
 新浪回應樣本： var hq_str_nf_CU0="铜连续,150000,109010.000,109500.000,108950.000,109200.000,109180.000,109200.000,109200.000,109200.000,108640.000,2,11,195587.000,79060,沪,铜,2026-10-28,1,,,,,,,,,109205.568,109170.000,13,109160.000,13,109150.000,7,109140.000,19,109210.000,24,109220.000,14,109230.000,63,109240.000,6"; | v
 陸期：52/52 個商品取得報價
 證交所公司資料：1098 筆，欄位 ['出表日期', '公司代號', '公司名稱', '公司簡稱', '外國企業註冊地國', '產業別', '住址', '營利事業統一編號', '董事長', '總經理', '發言人', '發言人職稱']
-⚠ 產業別抓取失敗，改用快取： Expecting value: line 1 column 1 (char 0)
-Traceback (most recent call last):
-  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 337, in <module>
-    main()
-  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 317, in main
-    industry, ind_src = load_industry(src)
-                        ^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/CN_TW_Commodity_Dashboard_V1/CN_TW_Commodity_Dashboard_V1/pipeline/build.py", line 189, in load_industry
-    raise RuntimeError("無產業別資料且無快取")
-RuntimeError: 無產業別資料且無快取
+⚠ https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O 非 JSON（HTTP 200, text/html）：'<!DOCTYPE html><html lang="zh-Hant-tw"><head><title>è\xad\x89å\x88¸æ«\x83æª¯è²·è³£ä¸\xadå¿\x83</title><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-sc'
+⚠ 櫃買公司資料 取得失敗，本次略過上櫃股票：Expecting value: line 1 column 1 (char 0)
+櫃買收盤行情：13186 筆，欄位 ['Date', 'SecuritiesCompanyCode', 'CompanyName', 'Close', 'Change', 'Open', 'High', 'Low', 'Average', 'TradingShares', 'TransactionAmount', 'TransactionNumber']
+台股：7092 檔報價、1088 檔產業別（live），資料日 2026-10-27
+多頭： ['塑膠', '化學工業', '油電燃氣'] 空頭： ['航運', '建材營造', '造紙']
