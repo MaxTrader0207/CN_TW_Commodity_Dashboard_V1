@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-28T16:31:14+08:00",
+ "run_at": "2026-10-28T23:58:31+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40657352571",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40721317915",
  "sources": [
   {
    "id": "sina",
@@ -14,7 +14,7 @@
    "rows": 52,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-28T16:31:16+08:00"
+   "fetched_at": "2026-10-28T23:58:32+08:00"
   },
   {
    "id": "twse_info",
@@ -25,7 +25,7 @@
    "rows": 1088,
    "data_date": "2026-10-27",
    "note": "",
-   "fetched_at": "2026-10-28T16:31:17+08:00"
+   "fetched_at": "2026-10-28T23:58:35+08:00"
   },
   {
    "id": "isin_otc",
@@ -36,7 +36,7 @@
    "rows": 896,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-28T16:34:43+08:00"
+   "fetched_at": "2026-10-28T23:58:40+08:00"
   },
   {
    "id": "twse_quotes",
@@ -47,7 +47,7 @@
    "rows": 1375,
    "data_date": "2026-10-27",
    "note": "資料日早於今天（尚未公布或休市）",
-   "fetched_at": "2026-10-28T16:34:45+08:00"
+   "fetched_at": "2026-10-28T23:58:40+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -58,7 +58,7 @@
    "rows": 6639,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-28T16:34:55+08:00"
+   "fetched_at": "2026-10-28T23:58:49+08:00"
   }
  ]
 }
