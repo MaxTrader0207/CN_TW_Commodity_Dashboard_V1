@@ -39,7 +39,8 @@ SINA_URL = "https://hq.sinajs.cn/list="
 TWSE_QUOTES = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TWSE_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_L"
 TPEX_QUOTES = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes"
-TPEX_INFO = "https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O"
+TPEX_INFO = "https://openapi.twse.com.tw/v1/opendata/t187ap03_O"
+TPEX_INFO_ALT = "https://www.tpex.org.tw/openapi/v1/mopsfe_t187ap03_O"
 
 
 # ───────────────────────── 取數 ─────────────────────────
@@ -86,8 +87,8 @@ class FixtureSource:
         return (self.d / "sina.txt").read_text(encoding="utf-8")
 
     def json(self, url):
-        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info",
-                TPEX_QUOTES: "tpex_quotes", TPEX_INFO: "tpex_info"}[url]
+        name = {TWSE_QUOTES: "twse_quotes", TWSE_INFO: "twse_info", TPEX_QUOTES: "tpex_quotes",
+                TPEX_INFO: "tpex_info", TPEX_INFO_ALT: "tpex_info"}[url]
         return json.loads((self.d / f"{name}.json").read_text(encoding="utf-8"))
 
 
@@ -185,7 +186,7 @@ def load_industry(src):
     try:
         twse_rows = src.json(TWSE_INFO)
         show_keys("證交所公司資料", twse_rows)
-        tpex_rows = optional(src, TPEX_INFO, "櫃買公司資料")
+        tpex_rows = optional(src, TPEX_INFO, "上櫃公司資料") or optional(src, TPEX_INFO_ALT, "上櫃公司資料(備援)")
         for row in twse_rows:
             code = pick(row, "公司代號", "Code")
             ind = pick(row, "產業別", "IndustryCode")
@@ -239,6 +240,7 @@ def load_quotes(src):
                             "close": close, "chg_pct": round(chg / (close - chg) * 100, 2),
                             "lots": int((vol or 0) / 1000), "mkt": "上櫃"}
     dates.discard(None)
+    print("台股各來源資料日：", sorted(dates))
     return stocks, (max(dates) if dates else None)
 
 
@@ -334,6 +336,8 @@ def main():
 
     industry, ind_src = load_industry(src)
     stocks, tw_date = load_quotes(src)
+    if session == "day" and tw_date and tw_date < now.strftime("%Y-%m-%d"):
+        print(f"⚠ 台股資料日 {tw_date} 早於今天，可能尚未公布或今日休市")
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別（{ind_src}），資料日 {tw_date}")
 
     sectors, bull, bear = score_sectors(board, industry, stocks)
