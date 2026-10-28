@@ -1,0 +1,46 @@
+name: Daily update
+
+on:
+  schedule:
+    # 台北時間 週一~週五 15:40（陸期日盤 15:00 收盤、台股資料已公布）
+    - cron: "40 7 * * 1-5"
+    # 台北時間 週二~週六 08:10（陸期夜盤收盤後，台股開盤前）
+    - cron: "10 0 * * 2-6"
+  workflow_dispatch:
+    inputs:
+      session:
+        description: "day = 日盤收盤版, night = 夜盤盤前版"
+        default: day
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Build data
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python pipeline/build.py --session "${{ github.event.inputs.session }}"
+          elif [ "${{ github.event.schedule }}" = "10 0 * * 2-6" ]; then
+            python pipeline/build.py --session night
+          else
+            python pipeline/build.py --session day
+          fi
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data pipeline
+          git diff --cached --quiet || git commit -m "data: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git push
