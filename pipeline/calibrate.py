@@ -57,14 +57,28 @@ def corr(xs, ys):
     return r, t
 
 
+def span_sum(sret, tw_dates, p, d):
+    """台股在 (p, d] 期間的累計超額報酬：陸期一筆漲跌若跨越大陸長假（台股照常交易），要對應台股同一段期間"""
+    i, j = bisect.bisect_right(tw_dates, p), bisect.bisect_right(tw_dates, d)
+    vals = [sret[t] for t in tw_dates[i:j] if t in sret]
+    return sum(vals) if vals else None
+
+
 def align(cret, sret, tw_dates, lag, d0=None, d1=None):
-    """回傳 (x, y, dates)。lag=0 同日；lag=1 陸期日 d → 台股 d 之後的下一個交易日（5 天內）。"""
+    """回傳 (x, y, dates)。
+    lag=0 同期：陸期在 d 的漲跌（前一個陸期交易日 p → d）對應台股 (p, d] 的累計超額報酬，
+          平常就是同一天；大陸長假後首日則對應台股整段長假期間。
+    lag=1 隔日：陸期日 d → 台股 d 之後的下一個交易日（5 天內）。"""
     xs, ys, ds = [], [], []
-    for d, x in cret.items():
+    cdates = sorted(cret)
+    for k, d in enumerate(cdates):
+        x = cret[d]
         if (d0 and d < d0) or (d1 and d > d1):
             continue
         if lag == 0:
-            t = d
+            if k == 0:
+                continue
+            y = span_sum(sret, tw_dates, cdates[k - 1], d)
         else:
             i = bisect.bisect_right(tw_dates, d)
             if i >= len(tw_dates):
@@ -72,7 +86,7 @@ def align(cret, sret, tw_dates, lag, d0=None, d1=None):
             t = tw_dates[i]
             if (date.fromisoformat(t) - date.fromisoformat(d)).days > 5:
                 continue
-        y = sret.get(t)
+            y = sret.get(t)
         if y is not None:
             xs.append(x)
             ys.append(y)
@@ -192,13 +206,26 @@ def daily_scores(items, cmd_ret, links_by_code, d):
 
 
 def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1):
-    days = sorted({d for c in cmd_ret.values() for d in c if d0 <= d <= d1})
+    all_days = sorted({d for c in cmd_ret.values() for d in c})
+    days = [d for d in all_days if d0 <= d <= d1]
+    prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
     res = {}
     for lag in (0, 1):
         bull, bear, spread, used = [], [], [], 0
         for d in days:
             if lag == 0:
-                t = d
+                # 同期：陸期 (p, d] 對應台股同一段期間的累計超額報酬（處理大陸長假）
+                p = prev_of.get(d)
+                if not p:
+                    continue
+                i, j = bisect.bisect_right(tw_dates, p), bisect.bisect_right(tw_dates, d)
+                span = [excess[t] for t in tw_dates[i:j] if t in excess]
+                if not span:
+                    continue
+                row = {}
+                for r in span:
+                    for s_, v in r.items():
+                        row[s_] = row.get(s_, 0) + v
             else:
                 i = bisect.bisect_right(tw_dates, d)
                 if i >= len(tw_dates):
@@ -206,7 +233,7 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1):
                 t = tw_dates[i]
                 if (date.fromisoformat(t) - date.fromisoformat(d)).days > 5:
                     continue
-            row = excess.get(t)
+                row = excess.get(t)
             if not row:
                 continue
             sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d).items() if s in row}
@@ -252,7 +279,7 @@ def spread_returns(pairs_by, legs, limits):
         m = pairs_by.get(code)
         if not m:
             return {}
-        by[code] = {d: (c, b) for d, (c, b) in m.items() if b > 0 and abs((c / b - 1) * 100) <= limits[code] + 1.5}
+        by[code] = {d: (c, b) for d, (c, b) in m.items() if b > 0 and abs((c / b - 1) * 100) <= H.anomaly_cap(limits[code])}
     prod = legs[0][0]
     out = {}
     for d in set.intersection(*(set(m) for m in by.values())):

@@ -338,14 +338,20 @@ def roll_pairs(session, code, rows, start: date, cache, sleep=0.15, log=print):
     return pairs, rolls
 
 
+def anomaly_cap(limit):
+    """換月已修正後，只剔除明顯錯誤的資料。交易所在劇烈行情（如 2026/3 油價）會擴大漲跌停，
+    長假後首日也會累積多日漲跌，這些是真實的大波動，不能用一般漲跌停幅度剔除。"""
+    return max(limit * 2.5, 15.0)
+
+
 def pairs_returns(pairs, limit):
-    """{date: 漲跌%}；仍超過漲跌停 +1.5% 的視為資料異常剔除"""
+    """{date: 漲跌%}；超過 anomaly_cap 的視為資料異常剔除"""
     out, dropped = {}, 0
     for d, (c, base) in pairs.items():
         if base <= 0:
             continue
         r = (c / base - 1) * 100
-        if abs(r) > limit + 1.5:
+        if abs(r) > anomaly_cap(limit):
             dropped += 1
             continue
         out[d] = r
