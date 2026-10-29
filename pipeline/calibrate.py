@@ -244,24 +244,15 @@ def manual_links(items):
 
 
 # ───────────── 價差 ─────────────
-def spread_returns(klines, legs, limits):
-    """價差每日變化（佔產品前一日結算價的 %）。任一腿換月跳空（超過漲跌停 +1.5%）的日子剔除。"""
+def spread_returns(pairs_by, legs, limits):
+    """價差每日變化（佔產品前一日結算價的 %）。pairs_by[code] = {date: (收盤, 同合約前一日結算)}（已做換月修正）；
+    任一腿漲跌超過漲跌停 +1.5%（資料異常）的日子剔除。"""
     by = {}
     for code, _ in legs:
-        rows = klines.get(code)
-        if not rows:
+        m = pairs_by.get(code)
+        if not m:
             return {}
-        m = {}
-        for prev, cur in zip(rows, rows[1:]):
-            try:
-                base = float(prev.get("s") or prev["c"])
-                c = float(cur["c"])
-            except (KeyError, ValueError):
-                continue
-            if base <= 0 or abs((c / base - 1) * 100) > limits[code] + 1.5:
-                continue
-            m[cur["d"]] = (c, base)
-        by[code] = m
+        by[code] = {d: (c, b) for d, (c, b) in m.items() if b > 0 and abs((c / b - 1) * 100) <= limits[code] + 1.5}
     prod = legs[0][0]
     out = {}
     for d in set.intersection(*(set(m) for m in by.values())):
@@ -407,27 +398,54 @@ def main():
         return
     print(f"台股類股超額報酬：{len(tw_dates)} 天（{tw_dates[0]} ~ {tw_dates[-1]}）")
 
-    cmd_ret, kline_info, klines = {}, {}, {}
+    cmd_ret, kline_info, klines, pairs_by, roll_log = {}, {}, {}, {}, {}
     limits = {code: limit for _, code, _, limit, _ in COMMODITIES}
+    roll_cache = json.loads(H.ROLL_JSON.read_text(encoding="utf-8")) if H.ROLL_JSON.exists() else {}
+    naive_ret = {}
     for ex, code, name, limit, _ in COMMODITIES:
         try:
             rows = H.fetch_kline(s, code)
             klines[code] = [r for r in rows if r["d"] >= (start - timedelta(days=10)).isoformat()]
-            r, dropped = H.kline_returns(rows, limit)
+            # 主力換月修正：比對連續主力每天實際的合約，換約日改用新合約自己的前一日結算價
+            pairs, rolls = H.roll_pairs(s, code, rows, start - timedelta(days=10), roll_cache)
+            pairs_by[code] = pairs
+            roll_log[code] = rolls
+            r, dropped = H.pairs_returns(pairs, limit)
             cmd_ret[code] = {d: v for d, v in r.items() if d >= start.isoformat()}
-            kline_info[code] = {"days": len(cmd_ret[code]), "dropped_roll": dropped,
-                                "first": rows[0]["d"] if rows else None}
+            nr, nd = H.pairs_returns(H.naive_pairs(rows), limit)
+            naive_ret[code] = {d: v for d, v in nr.items() if d >= start.isoformat()}
+            unmatched = sum(1 for d, v in roll_cache[code]["contract"].items() if v is None and d >= start.isoformat())
+            kline_info[code] = {"days": len(cmd_ret[code]), "dropped": dropped, "dropped_naive": nd,
+                                "rolls": len([x for x in rolls if x["date"] >= start.isoformat()]),
+                                "unmatched": unmatched, "first": rows[0]["d"] if rows else None}
         except Exception as e:  # noqa: BLE001
             kline_info[code] = {"error": str(e)[:120]}
             print(f"  ⚠ {code} 日K失敗：{e}")
+        H.ROLL_JSON.write_text(json.dumps(roll_cache, ensure_ascii=False), encoding="utf-8")
+    git_checkpoint("cache: 主力換月對照表")
     print(f"陸期日K：{sum(1 for v in kline_info.values() if 'days' in v)}/{len(COMMODITIES)} 個商品")
+    n_roll = sum(v.get("rolls", 0) for v in kline_info.values())
+    big = sorted((x for code, rs in roll_log.items() for x in rs if x["date"] >= start.isoformat() and x["fixed"] is not None),
+                 key=lambda x: -abs(x["naive"] - x["fixed"]))
+    print(f"主力換月：{n_roll} 次；未比對到合約的日數 {sum(v.get('unmatched', 0) for v in kline_info.values())}")
+    for code, rs in roll_log.items():
+        for x in rs:
+            if x in big[:12]:
+                print(f"  換月 {code} {x['date']} {x['from']}→{x['to']}：原算 {x['naive']:+.2f}% → 修正 {x['fixed']:+.2f}%")
 
     # 價差序列
-    spr_ret = {code: {d: v for d, v in spread_returns(klines, legs, limits).items() if d >= start.isoformat()}
+    spr_ret = {code: {d: v for d, v in spread_returns(pairs_by, legs, limits).items() if d >= start.isoformat()}
                for code, _, legs, _ in SPREADS}
     for code, name, *_ in SPREADS:
         print(f"  價差 {name}：{len(spr_ret[code])} 天")
     series = {**cmd_ret, **spr_ret}
+
+    # 換月修正前後，對照表組合的同日相關差異（看換月雜訊影響多大）
+    _naive_series = {**naive_ret}
+    _p_naive, _, _ = build_links(commodity_items(), _naive_series, excess, tw_dates)
+    roll_effect = []
+    for p in _p_naive:
+        roll_effect.append((p["code"], p["sector"], p["rho0"], p["t0"], p["status"]))
 
     # 全期校準 → 每日計分使用
     sp_items, sp_sigma = spread_items(spr_ret)
@@ -485,12 +503,19 @@ def main():
         stocks[item_code] = rows
     # 保存本次輸入（陸期日K、個股殘差報酬），方便本機重現與除錯
     import gzip
-    inp = {"klines": klines, "stock_res": closes_cache}
+    inp = {"klines": klines, "stock_res": closes_cache,
+           "pairs": {c: {d: list(v) for d, v in m.items()} for c, m in pairs_by.items()}}
     with gzip.open(H.CACHE_DIR / "calib_inputs.json.gz", "wt", encoding="utf-8") as f:
         json.dump(inp, f, ensure_ascii=False)
     ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
+    eff = {(c, sct): (r, t, st) for c, sct, r, t, st in roll_effect}
+    changed = [(p["name"], p["sector"], eff[(p["code"], p["sector"])], (p["rho0"], p["t0"], p["status"]))
+               for p in pairs if (p["code"], p["sector"]) in eff and eff[(p["code"], p["sector"])][2] != p["status"]]
+    print(f"換月修正後判定改變的組合：{len(changed)}")
+    for nm, sct, a, b in changed:
+        print(f"  {nm}→{sct}：修正前 ρ0={a[0]} t={a[1]} {a[2]} → 修正後 ρ0={b[0]} t={b[1]} {b[2]}")
     counts = {}
     for p in pairs + discovered:
         counts[p["status"]] = counts.get(p["status"], 0) + 1
@@ -510,6 +535,8 @@ def main():
         "stocks": stocks, "stock_meta": stock_meta,
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "kline": kline_info,
+        "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},
+        "roll_changed": [{"name": nm, "sector": sct, "before": list(a), "after": list(b)} for nm, sct, a, b in changed],
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")

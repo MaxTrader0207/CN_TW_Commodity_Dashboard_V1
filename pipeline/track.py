@@ -103,7 +103,7 @@ def summarize(rows, key):
     }
 
 
-def update(payload, session=None, log=print):
+def update(payload, session=None, log=print, skip_signal=False):
     """session：requests.Session（None 時只用快取，不連網）"""
     if session is not None:
         today = date.fromisoformat(payload["run_date"])
@@ -123,7 +123,10 @@ def update(payload, session=None, log=print):
     tw_dates = sorted(excess)
 
     led = load_ledger()
-    for k, v in entry(payload).items():
+    new_entries = {} if skip_signal else entry(payload)
+    if skip_signal:
+        log("帳本：陸期無新報價（休市），本次訊號不記入")
+    for k, v in new_entries.items():
         # 同一天同版本：已有準時的訊號時，不被之後延遲產生的訊號覆蓋
         if k in led and validity(led[k])[0] and not validity(v)[0]:
             log(f"帳本：{k} 已有準時訊號，這次（{v['run_at']}）不覆蓋")

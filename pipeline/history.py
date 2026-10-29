@@ -198,3 +198,155 @@ def kline_returns(rows, limit):
             continue
         out[cur["d"]] = r
     return out, dropped
+
+
+# ───────────── 台股休市日曆 ─────────────
+HOLIDAY_URL = "https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule"
+HOLIDAY_JSON = CACHE_DIR / "tw_holidays.json"
+
+
+def roc_iso(s):
+    s = str(s).strip()
+    return f"{int(s[:3]) + 1911}-{s[3:5]}-{s[5:7]}" if len(s) == 7 and s.isdigit() else None
+
+
+def parse_holidays(rows):
+    """證交所公告的休市日。名稱含「開始交易」「最後交易」的是照常交易的日子，要排除。"""
+    out = {}
+    for r in rows:
+        name, d = str(r.get("Name", "")), roc_iso(r.get("Date"))
+        if not d or "開始交易" in name or "最後交易" in name:
+            continue
+        out[d] = name
+    return out
+
+
+def load_holidays():
+    return json.loads(HOLIDAY_JSON.read_text(encoding="utf-8")) if HOLIDAY_JSON.exists() else {}
+
+
+def update_holidays(session, log=print):
+    """抓證交所當年度休市日，與快取合併（跨年度累積）。失敗時沿用快取。"""
+    cached = load_holidays()
+    try:
+        r = session.get(HOLIDAY_URL, timeout=25)
+        new = parse_holidays(r.json())
+        if new:
+            cached.update(new)
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            HOLIDAY_JSON.write_text(json.dumps(dict(sorted(cached.items())), ensure_ascii=False, indent=0),
+                                    encoding="utf-8")
+        return cached, len(new), None
+    except Exception as e:  # noqa: BLE001
+        log(f"⚠ 台股休市日取得失敗，沿用快取：{e}")
+        return cached, 0, str(e)[:120]
+
+
+def is_tw_trading_day(d: date, holidays):
+    return d.weekday() < 5 and d.isoformat() not in holidays
+
+
+# ───────────── 主力合約換月 ─────────────
+ROLL_JSON = CACHE_DIR / "rollmap.json"
+
+
+def contract_months(start: date, end: date):
+    """start~end（含）之間的所有 YYMM"""
+    out, y, m = [], start.year, start.month
+    while (y, m) <= (end.year, end.month):
+        out.append(f"{y % 100:02d}{m:02d}")
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+    return out
+
+
+def fetch_contract(session, code, yymm):
+    r = session.get(KLINE_URL.replace("{0}0", "{0}").format(code + yymm), timeout=25,
+                    headers={"Referer": "https://finance.sina.com.cn/"})
+    m = re.search(r"\((\[.*\])\)", r.text, re.S)
+    return json.loads(m.group(1)) if m else []
+
+
+def _same_bar(a, b):
+    try:
+        return abs(float(a["c"]) - float(b["c"])) < 1e-6 and int(float(a["v"])) == int(float(b["v"]))
+    except (KeyError, ValueError):
+        return False
+
+
+def naive_pairs(rows):
+    """{date: (收盤, 基準)}：基準 = 連續主力前一日結算價（換月日會錯用舊合約的結算價）"""
+    out = {}
+    for prev, cur in zip(rows, rows[1:]):
+        try:
+            out[cur["d"]] = (float(cur["c"]), float(prev.get("s") or prev["c"]))
+        except (KeyError, ValueError):
+            continue
+    return out
+
+
+def roll_pairs(session, code, rows, start: date, cache, sleep=0.15, log=print):
+    """比對連續主力每天實際是哪個合約；換約日改用「新合約自己的前一日結算價」當基準。
+    cache[code] = {"contract": {date: YYMM}, "base": {date: 修正後基準}}，已比對過的日期不重抓。
+    回傳 (pairs, 換月清單)"""
+    c = cache.setdefault(code, {"contract": {}, "base": {}})
+    todo = [r for r in rows if r["d"] >= start.isoformat() and r["d"] not in c["contract"]]
+    if todo:
+        first = date.fromisoformat(todo[0]["d"])
+        months = contract_months(first, date.fromisoformat(todo[-1]["d"]) + timedelta(days=400))
+        bars = {}
+        for ym in months:
+            try:
+                k = fetch_contract(session, code, ym)
+            except Exception:  # noqa: BLE001
+                k = []
+            if k:
+                bars[ym] = {b["d"]: (i, b) for i, b in enumerate(k)}
+                bars[ym]["_rows"] = k
+            time.sleep(sleep)
+        for r in todo:
+            hit = [ym for ym, m in bars.items() if r["d"] in m and _same_bar(m[r["d"]][1], r)]
+            if len(hit) == 1:
+                c["contract"][r["d"]] = hit[0]
+            elif len(hit) > 1:   # 多個合約當天價量完全相同（極少見）：取持倉最大的
+                c["contract"][r["d"]] = max(hit, key=lambda ym: float(bars[ym][r["d"]][1].get("p") or 0))
+            else:
+                c["contract"][r["d"]] = None
+        # 換約日：用新合約自己前一筆的結算價
+        days = sorted(c["contract"])
+        for prev, cur in zip(days, days[1:]):
+            a, b = c["contract"][prev], c["contract"][cur]
+            if cur in c["base"] or not a or not b or a == b or b not in bars:
+                continue
+            i, _ = bars[b][cur]
+            if i > 0:
+                p = bars[b]["_rows"][i - 1]
+                c["base"][cur] = float(p.get("s") or p["c"])
+    pairs = naive_pairs(rows)
+    rolls = []
+    days = sorted(c["contract"])
+    for prev, cur in zip(days, days[1:]):
+        a, b = c["contract"][prev], c["contract"][cur]
+        if a and b and a != b and cur in pairs:
+            naive = pairs[cur]
+            if cur in c["base"]:
+                pairs[cur] = (naive[0], c["base"][cur])
+            rolls.append({"date": cur, "from": a, "to": b,
+                          "naive": round((naive[0] / naive[1] - 1) * 100, 2),
+                          "fixed": round((pairs[cur][0] / pairs[cur][1] - 1) * 100, 2) if cur in c["base"] else None})
+    return pairs, rolls
+
+
+def pairs_returns(pairs, limit):
+    """{date: 漲跌%}；仍超過漲跌停 +1.5% 的視為資料異常剔除"""
+    out, dropped = {}, 0
+    for d, (c, base) in pairs.items():
+        if base <= 0:
+            continue
+        r = (c / base - 1) * 100
+        if abs(r) > limit + 1.5:
+            dropped += 1
+            continue
+        out[d] = r
+    return out, dropped

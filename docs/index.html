@@ -126,6 +126,7 @@ summary{cursor:pointer;font-weight:600}
       <span class="upd" id="upd"></span>
     </div>
   </header>
+  <div class="demo" id="mkt-note" style="display:none"></div>
   <div class="demo" id="demo">⚠ 目前顯示的是離線示範資料，並非真實行情。GitHub Actions 首次執行後會自動換成實際數據。</div>
 
   <section style="margin-top:0;margin-bottom:16px">
@@ -303,6 +304,13 @@ function sectorCard(s, i, side) {
 
 function render(d) {
   $('#demo').style.display = d.demo ? 'block' : 'none';
+  const mk = d.market || {}, notes = [];
+  if (mk.cn?.stale) notes.push(`大陸期貨今天沒有新報價（休市或尚未開盤），以下漲跌沿用 ${fmtTime(mk.cn.newest_quote)} 的報價，這次訊號不計入命中率。`);
+  if (mk.tw_holiday) notes.push(`今日台股休市（${mk.tw_holiday}），台股資料為 ${d.tw_date || '—'}。`);
+  else if (mk.tw_open_today === false) notes.push(`今日台股休市，台股資料為 ${d.tw_date || '—'}。`);
+  if (mk.cn?.rolled?.length) notes.push(`主力合約今日換月：${mk.cn.rolled.map(c => d.commodities.find(x => x.code === c)?.name || c).join('、')}（漲跌已用新合約的昨結算計算）。`);
+  $('#mkt-note').textContent = notes.join('　');
+  $('#mkt-note').style.display = notes.length ? 'block' : 'none';
   $('#m-session').textContent = d.session_label;
   $('#m-time').textContent = '更新 ' + d.generated_at.replace('T', ' ').slice(0, 16);
   $('#m-tw').textContent = '台股資料日 ' + (d.tw_date || '—');
@@ -347,6 +355,7 @@ function render(d) {
       if (c.at_limit) t.style.borderColor = 'var(--accent)';
       const t1 = el('div', 't1'); t1.append(el('b', null, c.name), el('span', null, c.code));
       const lim = c.at_limit === 'up' ? ' 漲停' : c.at_limit === 'down' ? ' 跌停' : '';
+      if (c.rolled) t1.append(el('span', 'tag lag', '換月'));
       t.append(t1, el('div', 't2 ' + cls(c.chg), pct(c.chg) + lim),
         el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ')));
       hoverTip(t, c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n'));

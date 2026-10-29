@@ -143,7 +143,8 @@ def parse_sina(text):
             continue
         out[code.upper()] = {
             "last": last, "base": base, "chg": round((last / base - 1) * 100, 2),
-            "high": num(f[3]), "low": num(f[4]),
+            "high": num(f[3]), "low": num(f[4]), "settle": num(f[9]), "oi": num(f[13]) if len(f) > 13 else None,
+            "time": f[1] if len(f) > 1 else None,
             "date": f[17] if len(f) > 17 else None,
         }
     return out
@@ -201,7 +202,8 @@ def commodity_board(src, links_by_code):
             if at_limit:
                 sig *= LIMIT_BONUS
             item.update(status="ok", last=q["last"], base=q["base"], chg=chg, signal=round(sig, 4),
-                        at_limit=at_limit, quote_date=q["date"])
+                        at_limit=at_limit, quote_date=q["date"], quote_time=q.get("time"),
+                        settle=q.get("settle"), oi=q.get("oi"))
         board.append(item)
     return board
 
@@ -350,14 +352,49 @@ def roc_to_iso(s):
     return None
 
 
-def expected_trade_date(now):
-    """此刻應該已有的最新交易日：平日 14:30 後為當天，否則為前一個平日（未計國定假日）。"""
+HOLIDAYS = {}   # 台股休市日 {日期: 名稱}，run() 開頭載入
+
+
+def expected_trade_date(now, holidays=None):
+    """此刻應該已有的最新台股交易日：交易日 14:30 後為當天，否則往前找最近的交易日（排除週末與證交所公告休市日）。"""
+    holidays = HOLIDAYS if holidays is None else holidays
     d = now.date()
-    if not (d.weekday() < 5 and (now.hour, now.minute) >= (14, 30)):
+    if not (history.is_tw_trading_day(d, holidays) and (now.hour, now.minute) >= (14, 30)):
         d -= timedelta(days=1)
-        while d.weekday() >= 5:
+        while not history.is_tw_trading_day(d, holidays):
             d -= timedelta(days=1)
     return d.isoformat()
+
+
+def china_status(board, now, prev):
+    """陸期是否有新報價：與上一次快照的報價（日期、時間、價格）完全相同且已超過 18 小時沒更新 → 視為休市／未開盤。
+    也偵測主力換月：今天的「昨結算」與上次快照記下的結算價不同 → 連續主力換了合約。"""
+    prev_q = {c["code"]: c for c in (prev or {}).get("commodities", []) if c.get("status") == "ok"}
+    same = total = 0
+    newest = None
+    for c in board:
+        if c["status"] != "ok":
+            continue
+        total += 1
+        p = prev_q.get(c["code"])
+        if p and p.get("quote_date") == c.get("quote_date") and p.get("quote_time") == c.get("quote_time") \
+                and p.get("last") == c.get("last"):
+            same += 1
+        try:
+            t = datetime.strptime(f"{c['quote_date']} {c['quote_time']}", "%Y-%m-%d %H%M%S").replace(tzinfo=TPE)
+            newest = max(newest, t) if newest else t
+        except (KeyError, TypeError, ValueError):
+            pass
+        # 換月：上次快照（日盤收盤後）記下的結算價 ≠ 今天報價的昨結算
+        ps = p.get("settle") if p else None
+        if ps and c.get("base") and p.get("quote_date") != c.get("quote_date") and abs(c["base"] / ps - 1) > 0.0005:
+            c["rolled"] = True
+    age_h = (now - newest).total_seconds() / 3600 if newest else None
+    stale = bool(total and prev_q and same >= total * 0.8 and age_h is not None and age_h > 18)
+    rolled = [c["code"] for c in board if c.get("rolled")]
+    return {"stale": stale, "unchanged": same, "total": total,
+            "newest_quote": newest.isoformat(timespec="minutes") if newest else None,
+            "age_hours": round(age_h, 1) if age_h is not None else None, "rolled": rolled}
 
 
 def twse_rwd_rows(src):
@@ -536,11 +573,32 @@ def run(now):
     session = a.session or ("night" if now.hour < 12 else "day")
     src = FixtureSource(a.fixtures) if a.fixtures else Source()
 
+    global HOLIDAYS
+    if a.fixtures:
+        HOLIDAYS = history.load_holidays()
+    else:
+        HOLIDAYS, n_h, h_err = history.update_holidays(src.s)
+        record("twse_holiday", "證交所 休市日曆", history.HOLIDAY_URL, "判斷台股應有交易日、休市",
+               "fail" if h_err and not HOLIDAYS else "warn" if h_err else "ok", len(HOLIDAYS), None,
+               h_err or "")
+    today = now.date()
+    tw_open_today = history.is_tw_trading_day(today, HOLIDAYS)
+    prev_payload = None
+    if (DATA_DIR / "latest.json").exists():
+        try:
+            prev_payload = json.loads((DATA_DIR / "latest.json").read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            pass
     links_by_code, weights_mode, cal_meta, cal = load_links()
     print(f"計分權重：{weights_mode}")
     board = commodity_board(src, links_by_code)
     ok = sum(c["status"] == "ok" for c in board)
     print(f"陸期：{ok}/{len(board)} 個商品取得報價")
+    cn = china_status(board, now, None if a.fixtures else prev_payload)
+    if cn["stale"]:
+        print(f"⚠ 陸期報價與上次相同且 {cn['age_hours']} 小時未更新（最新 {cn['newest_quote']}）→ 視為大陸休市，本次不記入命中率")
+    if cn["rolled"]:
+        print(f"主力換月：{cn['rolled']}（漲跌已用新合約的昨結算計算）")
     if ok < len(board) * 0.5:
         raise RuntimeError("陸期報價過少，停止更新以免覆蓋舊資料")
 
@@ -559,6 +617,9 @@ def run(now):
         "tw_date": tw_date,
         "demo": bool(a.fixtures),
         "weights_mode": weights_mode, "calibration": cal_meta,
+        "market": {"cn": cn, "tw_open_today": tw_open_today,
+                   "tw_holiday": HOLIDAYS.get(today.isoformat()),
+                   "tw_expected": expected_trade_date(now)},
         "params": {"min_lots": MIN_LOTS, "limit_bonus": LIMIT_BONUS},
         "sources": SOURCES,
         "run_url": os.environ.get("RUN_URL"),
@@ -567,7 +628,7 @@ def run(now):
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號
         try:
-            tr = track.update(payload, getattr(src, "s", None))
+            tr = track.update(payload, getattr(src, "s", None), skip_signal=cn["stale"])
             last = tr.get("index_last")
             record("twse_index", "證交所 類股指數（命中率開獎用）", history.IND_URL.format("YYYYMMDD"),
                    "多空類股的實際超額報酬", "ok" if last else "warn", None, last)
