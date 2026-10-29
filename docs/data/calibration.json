@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-29T20:50+08:00",
+ "generated_at": "2026-10-29T21:31+08:00",
  "period": {
   "start": "2024-10-30",
   "end": "2026-10-29",
@@ -52,7 +52,7 @@
  },
  "counts": {
   "有效": 33,
-  "不顯著": 46,
+  "不顯著": 55,
   "方向相反": 6,
   "數據新增": 18
  },
@@ -1248,6 +1248,159 @@
    "status": "不顯著"
   },
   {
+   "ex": "廣期所",
+   "code": "LC",
+   "name": "碳酸鋰",
+   "sector": "化學工業",
+   "manual_w": 0.5,
+   "why": "康普、美琪瑪等電池材料業者報價連動",
+   "n": 465,
+   "rho0": 0.062,
+   "t0": 1.34,
+   "rho1": 0.049,
+   "t1": 1.07,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "LC",
+   "name": "碳酸鋰",
+   "sector": "電子零組件",
+   "manual_w": 0.3,
+   "why": "立凱-KY 磷酸鋰鐵正極材料",
+   "n": 465,
+   "rho0": 0.069,
+   "t0": 1.5,
+   "rho1": 0.056,
+   "t1": 1.22,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "LC",
+   "name": "碳酸鋰",
+   "sector": "電腦週邊",
+   "manual_w": -0.2,
+   "why": "順達、新普電池模組成本",
+   "n": 465,
+   "rho0": -0.016,
+   "t0": -0.35,
+   "rho1": 0.058,
+   "t1": 1.27,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "LC",
+   "name": "碳酸鋰",
+   "sector": "綠能環保",
+   "manual_w": 0.3,
+   "why": "儲能、電動車供應鏈景氣",
+   "n": 465,
+   "rho0": 0.004,
+   "t0": 0.08,
+   "rho1": -0.011,
+   "t1": -0.24,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "SI",
+   "name": "工業矽",
+   "sector": "光電",
+   "manual_w": 0.3,
+   "why": "多晶矽上游，太陽能景氣",
+   "n": 465,
+   "rho0": 0.045,
+   "t0": 0.97,
+   "rho1": 0.009,
+   "t1": 0.19,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "SI",
+   "name": "工業矽",
+   "sector": "化學工業",
+   "manual_w": 0.2,
+   "why": "有機矽原料",
+   "n": 465,
+   "rho0": 0.004,
+   "t0": 0.09,
+   "rho1": -0.007,
+   "t1": -0.15,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "PS",
+   "name": "多晶矽",
+   "sector": "光電",
+   "manual_w": 0.6,
+   "why": "太陽能矽料，帶動電池、模組報價（茂迪、聯合再生、元晶）",
+   "n": 423,
+   "rho0": 0.079,
+   "t0": 1.62,
+   "rho1": 0.024,
+   "t1": 0.5,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "PS",
+   "name": "多晶矽",
+   "sector": "綠能環保",
+   "manual_w": 0.3,
+   "why": "太陽能景氣",
+   "n": 423,
+   "rho0": 0.023,
+   "t0": 0.47,
+   "rho1": -0.004,
+   "t1": -0.08,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "廣期所",
+   "code": "PS",
+   "name": "多晶矽",
+   "sector": "半導體",
+   "manual_w": 0.2,
+   "why": "矽晶圓族群情緒（中美晶）",
+   "n": 423,
+   "rho0": -0.052,
+   "t0": -1.06,
+   "rho1": 0.044,
+   "t1": 0.91,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
    "ex": "價差",
    "code": "SPR_RB",
    "name": "螺紋鋼利潤",
@@ -2135,6 +2288,9 @@
   "SR": [],
   "RM": [],
   "OI": [],
+  "LC": [],
+  "SI": [],
+  "PS": [],
   "SPR_RB": [],
   "SPR_HC": [],
   "SPR_TA": [],
@@ -4264,6 +4420,287 @@
     }
    }
   ],
+  "LC": [
+   {
+    "code": "4739",
+    "role": "產品",
+    "why": "康普 鋰電池材料",
+    "n": 464,
+    "rho0": 0.129,
+    "t0": 2.8,
+    "rho1": 0.025,
+    "t1": 0.55,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致",
+    "oos": {
+     "rho0_tr": -0.005,
+     "t0_tr": -0.09,
+     "rho0_te": 0.226,
+     "t0_te": 3.15,
+     "rho1_tr": 0.085,
+     "t1_tr": 1.44,
+     "rho1_te": -0.027,
+     "t1_te": -0.37,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "4721",
+    "role": "產品",
+    "why": "美琪瑪 電池材料",
+    "n": 464,
+    "rho0": 0.047,
+    "t0": 1.0,
+    "rho1": 0.053,
+    "t1": 1.15,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": -0.014,
+     "t0_tr": -0.23,
+     "rho0_te": 0.115,
+     "t0_te": 1.57,
+     "rho1_tr": 0.014,
+     "t1_tr": 0.23,
+     "rho1_te": 0.087,
+     "t1_te": 1.2,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "5227",
+    "role": "產品",
+    "why": "立凱-KY 正極材料",
+    "n": 464,
+    "rho0": -0.028,
+    "t0": -0.59,
+    "rho1": 0.03,
+    "t1": 0.64,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": 0.002,
+     "t0_tr": 0.04,
+     "rho0_te": -0.05,
+     "t0_te": -0.68,
+     "rho1_tr": 0.081,
+     "t1_tr": 1.38,
+     "rho1_te": 0.004,
+     "t1_te": 0.06,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "3211",
+    "role": "成本",
+    "why": "順達 電池模組",
+    "n": 464,
+    "rho0": 0.056,
+    "t0": 1.2,
+    "rho1": 0.029,
+    "t1": 0.64,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": 0.032,
+     "t0_tr": 0.53,
+     "rho0_te": 0.07,
+     "t0_te": 0.95,
+     "rho1_tr": 0.022,
+     "t1_tr": 0.38,
+     "rho1_te": 0.021,
+     "t1_te": 0.28,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "6121",
+    "role": "成本",
+    "why": "新普 電池模組",
+    "n": 464,
+    "rho0": -0.024,
+    "t0": -0.51,
+    "rho1": 0.021,
+    "t1": 0.45,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": -0.013,
+     "t0_tr": -0.22,
+     "rho0_te": -0.029,
+     "t0_te": -0.4,
+     "rho1_tr": 0.036,
+     "t1_tr": 0.62,
+     "rho1_te": 0.01,
+     "t1_te": 0.13,
+     "same_ok": false,
+     "next_ok": false
+    }
+   }
+  ],
+  "SI": [
+   {
+    "code": "5483",
+    "role": "產品",
+    "why": "中美晶 矽材景氣",
+    "n": 464,
+    "rho0": 0.034,
+    "t0": 0.72,
+    "rho1": 0.041,
+    "t1": 0.91,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": -0.006,
+     "t0_tr": -0.1,
+     "rho0_te": 0.1,
+     "t0_te": 1.37,
+     "rho1_tr": -0.013,
+     "t1_tr": -0.22,
+     "rho1_te": 0.112,
+     "t1_te": 1.54,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "6244",
+    "role": "產品",
+    "why": "茂迪 太陽能",
+    "n": 464,
+    "rho0": 0.04,
+    "t0": 0.85,
+    "rho1": 0.019,
+    "t1": 0.42,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": 0.023,
+     "t0_tr": 0.37,
+     "rho0_te": 0.086,
+     "t0_te": 1.17,
+     "rho1_tr": 0.002,
+     "t1_tr": 0.04,
+     "rho1_te": 0.051,
+     "t1_te": 0.71,
+     "same_ok": false,
+     "next_ok": false
+    }
+   }
+  ],
+  "PS": [
+   {
+    "code": "6244",
+    "role": "產品",
+    "why": "茂迪 太陽能電池",
+    "n": 422,
+    "rho0": 0.119,
+    "t0": 2.46,
+    "rho1": 0.052,
+    "t1": 1.08,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致",
+    "oos": {
+     "rho0_tr": 0.069,
+     "t0_tr": 1.06,
+     "rho0_te": 0.149,
+     "t0_te": 2.04,
+     "rho1_tr": -0.019,
+     "t1_tr": -0.3,
+     "rho1_te": 0.105,
+     "t1_te": 1.45,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "3576",
+    "role": "產品",
+    "why": "聯合再生 太陽能",
+    "n": 422,
+    "rho0": 0.019,
+    "t0": 0.39,
+    "rho1": 0.006,
+    "t1": 0.13,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": 0.079,
+     "t0_tr": 1.21,
+     "rho0_te": -0.014,
+     "t0_te": -0.19,
+     "rho1_tr": 0.006,
+     "t1_tr": 0.09,
+     "rho1_te": 0.014,
+     "t1_te": 0.2,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "6443",
+    "role": "產品",
+    "why": "元晶 太陽能",
+    "n": 422,
+    "rho0": 0.083,
+    "t0": 1.7,
+    "rho1": -0.013,
+    "t1": -0.28,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著",
+    "oos": {
+     "rho0_tr": 0.061,
+     "t0_tr": 0.94,
+     "rho0_te": 0.079,
+     "t0_te": 1.07,
+     "rho1_tr": -0.018,
+     "t1_tr": -0.28,
+     "rho1_te": -0.049,
+     "t1_te": -0.67,
+     "same_ok": false,
+     "next_ok": false
+    }
+   },
+   {
+    "code": "5483",
+    "role": "產品",
+    "why": "中美晶 矽晶圓",
+    "n": 422,
+    "rho0": 0.098,
+    "t0": 2.02,
+    "rho1": 0.061,
+    "t1": 1.27,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致",
+    "oos": {
+     "rho0_tr": 0.078,
+     "t0_tr": 1.2,
+     "rho0_te": 0.122,
+     "t0_te": 1.66,
+     "rho1_tr": 0.048,
+     "t1_tr": 0.74,
+     "rho1_te": 0.089,
+     "t1_te": 1.22,
+     "same_ok": false,
+     "next_ok": false
+    }
+   }
+  ],
   "SPR_RB": [
    {
     "code": "2015",
@@ -5117,6 +5554,51 @@
    "days": 483,
    "suffix": ".TW"
   },
+  "3211": {
+   "beta": 1.15,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "3576": {
+   "beta": 0.774,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "4721": {
+   "beta": 0.892,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "4739": {
+   "beta": 1.019,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "5227": {
+   "beta": 0.544,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "5483": {
+   "beta": 1.242,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "6121": {
+   "beta": 0.635,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "6244": {
+   "beta": 0.913,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "6443": {
+   "beta": 0.939,
+   "days": 483,
+   "suffix": ".TW"
+  },
   "6505": {
    "beta": 0.407,
    "days": 483,
@@ -5127,6 +5609,494 @@
    "days": 483,
    "suffix": ".TWO"
   }
+ },
+ "intl": {
+  "pairs": [
+   {
+    "ex": "國際",
+    "code": "BZ",
+    "name": "Brent 原油",
+    "sector": "油電燃氣",
+    "manual_w": 1.0,
+    "why": "國際油價 → 台塑化煉油",
+    "n": 469,
+    "rho0": 0.22,
+    "t0": 4.88,
+    "rho1": -0.047,
+    "t1": -1.01,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.7,
+    "status": "有效"
+   },
+   {
+    "ex": "國際",
+    "code": "BZ",
+    "name": "Brent 原油",
+    "sector": "塑膠",
+    "manual_w": 0.4,
+    "why": "石化原料報價",
+    "n": 469,
+    "rho0": 0.041,
+    "t0": 0.89,
+    "rho1": -0.015,
+    "t1": -0.32,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "CL",
+    "name": "WTI 原油",
+    "sector": "油電燃氣",
+    "manual_w": 1.0,
+    "why": "國際油價 → 台塑化煉油",
+    "n": 468,
+    "rho0": 0.243,
+    "t0": 5.4,
+    "rho1": -0.045,
+    "t1": -0.97,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.8,
+    "status": "有效"
+   },
+   {
+    "ex": "國際",
+    "code": "CL",
+    "name": "WTI 原油",
+    "sector": "塑膠",
+    "manual_w": 0.4,
+    "why": "石化原料報價",
+    "n": 468,
+    "rho0": 0.038,
+    "t0": 0.81,
+    "rho1": -0.025,
+    "t1": -0.53,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "HO",
+    "name": "熱燃油（柴油）",
+    "sector": "油電燃氣",
+    "manual_w": 0.8,
+    "why": "柴油價格 → 煉油利潤",
+    "n": 469,
+    "rho0": 0.182,
+    "t0": 4.0,
+    "rho1": 0.03,
+    "t1": 0.65,
+    "stable": true,
+    "stable1": false,
+    "cal_w": 0.6,
+    "status": "有效"
+   },
+   {
+    "ex": "國際",
+    "code": "RBOB",
+    "name": "RBOB 汽油",
+    "sector": "油電燃氣",
+    "manual_w": 0.6,
+    "why": "汽油價格 → 煉油利潤",
+    "n": 469,
+    "rho0": 0.152,
+    "t0": 3.32,
+    "rho1": 0.089,
+    "t1": 1.93,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.5,
+    "status": "有效"
+   },
+   {
+    "ex": "國際",
+    "code": "HG",
+    "name": "COMEX 銅",
+    "sector": "電器電纜",
+    "manual_w": 1.0,
+    "why": "國際銅價 → 電線電纜報價",
+    "n": 468,
+    "rho0": 0.138,
+    "t0": 3.0,
+    "rho1": 0.093,
+    "t1": 2.01,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.5,
+    "status": "有效"
+   },
+   {
+    "ex": "國際",
+    "code": "HG",
+    "name": "COMEX 銅",
+    "sector": "電子零組件",
+    "manual_w": 0.4,
+    "why": "銅箔、CCL",
+    "n": 468,
+    "rho0": -0.061,
+    "t0": -1.31,
+    "rho1": 0.037,
+    "t1": 0.8,
+    "stable": true,
+    "stable1": false,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "ALI",
+    "name": "COMEX 鋁",
+    "sector": "電器電纜",
+    "manual_w": 0.3,
+    "why": "鋁導線",
+    "n": 468,
+    "rho0": 0.056,
+    "t0": 1.22,
+    "rho1": 0.138,
+    "t1": 3.01,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.5,
+    "status": "隔日有效"
+   },
+   {
+    "ex": "國際",
+    "code": "ALI",
+    "name": "COMEX 鋁",
+    "sector": "鋼鐵",
+    "manual_w": 0.4,
+    "why": "鋁材",
+    "n": 468,
+    "rho0": 0.077,
+    "t0": 1.67,
+    "rho1": 0.046,
+    "t1": 1.0,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "SIL",
+    "name": "COMEX 白銀",
+    "sector": "光電",
+    "manual_w": -0.3,
+    "why": "太陽能銀漿成本",
+    "n": 468,
+    "rho0": 0.054,
+    "t0": 1.16,
+    "rho1": 0.094,
+    "t1": 2.04,
+    "stable": false,
+    "stable1": true,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "ZS",
+    "name": "CBOT 黃豆",
+    "sector": "食品",
+    "manual_w": -0.3,
+    "why": "黃豆原料成本",
+    "n": 468,
+    "rho0": 0.138,
+    "t0": 3.01,
+    "rho1": -0.113,
+    "t1": -2.44,
+    "stable": true,
+    "stable1": true,
+    "cal_w": 0.5,
+    "status": "方向相反"
+   },
+   {
+    "ex": "國際",
+    "code": "ZM",
+    "name": "CBOT 豆粕",
+    "sector": "食品",
+    "manual_w": -0.4,
+    "why": "飼料成本",
+    "n": 468,
+    "rho0": 0.121,
+    "t0": 2.62,
+    "rho1": 0.004,
+    "t1": 0.08,
+    "stable": true,
+    "stable1": false,
+    "cal_w": 0.4,
+    "status": "方向相反"
+   },
+   {
+    "ex": "國際",
+    "code": "ZL",
+    "name": "CBOT 豆油",
+    "sector": "食品",
+    "manual_w": -0.3,
+    "why": "食用油成本",
+    "n": 468,
+    "rho0": 0.067,
+    "t0": 1.45,
+    "rho1": -0.131,
+    "t1": -2.86,
+    "stable": true,
+    "stable1": true,
+    "cal_w": -0.4,
+    "status": "隔日有效"
+   },
+   {
+    "ex": "國際",
+    "code": "ZC",
+    "name": "CBOT 玉米",
+    "sector": "食品",
+    "manual_w": -0.4,
+    "why": "飼料成本",
+    "n": 468,
+    "rho0": 0.025,
+    "t0": 0.54,
+    "rho1": 0.021,
+    "t1": 0.46,
+    "stable": false,
+    "stable1": true,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "CT",
+    "name": "ICE 棉花",
+    "sector": "紡織纖維",
+    "manual_w": 0.3,
+    "why": "棉紗、棉布報價",
+    "n": 469,
+    "rho0": -0.021,
+    "t0": -0.46,
+    "rho1": 0.086,
+    "t1": 1.86,
+    "stable": false,
+    "stable1": false,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   },
+   {
+    "ex": "國際",
+    "code": "SB",
+    "name": "ICE 原糖",
+    "sector": "食品",
+    "manual_w": -0.3,
+    "why": "糖成本",
+    "n": 469,
+    "rho0": 0.014,
+    "t0": 0.3,
+    "rho1": -0.064,
+    "t1": -1.39,
+    "stable": false,
+    "stable1": false,
+    "cal_w": 0.0,
+    "status": "不顯著"
+   }
+  ],
+  "info": {
+   "BZ": {
+    "symbol": "BZ=F",
+    "days": 503,
+    "follow": [
+     {
+      "cn": "SC",
+      "rho": 0.554,
+      "t": 14.1,
+      "n": 451
+     },
+     {
+      "cn": "LU",
+      "rho": 0.534,
+      "t": 13.38,
+      "n": 451
+     },
+     {
+      "cn": "FU",
+      "rho": 0.507,
+      "t": 12.46,
+      "n": 451
+     }
+    ]
+   },
+   "CL": {
+    "symbol": "CL=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "SC",
+      "rho": 0.576,
+      "t": 14.92,
+      "n": 450
+     },
+     {
+      "cn": "LU",
+      "rho": 0.549,
+      "t": 13.92,
+      "n": 450
+     },
+     {
+      "cn": "FU",
+      "rho": 0.526,
+      "t": 13.09,
+      "n": 450
+     }
+    ]
+   },
+   "HO": {
+    "symbol": "HO=F",
+    "days": 503,
+    "follow": [
+     {
+      "cn": "FU",
+      "rho": 0.44,
+      "t": 10.39,
+      "n": 451
+     },
+     {
+      "cn": "LU",
+      "rho": 0.488,
+      "t": 11.83,
+      "n": 451
+     }
+    ]
+   },
+   "RBOB": {
+    "symbol": "RB=F",
+    "days": 503,
+    "follow": [
+     {
+      "cn": "SC",
+      "rho": 0.447,
+      "t": 10.58,
+      "n": 451
+     }
+    ]
+   },
+   "HG": {
+    "symbol": "HG=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "CU",
+      "rho": 0.54,
+      "t": 13.59,
+      "n": 450
+     }
+    ]
+   },
+   "ALI": {
+    "symbol": "ALI=F",
+    "days": 501,
+    "follow": [
+     {
+      "cn": "AL",
+      "rho": 0.412,
+      "t": 9.56,
+      "n": 450
+     }
+    ]
+   },
+   "SIL": {
+    "symbol": "SI=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "AG",
+      "rho": 0.635,
+      "t": 17.39,
+      "n": 450
+     }
+    ]
+   },
+   "ZS": {
+    "symbol": "ZS=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "A",
+      "rho": 0.186,
+      "t": 4.01,
+      "n": 450
+     },
+     {
+      "cn": "B",
+      "rho": 0.436,
+      "t": 10.25,
+      "n": 450
+     }
+    ]
+   },
+   "ZM": {
+    "symbol": "ZM=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "M",
+      "rho": 0.276,
+      "t": 6.08,
+      "n": 450
+     }
+    ]
+   },
+   "ZL": {
+    "symbol": "ZL=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "Y",
+      "rho": 0.434,
+      "t": 10.19,
+      "n": 450
+     }
+    ]
+   },
+   "ZC": {
+    "symbol": "ZC=F",
+    "days": 502,
+    "follow": [
+     {
+      "cn": "C",
+      "rho": 0.079,
+      "t": 1.68,
+      "n": 450
+     }
+    ]
+   },
+   "CT": {
+    "symbol": "CT=F",
+    "days": 503,
+    "follow": [
+     {
+      "cn": "CF",
+      "rho": 0.338,
+      "t": 7.61,
+      "n": 451
+     }
+    ]
+   },
+   "SB": {
+    "symbol": "SB=F",
+    "days": 503,
+    "follow": [
+     {
+      "cn": "SR",
+      "rho": 0.361,
+      "t": 8.21,
+      "n": 451
+     }
+    ]
+   }
+  },
+  "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"
  },
  "backtest": {
   "train": [
@@ -5140,67 +6110,67 @@
   "manual": {
    "lag0": {
     "days": 186,
-    "bull_avg": 0.24,
-    "bull_win": 0.489,
-    "bear_avg": -0.1,
-    "bear_win": 0.552,
-    "spread_avg": 0.336,
-    "spread_win": 0.581,
-    "spread_t": 2.19
+    "bull_avg": 0.32,
+    "bull_win": 0.511,
+    "bear_avg": -0.101,
+    "bear_win": 0.543,
+    "spread_avg": 0.421,
+    "spread_win": 0.608,
+    "spread_t": 2.71
    },
    "lag1": {
     "days": 191,
-    "bull_avg": 0.034,
-    "bull_win": 0.448,
-    "bear_avg": -0.018,
-    "bear_win": 0.55,
-    "spread_avg": 0.05,
-    "spread_win": 0.513,
-    "spread_t": 0.36
+    "bull_avg": 0.094,
+    "bull_win": 0.461,
+    "bear_avg": 0.032,
+    "bear_win": 0.527,
+    "spread_avg": 0.062,
+    "spread_win": 0.503,
+    "spread_t": 0.45
    }
   },
   "calibrated": {
    "lag0": {
     "days": 186,
-    "bull_avg": 0.262,
-    "bull_win": 0.492,
-    "bear_avg": -0.226,
-    "bear_win": 0.568,
-    "spread_avg": 0.296,
-    "spread_win": 0.606,
-    "spread_t": 1.76
+    "bull_avg": 0.223,
+    "bull_win": 0.493,
+    "bear_avg": -0.224,
+    "bear_win": 0.561,
+    "spread_avg": 0.322,
+    "spread_win": 0.593,
+    "spread_t": 2.15
    },
    "lag1": {
     "days": 191,
-    "bull_avg": 0.016,
-    "bull_win": 0.448,
-    "bear_avg": -0.108,
-    "bear_win": 0.542,
-    "spread_avg": 0.194,
-    "spread_win": 0.547,
-    "spread_t": 1.45
+    "bull_avg": -0.02,
+    "bull_win": 0.446,
+    "bear_avg": -0.087,
+    "bear_win": 0.522,
+    "spread_avg": 0.103,
+    "spread_win": 0.519,
+    "spread_t": 0.86
    }
   },
   "calibrated_spreads": {
    "lag0": {
     "days": 186,
-    "bull_avg": 0.345,
-    "bull_win": 0.502,
-    "bear_avg": -0.225,
-    "bear_win": 0.579,
-    "spread_avg": 0.386,
-    "spread_win": 0.62,
-    "spread_t": 2.27
+    "bull_avg": 0.306,
+    "bull_win": 0.504,
+    "bear_avg": -0.213,
+    "bear_win": 0.569,
+    "spread_avg": 0.384,
+    "spread_win": 0.593,
+    "spread_t": 2.6
    },
    "lag1": {
     "days": 191,
-    "bull_avg": 0.015,
-    "bull_win": 0.45,
-    "bear_avg": -0.067,
-    "bear_win": 0.544,
-    "spread_avg": 0.158,
-    "spread_win": 0.532,
-    "spread_t": 1.14
+    "bull_avg": -0.012,
+    "bull_win": 0.444,
+    "bear_avg": -0.032,
+    "bear_win": 0.52,
+    "spread_avg": 0.068,
+    "spread_win": 0.513,
+    "spread_t": 0.56
    }
   }
  },
@@ -5620,6 +6590,30 @@
    "rolls": 7,
    "unmatched": 0,
    "first": "2007-06-08"
+  },
+  "LC": {
+   "days": 486,
+   "dropped": 0,
+   "dropped_naive": 0,
+   "rolls": 8,
+   "unmatched": 0,
+   "first": "2023-07-21"
+  },
+  "SI": {
+   "days": 486,
+   "dropped": 1,
+   "dropped_naive": 1,
+   "rolls": 11,
+   "unmatched": 0,
+   "first": "2022-12-22"
+  },
+  "PS": {
+   "days": 443,
+   "dropped": 0,
+   "dropped_naive": 0,
+   "rolls": 11,
+   "unmatched": 0,
+   "first": "2024-12-26"
   }
  },
  "rolls": {
@@ -10184,6 +11178,222 @@
     "to": "2701",
     "naive": -1.94,
     "fixed": -0.83
+   }
+  ],
+  "LC": [
+   {
+    "date": "2024-12-20",
+    "from": "2501",
+    "to": "2505",
+    "naive": 5.13,
+    "fixed": 1.49
+   },
+   {
+    "date": "2025-04-16",
+    "from": "2505",
+    "to": "2507",
+    "naive": -0.28,
+    "fixed": -0.42
+   },
+   {
+    "date": "2025-06-11",
+    "from": "2507",
+    "to": "2509",
+    "naive": 1.78,
+    "fixed": 1.41
+   },
+   {
+    "date": "2025-08-05",
+    "from": "2509",
+    "to": "2511",
+    "naive": -2.42,
+    "fixed": -2.39
+   },
+   {
+    "date": "2025-10-15",
+    "from": "2511",
+    "to": "2601",
+    "naive": -0.3,
+    "fixed": -0.3
+   },
+   {
+    "date": "2025-11-26",
+    "from": "2601",
+    "to": "2605",
+    "naive": 3.35,
+    "fixed": 1.45
+   },
+   {
+    "date": "2026-04-03",
+    "from": "2605",
+    "to": "2609",
+    "naive": -0.87,
+    "fixed": -1.41
+   },
+   {
+    "date": "2026-08-13",
+    "from": "2609",
+    "to": "2701",
+    "naive": 2.2,
+    "fixed": 2.3
+   }
+  ],
+  "SI": [
+   {
+    "date": "2024-11-12",
+    "from": "2412",
+    "to": "2501",
+    "naive": 0.36,
+    "fixed": 0.48
+   },
+   {
+    "date": "2024-12-17",
+    "from": "2501",
+    "to": "2502",
+    "naive": -0.13,
+    "fixed": -0.26
+   },
+   {
+    "date": "2025-01-13",
+    "from": "2502",
+    "to": "2505",
+    "naive": 3.07,
+    "fixed": 1.61
+   },
+   {
+    "date": "2025-04-18",
+    "from": "2505",
+    "to": "2506",
+    "naive": -3.1,
+    "fixed": -3.42
+   },
+   {
+    "date": "2025-05-15",
+    "from": "2506",
+    "to": "2509",
+    "naive": 1.43,
+    "fixed": 0.41
+   },
+   {
+    "date": "2025-08-06",
+    "from": "2509",
+    "to": "2511",
+    "naive": 4.0,
+    "fixed": 3.63
+   },
+   {
+    "date": "2025-10-20",
+    "from": "2511",
+    "to": "2601",
+    "naive": 4.59,
+    "fixed": 0.34
+   },
+   {
+    "date": "2025-12-11",
+    "from": "2601",
+    "to": "2605",
+    "naive": -0.6,
+    "fixed": -0.66
+   },
+   {
+    "date": "2026-04-14",
+    "from": "2605",
+    "to": "2609",
+    "naive": 1.02,
+    "fixed": -0.65
+   },
+   {
+    "date": "2026-08-13",
+    "from": "2609",
+    "to": "2611",
+    "naive": -0.23,
+    "fixed": -0.46
+   },
+   {
+    "date": "2026-10-16",
+    "from": "2611",
+    "to": "2612",
+    "naive": 4.69,
+    "fixed": 1.25
+   }
+  ],
+  "PS": [
+   {
+    "date": "2025-05-14",
+    "from": "2506",
+    "to": "2507",
+    "naive": -2.66,
+    "fixed": 1.01
+   },
+   {
+    "date": "2025-06-17",
+    "from": "2507",
+    "to": "2508",
+    "naive": -3.91,
+    "fixed": -0.43
+   },
+   {
+    "date": "2025-07-11",
+    "from": "2508",
+    "to": "2509",
+    "naive": 1.12,
+    "fixed": 2.02
+   },
+   {
+    "date": "2025-08-05",
+    "from": "2509",
+    "to": "2511",
+    "naive": 4.31,
+    "fixed": 3.88
+   },
+   {
+    "date": "2025-10-17",
+    "from": "2511",
+    "to": "2512",
+    "naive": 6.01,
+    "fixed": 1.18
+   },
+   {
+    "date": "2025-10-24",
+    "from": "2512",
+    "to": "2601",
+    "naive": -1.64,
+    "fixed": -1.52
+   },
+   {
+    "date": "2025-12-09",
+    "from": "2601",
+    "to": "2605",
+    "naive": 1.6,
+    "fixed": 5.04
+   },
+   {
+    "date": "2026-04-16",
+    "from": "2605",
+    "to": "2606",
+    "naive": 13.31,
+    "fixed": 1.08
+   },
+   {
+    "date": "2026-05-19",
+    "from": "2606",
+    "to": "2609",
+    "naive": 0.69,
+    "fixed": -1.6
+   },
+   {
+    "date": "2026-08-13",
+    "from": "2609",
+    "to": "2611",
+    "naive": 1.59,
+    "fixed": 1.11
+   },
+   {
+    "date": "2026-10-22",
+    "from": "2611",
+    "to": "2612",
+    "naive": 6.4,
+    "fixed": -1.85
    }
   ]
  },
