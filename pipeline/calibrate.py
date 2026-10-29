@@ -388,7 +388,7 @@ def git_checkpoint(msg):
         print(f"::error title=checkpoint commit::{out[-300:]}")
         return False
     for i in range(4):
-        c1, o1 = sh("git", "pull", "--rebase", "-X", "theirs", "origin", "main")
+        c1, o1 = sh("git", "pull", "--rebase", "--autostash", "-X", "theirs", "origin", "main")
         c2, o2 = sh("git", "push") if c1 == 0 else (1, "")
         if c1 == 0 and c2 == 0:
             print(f"  ✓ 已推回：{msg}")
