@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-29T20:50:58+08:00",
+ "run_at": "2026-10-29T20:54:28+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40876671699",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40877163235",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T20:50:59+08:00"
+   "fetched_at": "2026-10-29T20:54:29+08:00"
   },
   {
    "id": "sina",
@@ -25,18 +25,18 @@
    "rows": 52,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:51:00+08:00"
+   "fetched_at": "2026-10-29T20:54:30+08:00"
   },
   {
    "id": "twse_info",
    "name": "證交所 上市公司產業別",
    "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
    "used_for": "上市個股 → 類股",
-   "status": "fail",
-   "rows": null,
-   "data_date": null,
-   "note": "Expecting value: line 1 column 1 (char 0)",
-   "fetched_at": "2026-10-29T20:51:00+08:00"
+   "status": "ok",
+   "rows": 1088,
+   "data_date": "2026-10-28",
+   "note": "",
+   "fetched_at": "2026-10-29T20:54:31+08:00"
   },
   {
    "id": "isin_otc",
@@ -47,7 +47,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T20:53:08+08:00"
+   "fetched_at": "2026-10-29T20:55:01+08:00"
   },
   {
    "id": "twse_quotes",
@@ -58,7 +58,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T20:53:12+08:00"
+   "fetched_at": "2026-10-29T20:55:03+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -69,7 +69,7 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:53:30+08:00"
+   "fetched_at": "2026-10-29T20:55:04+08:00"
   },
   {
    "id": "twse_index",
@@ -80,7 +80,7 @@
    "rows": null,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:53:30+08:00"
+   "fetched_at": "2026-10-29T20:55:04+08:00"
   }
  ]
 }
