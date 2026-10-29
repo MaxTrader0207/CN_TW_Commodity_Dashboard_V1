@@ -246,7 +246,9 @@ def attach_beneficiaries(board, stocks, cal):
                         "name": st["name"] if st else None,
                         "chg_pct": st["chg_pct"] if st else None,
                         "lots": st["lots"] if st else None,
-                        "verdict": v.get("verdict"), "rho0": v.get("rho0"), "rho1": v.get("rho1")})
+                        "verdict": v.get("verdict"), "rho0": v.get("rho0"), "rho1": v.get("rho1"),
+                        "oos_same": (v.get("oos") or {}).get("same_ok"),
+                        "oos_next": (v.get("oos") or {}).get("next_ok")})
         c["stocks"] = lst
 
 

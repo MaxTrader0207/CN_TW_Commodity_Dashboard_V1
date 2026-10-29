@@ -281,9 +281,11 @@ function sectorCard(s, i, side) {
       nm.append(el('span', 'mk ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
       tr.insertCell().append(el('span', 'via', x.via));
       const v = tr.insertCell();
-      if (x.verdict) v.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[x.verdict] || 'no'), '實測' + x.verdict));
+      if (x.verdict) v.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[x.verdict] || 'no'),
+        '實測' + x.verdict + (x.oos_same ? '・樣本外確認' : '')));
       const p = tr.insertCell(); p.className = 'n ' + cls(x.chg_pct); p.textContent = pct(x.chg_pct);
-      hoverTip(tr, `${x.why}${x.rho0 != null ? `\n歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}` : ''}`);
+      hoverTip(tr, `${x.why}${x.rho0 != null ? `\n歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}` : ''}` +
+        (x.oos_same ? '\n前 60% 與後 40% 期間都顯著、方向一致' : '') + (x.oos_next ? '\n隔日關聯在測試期仍成立' : ''));
     });
     box.append(t);
     card.append(box);
@@ -497,9 +499,11 @@ function renderStocks(c) {
   const cnt = {}; rows.forEach(r => cnt[r.verdict] = (cnt[r.verdict] || 0) + 1);
   $('#stk-summary').textContent = `受惠／受壓個股實測（${rows.length} 組）`;
   $('#stk-note').textContent = '名單依產業公開資訊整理（產品＝商品漲有利，成本＝商品漲不利），再用 2 年日線檢驗：個股漲跌扣掉 β × 加權指數後，' +
-    '與陸期（或價差）的相關是否符合角色。' + Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join('、') + '。「相反」代表市場實際反應與產業直覺不同，值得留意。';
+    '與陸期（或價差）的相關是否符合角色。' + Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join('、') +
+    '。「測試期」為最後 40% 期間單獨計算：「樣本外確認」= 前 60% 與後 40% 都顯著且方向一致。「相反」代表市場實際反應與產業直覺不同。' +
+    '目前多數個股的同日關聯在測試期仍成立，但隔日關聯大多在測試期消失，不宜當作隔日預測。';
   const t = $('#stk'); t.replaceChildren();
-  const h = t.insertRow(); ['商品／價差', '個股', '角色', '同日 ρ0 (t)', '隔日 ρ1 (t)', 'n', '判定'].forEach(x => h.append(el('th', null, x)));
+  const h = t.insertRow(); ['商品／價差', '個股', '角色', '同日 ρ0 (t)', '測試期同日', '隔日 ρ1 (t)', '測試期隔日', '判定'].forEach(x => h.append(el('th', null, x)));
   const order = { '一致': 0, '隔日一致': 1, '相反': 2, '不顯著': 3, '樣本不足': 4, '無資料': 5 };
   const rt = (r, tv) => r == null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(2)} (${tv.toFixed(1)})`;
   rows.sort((a, b) => (order[a.verdict] ?? 9) - (order[b.verdict] ?? 9) || Math.abs(b.t0 || 0) - Math.abs(a.t0 || 0)).forEach(r => {
@@ -508,9 +512,12 @@ function renderStocks(c) {
     tr.insertCell().textContent = `${r.code} ${(r.why || '').split(/\s/)[0]}`;
     tr.insertCell().append(el('span', 'mk ' + (r.role === '產品' ? 'p' : 'c'), r.role));
     const a = tr.insertCell(); a.className = 'n ' + (Math.abs(r.t0 || 0) >= 2 ? cls(r.rho0) : 'flat'); a.textContent = rt(r.rho0, r.t0);
+    const o = r.oos || {};
+    const a2 = tr.insertCell(); a2.className = 'n ' + (Math.abs(o.t0_te || 0) >= 2 ? cls(o.rho0_te) : 'flat'); a2.textContent = rt(o.rho0_te, o.t0_te ?? 0);
     const b = tr.insertCell(); b.className = 'n ' + (Math.abs(r.t1 || 0) >= 2 ? cls(r.rho1) : 'flat'); b.textContent = rt(r.rho1, r.t1);
-    const n = tr.insertCell(); n.className = 'n'; n.textContent = r.n ?? '—';
-    tr.insertCell().append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[r.verdict] || 'no'), r.verdict));
+    const b2 = tr.insertCell(); b2.className = 'n ' + (Math.abs(o.t1_te || 0) >= 2 ? cls(o.rho1_te) : 'flat'); b2.textContent = rt(o.rho1_te, o.t1_te ?? 0);
+    const vc = tr.insertCell(); vc.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[r.verdict] || 'no'), r.verdict));
+    if (o.same_ok) vc.append(document.createTextNode(' '), el('span', 'tag ok', '樣本外確認'));
     hoverTip(tr, r.why);
   });
 }

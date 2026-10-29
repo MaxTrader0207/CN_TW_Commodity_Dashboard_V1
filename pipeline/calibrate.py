@@ -470,7 +470,18 @@ def main():
                 rows.append({"code": code, "role": role, "why": why, "verdict": "無資料"})
                 continue
             st = pair_stats(series.get(item_code, {}), res, tw_stock_dates)
-            rows.append({"code": code, "role": role, "why": why, **rnd(st), "verdict": stock_verdict(st, role)})
+            # 樣本外：前 60% 與後 40% 分開算，看關係在測試期是否還成立
+            tr = pair_stats(series.get(item_code, {}), res, tw_stock_dates, d1=split)
+            te = pair_stats(series.get(item_code, {}), res, tw_stock_dates, d0=split)
+            same_dir = lambda a, b: a is not None and b is not None and (a > 0) == (b > 0)  # noqa: E731
+            oos = {"rho0_tr": rnd(tr)["rho0"], "t0_tr": rnd(tr)["t0"], "rho0_te": rnd(te)["rho0"], "t0_te": rnd(te)["t0"],
+                   "rho1_tr": rnd(tr)["rho1"], "t1_tr": rnd(tr)["t1"], "rho1_te": rnd(te)["rho1"], "t1_te": rnd(te)["t1"],
+                   "same_ok": bool(tr["t0"] and abs(tr["t0"]) >= T_VALID and te["t0"] and abs(te["t0"]) >= T_VALID
+                                   and same_dir(tr["rho0"], te["rho0"])),
+                   "next_ok": bool(tr["t1"] and abs(tr["t1"]) >= T_VALID and te["t1"] and abs(te["t1"]) >= T_VALID
+                                   and same_dir(tr["rho1"], te["rho1"]))}
+            rows.append({"code": code, "role": role, "why": why, **rnd(st), "verdict": stock_verdict(st, role),
+                         "oos": oos})
         stocks[item_code] = rows
     # 保存本次輸入（陸期日K、個股殘差報酬），方便本機重現與除錯
     import gzip
