@@ -32,6 +32,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Build data
         shell: bash
         env:
@@ -66,7 +70,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A docs/data pipeline
+          git add -A docs/data pipeline/cache pipeline/industry_cache.json
           git diff --cached --quiet || git commit -m "data: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
           for i in 1 2 3 4 5; do
             if git pull --rebase -X theirs origin main && git push; then exit 0; fi
