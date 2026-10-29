@@ -74,7 +74,8 @@ jobs:
           } 2>&1 | tee docs/data/run_log.txt
       - name: Save to data branch
         if: always()
-        run: python pipeline/datastore.py save "data: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+        run: |
+          python pipeline/datastore.py save "data: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
 
   deploy:
     needs: build
