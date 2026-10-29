@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-29T21:31+08:00",
+ "generated_at": "2026-10-29T22:28+08:00",
  "period": {
   "start": "2024-10-30",
   "end": "2026-10-29",
@@ -5995,7 +5995,7 @@
    },
    "ALI": {
     "symbol": "ALI=F",
-    "days": 501,
+    "days": 502,
     "follow": [
      {
       "cn": "AL",
@@ -6171,6 +6171,72 @@
     "spread_avg": 0.068,
     "spread_win": 0.513,
     "spread_t": 0.56
+   }
+  },
+  "manual_z": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.327,
+    "bull_win": 0.505,
+    "bear_avg": -0.163,
+    "bear_win": 0.557,
+    "spread_avg": 0.487,
+    "spread_win": 0.613,
+    "spread_t": 3.21
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": 0.118,
+    "bull_win": 0.476,
+    "bear_avg": -0.026,
+    "bear_win": 0.549,
+    "spread_avg": 0.144,
+    "spread_win": 0.55,
+    "spread_t": 1.14
+   }
+  },
+  "calibrated_z": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.238,
+    "bull_win": 0.488,
+    "bear_avg": -0.316,
+    "bear_win": 0.573,
+    "spread_avg": 0.461,
+    "spread_win": 0.628,
+    "spread_t": 3.38
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": -0.0,
+    "bull_win": 0.444,
+    "bear_avg": -0.181,
+    "bear_win": 0.539,
+    "spread_avg": 0.205,
+    "spread_win": 0.568,
+    "spread_t": 1.76
+   }
+  },
+  "calibrated_spreads_z": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.227,
+    "bull_win": 0.493,
+    "bear_avg": -0.284,
+    "bear_win": 0.575,
+    "spread_avg": 0.395,
+    "spread_win": 0.591,
+    "spread_t": 2.76
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": -0.004,
+    "bull_win": 0.441,
+    "bear_avg": -0.138,
+    "bear_win": 0.538,
+    "spread_avg": 0.161,
+    "spread_win": 0.538,
+    "spread_t": 1.38
    }
   }
  },

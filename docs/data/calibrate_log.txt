@@ -1,11 +1,6 @@
 類股指數快取：已有 485 個交易日，待補 0 天
 類股指數快取：新增 0 個交易日，共 485 個
 台股類股超額報酬：484 天（2024-10-30 ~ 2026-10-29）
-  ⚠ 推回失敗（1）：error: cannot pull with rebase: You have unstaged changes. error: Please commit or stash them.
-  ⚠ 推回失敗（2）：error: cannot pull with rebase: You have unstaged changes. error: Please commit or stash them.
-  ⚠ 推回失敗（3）：error: cannot pull with rebase: You have unstaged changes. error: Please commit or stash them.
-  ⚠ 推回失敗（4）：error: cannot pull with rebase: You have unstaged changes. error: Please commit or stash them.
-::error title=checkpoint push::error: cannot pull with rebase: You have unstaged changes. error: Please commit or stash them.
 陸期日K：55/55 個商品
 主力換月：667 次；未比對到合約的日數 0
   換月 EC 2025-01-14 2502→2504：原算 -35.61% → 修正 -7.10%
@@ -33,6 +28,9 @@
   價差 玻璃利潤：486 天
   價差 大豆壓榨利潤：486 天
   價差 養殖利潤：486 天
+標準化比較 manual：同日價差 0.421(t 2.71) → z 0.487(t 3.21)｜隔日 0.062(t 0.45) → z 0.144(t 1.14)
+標準化比較 calibrated：同日價差 0.322(t 2.15) → z 0.461(t 3.38)｜隔日 0.103(t 0.86) → z 0.205(t 1.76)
+標準化比較 calibrated_spreads：同日價差 0.384(t 2.6) → z 0.395(t 2.76)｜隔日 0.068(t 0.56) → z 0.161(t 1.38)
 國際商品：13/13
   [國際] WTI 原油    →油電燃氣   隔夜→台股 ρ=0.243 t=5.4 有效
   [國際] Brent 原油  →油電燃氣   隔夜→台股 ρ=0.22 t=4.88 有效
@@ -182,3 +180,9 @@
                      calibrated：隔日 {'days': 191, 'bull_avg': -0.02, 'bull_win': 0.446, 'bear_avg': -0.087, 'bear_win': 0.522, 'spread_avg': 0.103, 'spread_win': 0.519, 'spread_t': 0.86}
 回測（樣本外 2026-01-07~）calibrated_spreads：當日 {'days': 186, 'bull_avg': 0.306, 'bull_win': 0.504, 'bear_avg': -0.213, 'bear_win': 0.569, 'spread_avg': 0.384, 'spread_win': 0.593, 'spread_t': 2.6}
                      calibrated_spreads：隔日 {'days': 191, 'bull_avg': -0.012, 'bull_win': 0.444, 'bear_avg': -0.032, 'bear_win': 0.52, 'spread_avg': 0.068, 'spread_win': 0.513, 'spread_t': 0.56}
+回測（樣本外 2026-01-07~）manual_z：當日 {'days': 186, 'bull_avg': 0.327, 'bull_win': 0.505, 'bear_avg': -0.163, 'bear_win': 0.557, 'spread_avg': 0.487, 'spread_win': 0.613, 'spread_t': 3.21}
+                     manual_z：隔日 {'days': 191, 'bull_avg': 0.118, 'bull_win': 0.476, 'bear_avg': -0.026, 'bear_win': 0.549, 'spread_avg': 0.144, 'spread_win': 0.55, 'spread_t': 1.14}
+回測（樣本外 2026-01-07~）calibrated_z：當日 {'days': 186, 'bull_avg': 0.238, 'bull_win': 0.488, 'bear_avg': -0.316, 'bear_win': 0.573, 'spread_avg': 0.461, 'spread_win': 0.628, 'spread_t': 3.38}
+                     calibrated_z：隔日 {'days': 191, 'bull_avg': -0.0, 'bull_win': 0.444, 'bear_avg': -0.181, 'bear_win': 0.539, 'spread_avg': 0.205, 'spread_win': 0.568, 'spread_t': 1.76}
+回測（樣本外 2026-01-07~）calibrated_spreads_z：當日 {'days': 186, 'bull_avg': 0.227, 'bull_win': 0.493, 'bear_avg': -0.284, 'bear_win': 0.575, 'spread_avg': 0.395, 'spread_win': 0.591, 'spread_t': 2.76}
+                     calibrated_spreads_z：隔日 {'days': 191, 'bull_avg': -0.004, 'bull_win': 0.441, 'bear_avg': -0.138, 'bear_win': 0.538, 'spread_avg': 0.161, 'spread_win': 0.538, 'spread_t': 1.38}
