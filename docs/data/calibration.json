@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-29T18:50+08:00",
+ "generated_at": "2026-10-29T19:08+08:00",
  "period": {
   "start": "2024-10-30",
   "end": "2026-10-29",
@@ -42,7 +42,7 @@
  "method": {
   "target": "類股指數漲跌 − β × 加權指數漲跌（β 調整超額報酬）",
   "discover_in_score": false,
-  "signal": "陸期主力 收盤 ÷ 前一日結算價",
+  "signal": "陸期主力 收盤 ÷ 前一日結算價；價差 = Δ價差 ÷ 產品前一日結算價，以 2σ 為滿格",
   "min_n": 120,
   "t_valid": 2.0,
   "t_lag1": 2.5,
@@ -52,7 +52,7 @@
  },
  "counts": {
   "有效": 28,
-  "不顯著": 38,
+  "不顯著": 53,
   "方向相反": 4,
   "數據新增": 18
  },
@@ -1246,6 +1246,261 @@
    "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_RB",
+   "name": "螺紋鋼利潤",
+   "sector": "鋼鐵",
+   "manual_w": 1.0,
+   "why": "長流程鋼廠：螺紋鋼 − 1.6 鐵礦 − 0.5 焦炭",
+   "n": 464,
+   "rho0": -0.041,
+   "t0": -0.88,
+   "rho1": -0.066,
+   "t1": -1.43,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_HC",
+   "name": "熱卷利潤",
+   "sector": "鋼鐵",
+   "manual_w": 1.0,
+   "why": "熱軋鋼捲 − 1.6 鐵礦 − 0.5 焦炭，連動中鋼、中鴻盤價空間",
+   "n": 464,
+   "rho0": -0.014,
+   "t0": -0.31,
+   "rho1": -0.015,
+   "t1": -0.33,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_TA",
+   "name": "PTA加工費",
+   "sector": "塑膠",
+   "manual_w": 0.6,
+   "why": "台化 PTA 加工利潤",
+   "n": 461,
+   "rho0": -0.015,
+   "t0": -0.32,
+   "rho1": 0.083,
+   "t1": 1.82,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_TA",
+   "name": "PTA加工費",
+   "sector": "紡織纖維",
+   "manual_w": -0.3,
+   "why": "PTA 為聚酯原料，加工費高 → 下游成本高",
+   "n": 461,
+   "rho0": 0.044,
+   "t0": 0.94,
+   "rho1": -0.02,
+   "t1": -0.43,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_PX",
+   "name": "PX對原油價差",
+   "sector": "塑膠",
+   "manual_w": 0.6,
+   "why": "台化芳香烴利潤（以原油近似石腦油）",
+   "n": 454,
+   "rho0": 0.016,
+   "t0": 0.35,
+   "rho1": 0.038,
+   "t1": 0.81,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_PF",
+   "name": "短纖加工費",
+   "sector": "紡織纖維",
+   "manual_w": 1.0,
+   "why": "聚酯短纖 − 0.855 PTA − 0.335 EG：遠東新、新纖、力麗聚酯利潤",
+   "n": 457,
+   "rho0": -0.08,
+   "t0": -1.71,
+   "rho1": 0.009,
+   "t1": 0.19,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_PR",
+   "name": "瓶片加工費",
+   "sector": "紡織纖維",
+   "manual_w": 0.6,
+   "why": "遠東新 PET 瓶片利潤",
+   "n": 457,
+   "rho0": -0.03,
+   "t0": -0.65,
+   "rho1": -0.011,
+   "t1": -0.24,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_PR",
+   "name": "瓶片加工費",
+   "sector": "塑膠",
+   "manual_w": 0.3,
+   "why": "PET 粒利潤",
+   "n": 457,
+   "rho0": 0.056,
+   "t0": 1.21,
+   "rho1": -0.017,
+   "t1": -0.36,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_PP",
+   "name": "PP油制利潤",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "聚丙烯 − 約 1.2 噸原油當量：台塑、台化烯烴利潤",
+   "n": 452,
+   "rho0": 0.005,
+   "t0": 0.11,
+   "rho1": 0.034,
+   "t1": 0.74,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_L",
+   "name": "PE油制利潤",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "LLDPE − 約 1.2 噸原油當量：台塑、台聚、亞聚",
+   "n": 453,
+   "rho0": 0.001,
+   "t0": 0.03,
+   "rho1": 0.098,
+   "t1": 2.11,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_LU",
+   "name": "低硫燃料油裂解",
+   "sector": "油電燃氣",
+   "manual_w": 1.0,
+   "why": "低硫燃料油 − 原油：台塑化煉油利潤",
+   "n": 453,
+   "rho0": 0.042,
+   "t0": 0.89,
+   "rho1": 0.068,
+   "t1": 1.47,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_FU",
+   "name": "高硫燃料油裂解",
+   "sector": "油電燃氣",
+   "manual_w": 0.6,
+   "why": "高硫燃料油 − 原油：煉油利潤",
+   "n": 452,
+   "rho0": 0.004,
+   "t0": 0.08,
+   "rho1": -0.004,
+   "t1": -0.08,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_FG",
+   "name": "玻璃利潤",
+   "sector": "玻璃陶瓷",
+   "manual_w": 1.0,
+   "why": "玻璃 − 0.2 純鹼：台玻利潤",
+   "n": 458,
+   "rho0": 0.069,
+   "t0": 1.47,
+   "rho1": 0.015,
+   "t1": 0.33,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_CRUSH",
+   "name": "大豆壓榨利潤",
+   "sector": "食品",
+   "manual_w": 0.6,
+   "why": "0.785 豆粕 + 0.18 豆油 − 大豆：大統益壓榨利潤",
+   "n": 462,
+   "rho0": -0.027,
+   "t0": -0.59,
+   "rho1": 0.017,
+   "t1": 0.37,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "價差",
+   "code": "SPR_HOG",
+   "name": "養殖利潤",
+   "sector": "食品",
+   "manual_w": 0.3,
+   "why": "生豬 − 5.5 玉米（豬糧比）：飼料畜產業者",
+   "n": 462,
+   "rho0": -0.017,
+   "t0": -0.37,
+   "rho1": 0.012,
+   "t1": 0.27,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
   }
  ],
  "discovered": [
@@ -1846,7 +2101,1821 @@
   ],
   "SR": [],
   "RM": [],
-  "OI": []
+  "OI": [],
+  "SPR_RB": [],
+  "SPR_HC": [],
+  "SPR_TA": [],
+  "SPR_PX": [],
+  "SPR_PF": [],
+  "SPR_PR": [],
+  "SPR_PP": [],
+  "SPR_L": [],
+  "SPR_LU": [],
+  "SPR_FU": [],
+  "SPR_FG": [],
+  "SPR_CRUSH": [],
+  "SPR_HOG": []
+ },
+ "spreads": {
+  "SPR_RB": {
+   "name": "螺紋鋼利潤",
+   "legs": [
+    [
+     "RB",
+     1
+    ],
+    [
+     "I",
+     -1.6
+    ],
+    [
+     "J",
+     -0.5
+    ]
+   ],
+   "sigma": 0.5783,
+   "days": 485
+  },
+  "SPR_HC": {
+   "name": "熱卷利潤",
+   "legs": [
+    [
+     "HC",
+     1
+    ],
+    [
+     "I",
+     -1.6
+    ],
+    [
+     "J",
+     -0.5
+    ]
+   ],
+   "sigma": 0.5248,
+   "days": 485
+  },
+  "SPR_TA": {
+   "name": "PTA加工費",
+   "legs": [
+    [
+     "TA",
+     1
+    ],
+    [
+     "PX",
+     -0.655
+    ]
+   ],
+   "sigma": 0.573,
+   "days": 482
+  },
+  "SPR_PX": {
+   "name": "PX對原油價差",
+   "legs": [
+    [
+     "PX",
+     1
+    ],
+    [
+     "SC",
+     -7.33
+    ]
+   ],
+   "sigma": 1.3491,
+   "days": 475
+  },
+  "SPR_PF": {
+   "name": "短纖加工費",
+   "legs": [
+    [
+     "PF",
+     1
+    ],
+    [
+     "TA",
+     -0.855
+    ],
+    [
+     "EG",
+     -0.335
+    ]
+   ],
+   "sigma": 0.4745,
+   "days": 478
+  },
+  "SPR_PR": {
+   "name": "瓶片加工費",
+   "legs": [
+    [
+     "PR",
+     1
+    ],
+    [
+     "TA",
+     -0.855
+    ],
+    [
+     "EG",
+     -0.335
+    ]
+   ],
+   "sigma": 0.7432,
+   "days": 478
+  },
+  "SPR_PP": {
+   "name": "PP油制利潤",
+   "legs": [
+    [
+     "PP",
+     1
+    ],
+    [
+     "SC",
+     -8.8
+    ]
+   ],
+   "sigma": 1.4255,
+   "days": 473
+  },
+  "SPR_L": {
+   "name": "PE油制利潤",
+   "legs": [
+    [
+     "L",
+     1
+    ],
+    [
+     "SC",
+     -8.8
+    ]
+   ],
+   "sigma": 1.3862,
+   "days": 474
+  },
+  "SPR_LU": {
+   "name": "低硫燃料油裂解",
+   "legs": [
+    [
+     "LU",
+     1
+    ],
+    [
+     "SC",
+     -7.33
+    ]
+   ],
+   "sigma": 1.5419,
+   "days": 474
+  },
+  "SPR_FU": {
+   "name": "高硫燃料油裂解",
+   "legs": [
+    [
+     "FU",
+     1
+    ],
+    [
+     "SC",
+     -7.33
+    ]
+   ],
+   "sigma": 1.8009,
+   "days": 473
+  },
+  "SPR_FG": {
+   "name": "玻璃利潤",
+   "legs": [
+    [
+     "FG",
+     1
+    ],
+    [
+     "SA",
+     -0.2
+    ]
+   ],
+   "sigma": 1.728,
+   "days": 479
+  },
+  "SPR_CRUSH": {
+   "name": "大豆壓榨利潤",
+   "legs": [
+    [
+     "M",
+     0.785
+    ],
+    [
+     "Y",
+     0.18
+    ],
+    [
+     "B",
+     -1
+    ]
+   ],
+   "sigma": 0.6752,
+   "days": 483
+  },
+  "SPR_HOG": {
+   "name": "養殖利潤",
+   "legs": [
+    [
+     "LH",
+     1
+    ],
+    [
+     "C",
+     -5.5
+    ]
+   ],
+   "sigma": 1.5453,
+   "days": 483
+  }
+ },
+ "stocks": {
+  "EG": [
+   {
+    "code": "1303",
+    "role": "產品",
+    "why": "南亞 EG 產能",
+    "n": 458,
+    "rho0": 0.063,
+    "t0": 1.35,
+    "rho1": -0.045,
+    "t1": -0.99,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 EG",
+    "n": 458,
+    "rho0": 0.135,
+    "t0": 2.92,
+    "rho1": 0.012,
+    "t1": 0.27,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "1710",
+    "role": "產品",
+    "why": "東聯 EG 主力產品",
+    "n": 458,
+    "rho0": 0.147,
+    "t0": 3.16,
+    "rho1": 0.108,
+    "t1": 2.35,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1409",
+    "role": "成本",
+    "why": "新纖聚酯原料",
+    "n": 458,
+    "rho0": 0.068,
+    "t0": 1.47,
+    "rho1": 0.006,
+    "t1": 0.14,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "PP": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑 PP",
+    "n": 459,
+    "rho0": 0.108,
+    "t0": 2.32,
+    "rho1": -0.023,
+    "t1": -0.49,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 PP",
+    "n": 460,
+    "rho0": 0.11,
+    "t0": 2.37,
+    "rho1": 0.016,
+    "t1": 0.35,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化烯烴",
+    "n": 460,
+    "rho0": 0.25,
+    "t0": 5.52,
+    "rho1": 0.059,
+    "t1": 1.28,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "L": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑 PE",
+    "n": 460,
+    "rho0": 0.127,
+    "t0": 2.74,
+    "rho1": 0.03,
+    "t1": 0.66,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1304",
+    "role": "產品",
+    "why": "台聚 LDPE/EVA",
+    "n": 461,
+    "rho0": 0.226,
+    "t0": 4.96,
+    "rho1": 0.067,
+    "t1": 1.47,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1308",
+    "role": "產品",
+    "why": "亞聚 PE",
+    "n": 461,
+    "rho0": 0.243,
+    "t0": 5.36,
+    "rho1": 0.071,
+    "t1": 1.54,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "V": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑 PVC",
+    "n": 461,
+    "rho0": 0.138,
+    "t0": 2.98,
+    "rho1": 0.01,
+    "t1": 0.21,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "1305",
+    "role": "產品",
+    "why": "華夏 PVC",
+    "n": 462,
+    "rho0": 0.314,
+    "t0": 7.09,
+    "rho1": 0.019,
+    "t1": 0.42,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "EB": [
+   {
+    "code": "1310",
+    "role": "產品",
+    "why": "台苯 SM",
+    "n": 461,
+    "rho0": 0.229,
+    "t0": 5.05,
+    "rho1": 0.13,
+    "t1": 2.86,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1312",
+    "role": "產品",
+    "why": "國喬 SM",
+    "n": 461,
+    "rho0": 0.18,
+    "t0": 3.92,
+    "rho1": 0.031,
+    "t1": 0.68,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 SM",
+    "n": 461,
+    "rho0": 0.181,
+    "t0": 3.94,
+    "rho1": 0.033,
+    "t1": 0.72,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1309",
+    "role": "成本",
+    "why": "台達化 PS/ABS 原料",
+    "n": 461,
+    "rho0": 0.297,
+    "t0": 6.65,
+    "rho1": 0.107,
+    "t1": 2.33,
+    "stable": true,
+    "stable1": true,
+    "verdict": "相反"
+   }
+  ],
+  "TA": [
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 PTA",
+    "n": 460,
+    "rho0": 0.061,
+    "t0": 1.3,
+    "rho1": 0.043,
+    "t1": 0.93,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1409",
+    "role": "成本",
+    "why": "新纖聚酯原料",
+    "n": 460,
+    "rho0": 0.084,
+    "t0": 1.8,
+    "rho1": 0.02,
+    "t1": 0.43,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "PX": [
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 PX",
+    "n": 461,
+    "rho0": 0.072,
+    "t0": 1.54,
+    "rho1": 0.022,
+    "t1": 0.48,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "PF": [
+   {
+    "code": "1402",
+    "role": "產品",
+    "why": "遠東新聚酯短纖",
+    "n": 463,
+    "rho0": 0.056,
+    "t0": 1.19,
+    "rho1": -0.013,
+    "t1": -0.28,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1409",
+    "role": "產品",
+    "why": "新纖短纖",
+    "n": 463,
+    "rho0": 0.089,
+    "t0": 1.93,
+    "rho1": 0.014,
+    "t1": 0.32,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1444",
+    "role": "產品",
+    "why": "力麗聚酯",
+    "n": 463,
+    "rho0": 0.122,
+    "t0": 2.65,
+    "rho1": -0.0,
+    "t1": -0.0,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "PR": [
+   {
+    "code": "1402",
+    "role": "產品",
+    "why": "遠東新 PET 瓶片",
+    "n": 462,
+    "rho0": 0.067,
+    "t0": 1.44,
+    "rho1": -0.019,
+    "t1": -0.4,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1409",
+    "role": "產品",
+    "why": "新纖瓶片",
+    "n": 462,
+    "rho0": 0.027,
+    "t0": 0.58,
+    "rho1": 0.007,
+    "t1": 0.15,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SH": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑燒鹼",
+    "n": 463,
+    "rho0": 0.044,
+    "t0": 0.95,
+    "rho1": -0.01,
+    "t1": -0.23,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1708",
+    "role": "產品",
+    "why": "東鹼燒鹼",
+    "n": 464,
+    "rho0": 0.09,
+    "t0": 1.94,
+    "rho1": 0.026,
+    "t1": 0.56,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "UR": [
+   {
+    "code": "1722",
+    "role": "產品",
+    "why": "台肥尿素",
+    "n": 464,
+    "rho0": 0.086,
+    "t0": 1.85,
+    "rho1": 0.072,
+    "t1": 1.57,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "FG": [
+   {
+    "code": "1802",
+    "role": "產品",
+    "why": "台玻平板玻璃",
+    "n": 458,
+    "rho0": 0.072,
+    "t0": 1.55,
+    "rho1": 0.035,
+    "t1": 0.75,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SA": [
+   {
+    "code": "1802",
+    "role": "成本",
+    "why": "台玻純鹼原料",
+    "n": 463,
+    "rho0": 0.018,
+    "t0": 0.39,
+    "rho1": 0.069,
+    "t1": 1.52,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SC": [
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化煉油",
+    "n": 454,
+    "rho0": 0.216,
+    "t0": 4.7,
+    "rho1": 0.084,
+    "t1": 1.82,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "LU": [
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化燃料油",
+    "n": 457,
+    "rho0": 0.263,
+    "t0": 5.82,
+    "rho1": 0.15,
+    "t1": 3.29,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "FU": [
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化燃料油",
+    "n": 456,
+    "rho0": 0.286,
+    "t0": 6.36,
+    "rho1": 0.105,
+    "t1": 2.29,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "CU": [
+   {
+    "code": "1605",
+    "role": "產品",
+    "why": "華新電線電纜",
+    "n": 463,
+    "rho0": 0.218,
+    "t0": 4.8,
+    "rho1": 0.167,
+    "t1": 3.7,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1609",
+    "role": "產品",
+    "why": "大亞電線",
+    "n": 463,
+    "rho0": 0.106,
+    "t0": 2.28,
+    "rho1": 0.115,
+    "t1": 2.52,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1608",
+    "role": "產品",
+    "why": "華榮電線",
+    "n": 463,
+    "rho0": 0.16,
+    "t0": 3.48,
+    "rho1": 0.151,
+    "t1": 3.32,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1603",
+    "role": "產品",
+    "why": "華電電線",
+    "n": 463,
+    "rho0": 0.095,
+    "t0": 2.05,
+    "rho1": 0.033,
+    "t1": 0.72,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "2009",
+    "role": "產品",
+    "why": "第一銅銅材",
+    "n": 463,
+    "rho0": 0.398,
+    "t0": 9.32,
+    "rho1": 0.167,
+    "t1": 3.69,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "8358",
+    "role": "產品",
+    "why": "金居銅箔",
+    "n": 463,
+    "rho0": -0.011,
+    "t0": -0.23,
+    "rho1": 0.003,
+    "t1": 0.07,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "NI": [
+   {
+    "code": "2027",
+    "role": "產品",
+    "why": "大成鋼不鏽鋼",
+    "n": 463,
+    "rho0": 0.148,
+    "t0": 3.2,
+    "rho1": -0.034,
+    "t1": -0.75,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2035",
+    "role": "產品",
+    "why": "唐榮不鏽鋼",
+    "n": 463,
+    "rho0": 0.16,
+    "t0": 3.47,
+    "rho1": -0.021,
+    "t1": -0.47,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "1605",
+    "role": "產品",
+    "why": "華新不鏽鋼",
+    "n": 463,
+    "rho0": 0.132,
+    "t0": 2.87,
+    "rho1": 0.097,
+    "t1": 2.12,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2034",
+    "role": "產品",
+    "why": "允強不鏽鋼管",
+    "n": 463,
+    "rho0": 0.199,
+    "t0": 4.36,
+    "rho1": -0.001,
+    "t1": -0.02,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "SS": [
+   {
+    "code": "2027",
+    "role": "產品",
+    "why": "大成鋼",
+    "n": 464,
+    "rho0": 0.104,
+    "t0": 2.25,
+    "rho1": -0.066,
+    "t1": -1.44,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2035",
+    "role": "產品",
+    "why": "唐榮",
+    "n": 464,
+    "rho0": 0.051,
+    "t0": 1.1,
+    "rho1": -0.1,
+    "t1": -2.2,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1605",
+    "role": "產品",
+    "why": "華新",
+    "n": 464,
+    "rho0": 0.163,
+    "t0": 3.56,
+    "rho1": 0.095,
+    "t1": 2.08,
+    "stable": false,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2034",
+    "role": "產品",
+    "why": "允強",
+    "n": 464,
+    "rho0": 0.138,
+    "t0": 2.99,
+    "rho1": -0.039,
+    "t1": -0.84,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "RB": [
+   {
+    "code": "2015",
+    "role": "產品",
+    "why": "豐興鋼筋",
+    "n": 464,
+    "rho0": 0.091,
+    "t0": 1.96,
+    "rho1": -0.039,
+    "t1": -0.84,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2006",
+    "role": "產品",
+    "why": "東和鋼鐵",
+    "n": 464,
+    "rho0": 0.105,
+    "t0": 2.27,
+    "rho1": -0.048,
+    "t1": -1.06,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2007",
+    "role": "產品",
+    "why": "燁興鋼筋",
+    "n": 464,
+    "rho0": 0.137,
+    "t0": 2.98,
+    "rho1": 0.02,
+    "t1": 0.44,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "HC": [
+   {
+    "code": "2002",
+    "role": "產品",
+    "why": "中鋼熱軋",
+    "n": 464,
+    "rho0": 0.166,
+    "t0": 3.62,
+    "rho1": 0.009,
+    "t1": 0.21,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "2014",
+    "role": "產品",
+    "why": "中鴻熱軋",
+    "n": 464,
+    "rho0": 0.164,
+    "t0": 3.58,
+    "rho1": 0.077,
+    "t1": 1.69,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "2023",
+    "role": "產品",
+    "why": "燁輝鍍面鋼品",
+    "n": 464,
+    "rho0": 0.091,
+    "t0": 1.96,
+    "rho1": -0.037,
+    "t1": -0.82,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2010",
+    "role": "產品",
+    "why": "春源鋼材通路",
+    "n": 464,
+    "rho0": 0.128,
+    "t0": 2.77,
+    "rho1": 0.014,
+    "t1": 0.31,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   }
+  ],
+  "EC": [
+   {
+    "code": "2603",
+    "role": "產品",
+    "why": "長榮貨櫃",
+    "n": 453,
+    "rho0": 0.184,
+    "t0": 3.98,
+    "rho1": 0.17,
+    "t1": 3.71,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2609",
+    "role": "產品",
+    "why": "陽明貨櫃",
+    "n": 453,
+    "rho0": 0.215,
+    "t0": 4.67,
+    "rho1": 0.152,
+    "t1": 3.31,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   },
+   {
+    "code": "2615",
+    "role": "產品",
+    "why": "萬海貨櫃",
+    "n": 453,
+    "rho0": 0.23,
+    "t0": 5.02,
+    "rho1": 0.133,
+    "t1": 2.88,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "RU": [
+   {
+    "code": "2105",
+    "role": "成本",
+    "why": "正新輪胎原料",
+    "n": 464,
+    "rho0": 0.049,
+    "t0": 1.05,
+    "rho1": -0.007,
+    "t1": -0.15,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2106",
+    "role": "成本",
+    "why": "建大輪胎原料",
+    "n": 464,
+    "rho0": 0.107,
+    "t0": 2.31,
+    "rho1": 0.016,
+    "t1": 0.34,
+    "stable": false,
+    "stable1": false,
+    "verdict": "相反"
+   }
+  ],
+  "NR": [
+   {
+    "code": "2105",
+    "role": "成本",
+    "why": "正新輪胎原料",
+    "n": 464,
+    "rho0": 0.051,
+    "t0": 1.1,
+    "rho1": -0.029,
+    "t1": -0.64,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2106",
+    "role": "成本",
+    "why": "建大輪胎原料",
+    "n": 464,
+    "rho0": 0.111,
+    "t0": 2.39,
+    "rho1": 0.004,
+    "t1": 0.09,
+    "stable": false,
+    "stable1": false,
+    "verdict": "相反"
+   }
+  ],
+  "BR": [
+   {
+    "code": "2103",
+    "role": "產品",
+    "why": "台橡合成橡膠",
+    "n": 462,
+    "rho0": 0.141,
+    "t0": 3.05,
+    "rho1": 0.085,
+    "t1": 1.86,
+    "stable": true,
+    "stable1": false,
+    "verdict": "一致"
+   },
+   {
+    "code": "2108",
+    "role": "產品",
+    "why": "南帝 NBR",
+    "n": 462,
+    "rho0": 0.062,
+    "t0": 1.34,
+    "rho1": -0.005,
+    "t1": -0.11,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2105",
+    "role": "成本",
+    "why": "正新原料",
+    "n": 462,
+    "rho0": 0.001,
+    "t0": 0.02,
+    "rho1": -0.027,
+    "t1": -0.6,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SP": [
+   {
+    "code": "1905",
+    "role": "產品",
+    "why": "華紙紙漿自給",
+    "n": 464,
+    "rho0": 0.058,
+    "t0": 1.26,
+    "rho1": 0.08,
+    "t1": 1.74,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1907",
+    "role": "產品",
+    "why": "永豐餘",
+    "n": 464,
+    "rho0": 0.116,
+    "t0": 2.51,
+    "rho1": 0.084,
+    "t1": 1.85,
+    "stable": false,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "M": [
+   {
+    "code": "1215",
+    "role": "成本",
+    "why": "卜蜂飼料",
+    "n": 463,
+    "rho0": -0.015,
+    "t0": -0.32,
+    "rho1": -0.009,
+    "t1": -0.19,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1210",
+    "role": "成本",
+    "why": "大成飼料",
+    "n": 463,
+    "rho0": 0.009,
+    "t0": 0.19,
+    "rho1": -0.044,
+    "t1": -0.95,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1219",
+    "role": "成本",
+    "why": "福壽飼料",
+    "n": 463,
+    "rho0": -0.023,
+    "t0": -0.5,
+    "rho1": -0.035,
+    "t1": -0.76,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1232",
+    "role": "產品",
+    "why": "大統益豆粕",
+    "n": 463,
+    "rho0": -0.033,
+    "t0": -0.72,
+    "rho1": -0.005,
+    "t1": -0.11,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "C": [
+   {
+    "code": "1215",
+    "role": "成本",
+    "why": "卜蜂飼料",
+    "n": 464,
+    "rho0": -0.009,
+    "t0": -0.19,
+    "rho1": 0.093,
+    "t1": 2.04,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1210",
+    "role": "成本",
+    "why": "大成飼料",
+    "n": 464,
+    "rho0": -0.027,
+    "t0": -0.58,
+    "rho1": 0.037,
+    "t1": 0.81,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1219",
+    "role": "成本",
+    "why": "福壽飼料",
+    "n": 464,
+    "rho0": 0.029,
+    "t0": 0.62,
+    "rho1": 0.08,
+    "t1": 1.75,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "CY": [
+   {
+    "code": "1440",
+    "role": "產品",
+    "why": "南紡紡紗",
+    "n": 464,
+    "rho0": 0.111,
+    "t0": 2.39,
+    "rho1": 0.074,
+    "t1": 1.62,
+    "stable": true,
+    "stable1": true,
+    "verdict": "一致"
+   }
+  ],
+  "SPR_RB": [
+   {
+    "code": "2015",
+    "role": "產品",
+    "why": "豐興",
+    "n": 463,
+    "rho0": -0.032,
+    "t0": -0.69,
+    "rho1": -0.077,
+    "t1": -1.68,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2006",
+    "role": "產品",
+    "why": "東和鋼鐵",
+    "n": 463,
+    "rho0": -0.032,
+    "t0": -0.7,
+    "rho1": -0.042,
+    "t1": -0.92,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2007",
+    "role": "產品",
+    "why": "燁興",
+    "n": 463,
+    "rho0": -0.07,
+    "t0": -1.51,
+    "rho1": -0.052,
+    "t1": -1.13,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_HC": [
+   {
+    "code": "2002",
+    "role": "產品",
+    "why": "中鋼",
+    "n": 463,
+    "rho0": -0.023,
+    "t0": -0.5,
+    "rho1": 0.009,
+    "t1": 0.2,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "2014",
+    "role": "產品",
+    "why": "中鴻",
+    "n": 463,
+    "rho0": -0.028,
+    "t0": -0.61,
+    "rho1": -0.014,
+    "t1": -0.31,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_TA": [
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化 PTA",
+    "n": 460,
+    "rho0": -0.081,
+    "t0": -1.74,
+    "rho1": 0.059,
+    "t1": 1.29,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_PX": [
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化芳香烴",
+    "n": 453,
+    "rho0": 0.023,
+    "t0": 0.48,
+    "rho1": 0.036,
+    "t1": 0.78,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_PF": [
+   {
+    "code": "1402",
+    "role": "產品",
+    "why": "遠東新",
+    "n": 456,
+    "rho0": -0.067,
+    "t0": -1.43,
+    "rho1": 0.007,
+    "t1": 0.15,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1409",
+    "role": "產品",
+    "why": "新纖",
+    "n": 456,
+    "rho0": -0.023,
+    "t0": -0.49,
+    "rho1": -0.064,
+    "t1": -1.39,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1444",
+    "role": "產品",
+    "why": "力麗",
+    "n": 456,
+    "rho0": -0.015,
+    "t0": -0.33,
+    "rho1": -0.024,
+    "t1": -0.51,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_PR": [
+   {
+    "code": "1402",
+    "role": "產品",
+    "why": "遠東新",
+    "n": 456,
+    "rho0": -0.029,
+    "t0": -0.61,
+    "rho1": -0.034,
+    "t1": -0.73,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1409",
+    "role": "產品",
+    "why": "新纖",
+    "n": 456,
+    "rho0": -0.102,
+    "t0": -2.19,
+    "rho1": -0.019,
+    "t1": -0.41,
+    "stable": true,
+    "stable1": false,
+    "verdict": "相反"
+   }
+  ],
+  "SPR_PP": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑",
+    "n": 450,
+    "rho0": 0.02,
+    "t0": 0.42,
+    "rho1": -0.002,
+    "t1": -0.05,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1326",
+    "role": "產品",
+    "why": "台化",
+    "n": 451,
+    "rho0": 0.011,
+    "t0": 0.23,
+    "rho1": 0.016,
+    "t1": 0.35,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化",
+    "n": 451,
+    "rho0": -0.04,
+    "t0": -0.86,
+    "rho1": -0.008,
+    "t1": -0.17,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_L": [
+   {
+    "code": "1301",
+    "role": "產品",
+    "why": "台塑",
+    "n": 451,
+    "rho0": 0.001,
+    "t0": 0.02,
+    "rho1": 0.059,
+    "t1": 1.27,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1304",
+    "role": "產品",
+    "why": "台聚",
+    "n": 452,
+    "rho0": -0.045,
+    "t0": -0.96,
+    "rho1": 0.064,
+    "t1": 1.37,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1308",
+    "role": "產品",
+    "why": "亞聚",
+    "n": 452,
+    "rho0": -0.035,
+    "t0": -0.75,
+    "rho1": 0.048,
+    "t1": 1.03,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_LU": [
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化",
+    "n": 452,
+    "rho0": 0.045,
+    "t0": 0.97,
+    "rho1": 0.072,
+    "t1": 1.56,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_FU": [
+   {
+    "code": "6505",
+    "role": "產品",
+    "why": "台塑化",
+    "n": 451,
+    "rho0": 0.007,
+    "t0": 0.14,
+    "rho1": 0.003,
+    "t1": 0.07,
+    "stable": false,
+    "stable1": false,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_FG": [
+   {
+    "code": "1802",
+    "role": "產品",
+    "why": "台玻",
+    "n": 457,
+    "rho0": 0.074,
+    "t0": 1.59,
+    "rho1": 0.032,
+    "t1": 0.69,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_CRUSH": [
+   {
+    "code": "1232",
+    "role": "產品",
+    "why": "大統益",
+    "n": 461,
+    "rho0": -0.036,
+    "t0": -0.76,
+    "rho1": 0.044,
+    "t1": 0.95,
+    "stable": true,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ],
+  "SPR_HOG": [
+   {
+    "code": "1210",
+    "role": "產品",
+    "why": "大成畜產",
+    "n": 461,
+    "rho0": 0.023,
+    "t0": 0.5,
+    "rho1": 0.015,
+    "t1": 0.32,
+    "stable": true,
+    "stable1": false,
+    "verdict": "不顯著"
+   },
+   {
+    "code": "1215",
+    "role": "產品",
+    "why": "卜蜂",
+    "n": 461,
+    "rho0": -0.01,
+    "t0": -0.21,
+    "rho1": -0.088,
+    "t1": -1.91,
+    "stable": false,
+    "stable1": true,
+    "verdict": "不顯著"
+   }
+  ]
+ },
+ "stock_meta": {
+  "1210": {
+   "beta": 0.112,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1215": {
+   "beta": 0.13,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1219": {
+   "beta": 0.206,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1232": {
+   "beta": 0.027,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1301": {
+   "beta": 0.766,
+   "days": 482,
+   "suffix": ".TW"
+  },
+  "1303": {
+   "beta": 1.282,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1304": {
+   "beta": 0.352,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1305": {
+   "beta": 0.343,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1308": {
+   "beta": 0.295,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1309": {
+   "beta": 0.309,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1310": {
+   "beta": 0.503,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1312": {
+   "beta": 0.549,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1326": {
+   "beta": 0.892,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1402": {
+   "beta": 0.247,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1409": {
+   "beta": 0.696,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1440": {
+   "beta": 0.569,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1444": {
+   "beta": 0.404,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1603": {
+   "beta": 0.615,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1605": {
+   "beta": 1.213,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1608": {
+   "beta": 0.854,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1609": {
+   "beta": 0.852,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1708": {
+   "beta": 0.43,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1710": {
+   "beta": 0.599,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1722": {
+   "beta": 0.289,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1802": {
+   "beta": 1.226,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1905": {
+   "beta": 0.462,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "1907": {
+   "beta": 0.326,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2002": {
+   "beta": 0.409,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2006": {
+   "beta": 0.324,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2007": {
+   "beta": 0.456,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2009": {
+   "beta": 0.813,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2010": {
+   "beta": 0.427,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2014": {
+   "beta": 0.544,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2015": {
+   "beta": 0.311,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2023": {
+   "beta": 0.184,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2027": {
+   "beta": 0.335,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2034": {
+   "beta": 0.45,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2035": {
+   "beta": 0.1,
+   "days": 483,
+   "suffix": ".TWO"
+  },
+  "2103": {
+   "beta": 0.458,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2105": {
+   "beta": 0.143,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2106": {
+   "beta": 0.339,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2108": {
+   "beta": 0.524,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2603": {
+   "beta": 0.485,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2609": {
+   "beta": 0.44,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "2615": {
+   "beta": 0.469,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "6505": {
+   "beta": 0.407,
+   "days": 483,
+   "suffix": ".TW"
+  },
+  "8358": {
+   "beta": 1.441,
+   "days": 483,
+   "suffix": ".TWO"
+  }
  },
  "backtest": {
   "train": [
@@ -1860,45 +3929,67 @@
   "manual": {
    "lag0": {
     "days": 186,
-    "bull_avg": 0.242,
-    "bull_win": 0.493,
-    "bear_avg": -0.045,
-    "bear_win": 0.566,
-    "spread_avg": 0.285,
+    "bull_avg": 0.239,
+    "bull_win": 0.496,
+    "bear_avg": -0.071,
+    "bear_win": 0.552,
+    "spread_avg": 0.307,
     "spread_win": 0.581,
-    "spread_t": 2.07
+    "spread_t": 2.19
    },
    "lag1": {
     "days": 191,
-    "bull_avg": 0.072,
-    "bull_win": 0.434,
-    "bear_avg": 0.035,
-    "bear_win": 0.557,
-    "spread_avg": 0.035,
+    "bull_avg": 0.049,
+    "bull_win": 0.445,
+    "bear_avg": 0.007,
+    "bear_win": 0.545,
+    "spread_avg": 0.041,
     "spread_win": 0.518,
-    "spread_t": 0.27
+    "spread_t": 0.3
    }
   },
   "calibrated": {
    "lag0": {
     "days": 186,
-    "bull_avg": 0.122,
-    "bull_win": 0.471,
-    "bear_avg": -0.114,
-    "bear_win": 0.543,
-    "spread_avg": 0.19,
-    "spread_win": 0.525,
-    "spread_t": 1.56
+    "bull_avg": 0.109,
+    "bull_win": 0.473,
+    "bear_avg": -0.181,
+    "bear_win": 0.558,
+    "spread_avg": 0.217,
+    "spread_win": 0.583,
+    "spread_t": 1.57
    },
    "lag1": {
     "days": 191,
-    "bull_avg": 0.003,
-    "bull_win": 0.436,
-    "bear_avg": -0.145,
-    "bear_win": 0.559,
-    "spread_avg": 0.215,
-    "spread_win": 0.553,
-    "spread_t": 1.98
+    "bull_avg": -0.025,
+    "bull_win": 0.461,
+    "bear_avg": -0.052,
+    "bear_win": 0.527,
+    "spread_avg": 0.068,
+    "spread_win": 0.52,
+    "spread_t": 0.53
+   }
+  },
+  "calibrated_spreads": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.121,
+    "bull_win": 0.478,
+    "bear_avg": -0.202,
+    "bear_win": 0.555,
+    "spread_avg": 0.237,
+    "spread_win": 0.586,
+    "spread_t": 1.81
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": 0.022,
+    "bull_win": 0.463,
+    "bear_avg": -0.025,
+    "bear_win": 0.524,
+    "spread_avg": 0.08,
+    "spread_win": 0.546,
+    "spread_t": 0.61
    }
   }
  },
