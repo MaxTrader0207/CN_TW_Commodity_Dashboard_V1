@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-29T20:54:28+08:00",
+ "run_at": "2026-10-29T21:32:01+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40877163235",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40882777470",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,18 +14,18 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T20:54:29+08:00"
+   "fetched_at": "2026-10-29T21:32:03+08:00"
   },
   {
    "id": "sina",
-   "name": "新浪財經 陸期主力連續（上期所／大商所／鄭商所）",
+   "name": "新浪財經 陸期主力連續（上期所／大商所／鄭商所／廣期所）",
    "url": "https://hq.sinajs.cn/list=nf_XX0",
    "used_for": "商品漲跌 → 類股多空分數",
    "status": "ok",
-   "rows": 52,
+   "rows": 55,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:54:30+08:00"
+   "fetched_at": "2026-10-29T21:32:04+08:00"
   },
   {
    "id": "twse_info",
@@ -36,7 +36,7 @@
    "rows": 1088,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-29T20:54:31+08:00"
+   "fetched_at": "2026-10-29T21:32:05+08:00"
   },
   {
    "id": "isin_otc",
@@ -47,7 +47,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T20:55:01+08:00"
+   "fetched_at": "2026-10-29T21:33:18+08:00"
   },
   {
    "id": "twse_quotes",
@@ -58,7 +58,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T20:55:03+08:00"
+   "fetched_at": "2026-10-29T21:33:24+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -69,7 +69,51 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:55:04+08:00"
+   "fetched_at": "2026-10-29T21:33:40+08:00"
+  },
+  {
+   "id": "yahoo_intl",
+   "name": "Yahoo 國際期貨（交叉確認）",
+   "url": "https://query1.finance.yahoo.com/v8/finance/chart/XX=F?range=5d&interval=1d",
+   "used_for": "國際價格 vs 陸期方向",
+   "status": "ok",
+   "rows": 13,
+   "data_date": null,
+   "note": "",
+   "fetched_at": "2026-10-29T21:33:44+08:00"
+  },
+  {
+   "id": "insti",
+   "name": "三大法人買賣超（證交所 T86＋櫃買）",
+   "url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=YYYYMMDD&selectType=ALLBUT0999&response=json",
+   "used_for": "個股籌碼：外資、投信、自營",
+   "status": "ok",
+   "rows": 7391,
+   "data_date": "2026-10-29",
+   "note": "",
+   "fetched_at": "2026-10-29T21:33:48+08:00"
+  },
+  {
+   "id": "margin",
+   "name": "融資融券（證交所＋櫃買）",
+   "url": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=YYYYMMDD&selectType=ALL&response=json",
+   "used_for": "個股融資、融券增減",
+   "status": "ok",
+   "rows": 2223,
+   "data_date": "2026-10-29",
+   "note": "",
+   "fetched_at": "2026-10-29T21:33:48+08:00"
+  },
+  {
+   "id": "volhist",
+   "name": "成交量歷史（量比用）",
+   "url": "pipeline/cache/vol_hist.json",
+   "used_for": "量比 = 今日量 ÷ 前 5 日均量",
+   "status": "ok",
+   "rows": 5,
+   "data_date": "2026-10-29",
+   "note": "本次回補 4 天",
+   "fetched_at": "2026-10-29T21:33:55+08:00"
   },
   {
    "id": "twse_index",
@@ -80,7 +124,7 @@
    "rows": null,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T20:55:04+08:00"
+   "fetched_at": "2026-10-29T21:33:55+08:00"
   }
  ]
 }
