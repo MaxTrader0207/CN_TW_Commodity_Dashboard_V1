@@ -137,7 +137,7 @@ summary{cursor:pointer;font-weight:600}
     <div class="vgrid">
       <div class="vcard">
         <h3>實盤命中率</h3>
-        <p class="hint" id="tk-hint">多空前 3 類股在訊號後下一個台股交易日的表現（類股指數 − 加權指數）</p>
+        <p class="hint" id="tk-hint">多空前 3 類股在訊號後下一個台股交易日的表現（β 調整超額報酬）</p>
         <div id="tk-kpis"></div>
         <p class="note" id="tk-note"></p>
       </div>
@@ -330,7 +330,7 @@ function kpiBox(k, v, s, vcls) {
 function renderTrack(t) {
   const box = $('#tk-kpis'); box.replaceChildren();
   const all = t.summary.all.next;
-  $('#tk-hint').textContent = `自 ${t.since || '—'} 起累積；多空前 3 類股在訊號後下一個台股交易日的超額報酬（類股指數 − 加權指數）`;
+  $('#tk-hint').textContent = `自 ${t.since || '—'} 起累積；多空前 3 類股在訊號後下一個台股交易日的超額報酬（類股 − β × 加權指數）`;
   for (const [key, label] of [['all', '全部'], ['night', '夜盤版（盤前）'], ['day', '日盤版（收盤後）']]) {
     const m = key === 'all' ? all : t.summary[key].next;
     box.append(el('div', 'k', label + `　已開獎 ${m.n} 次`));
@@ -343,7 +343,7 @@ function renderTrack(t) {
   const n = all.n;
   $('#tk-note').textContent = (n < 20 ? `目前只開獎 ${n} 次，樣本太少，數字只供觀察，累積 20 次以上再判斷。` : '') +
     (t.summary.excluded ? `另有 ${t.summary.excluded} 筆因排程延遲、在盤中才產生的訊號不計入。` : '') +
-    '多頭勝率 = 類股跑贏加權指數的比例；空頭勝率 = 跑輸的比例。';
+    '多頭勝率 = 超額報酬為正的比例；空頭勝率 = 為負的比例。';
 
   const tb = $('#tk-rows'); tb.replaceChildren();
   const h = tb.insertRow(); ['訊號時間', '版本', '多頭 3', '空頭 3', '開獎日', '多頭', '空頭', '價差'].forEach(x => h.append(el('th', null, x)));
@@ -376,7 +376,7 @@ const STATUS_TAG = { '有效': 'ok', '隔日有效': 'lag', '方向相反': 'rev
 function renderCalibration(c) {
   CAL = c;
   const bt = c.backtest;
-  $('#bt-hint').textContent = `${bt.train[0]}～${bt.train[1]} 校準權重，${bt.test[0]}～${bt.test[1]} 測試（測試期沒用來調權重）`;
+  $('#bt-hint').textContent = `${bt.train[0]}～${bt.train[1]} 估計 β 與權重，${bt.test[0]}～${bt.test[1]} 測試（測試期資料完全沒參與）`;
   const t = $('#bt'); t.replaceChildren();
   const h = t.insertRow(); ['', '天數', '多頭', '勝率', '空頭', '勝率', '價差', 't 值'].forEach(x => h.append(el('th', null, x)));
   const sec = (txt) => { const r = t.insertRow(); const c0 = r.insertCell(); c0.colSpan = 8; c0.append(el('b', null, txt)); };
@@ -384,15 +384,15 @@ function renderCalibration(c) {
   btRow(t, '手動權重', bt.manual.lag1); btRow(t, '實測權重', bt.calibrated.lag1);
   sec('同日（關聯是否存在）');
   btRow(t, '手動權重', bt.manual.lag0); btRow(t, '實測權重', bt.calibrated.lag0);
-  $('#bt-note').textContent = '數字為選出類股的平均超額報酬（類股指數 − 加權指數）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
+  $('#bt-note').textContent = '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 
   const counts = c.counts || {};
   $('#cal-summary').textContent = `關聯實測表（${c.period.start}～${c.period.end}，${c.period.tw_days} 個交易日）`;
   $('#cal-note').textContent = `依歷史資料重新檢驗每組「商品 → 類股」：` +
     Object.entries(counts).map(([k, v]) => `${k} ${v}`).join('、') +
-    `。同日相關 ρ0 衡量陸期與類股超額報酬是否同步；隔日 ρ1 衡量預測力。|t| ≥ 2 且前後兩段方向一致才採用；` +
-    `「數據新增」是對照表外、門檻更嚴（|t| ≥ 4）的組合，仍需自行確認產業邏輯。一次檢驗上百組，約有 5% 的組合會純屬巧合而「顯著」。`;
+    `。同日相關 ρ0 衡量陸期與類股（β 調整後）超額報酬是否同步；隔日 ρ1 衡量預測力。|t| ≥ 2 且前後兩段方向一致才採用，不顯著的權重歸 0。` +
+    `「數據新增」是對照表外、門檻更嚴（|t| ≥ 4）的組合，只列為候選、不計分，確認產業邏輯後再加進對照表。一次檢驗上百組，約有 5% 的組合會純屬巧合而「顯著」。`;
   const f = $('#cal-filters'); f.replaceChildren();
   for (const k of ['all', '有效', '隔日有效', '方向相反', '不顯著', '數據新增', '樣本不足']) {
     if (k !== 'all' && !counts[k]) continue;
@@ -413,8 +413,8 @@ function renderCalibration(c) {
     const a = tr.insertCell(); a.className = 'n ' + (Math.abs(p.t0 || 0) >= 2 ? cls(p.rho0) : 'flat'); a.textContent = rt(p.rho0, p.t0);
     const b = tr.insertCell(); b.className = 'n ' + (Math.abs(p.t1 || 0) >= 2 ? cls(p.rho1) : 'flat'); b.textContent = rt(p.rho1, p.t1);
     const n = tr.insertCell(); n.className = 'n'; n.textContent = p.n;
-    const w = tr.insertCell(); w.className = 'n ' + cls(p.cal_w); w.textContent = p.cal_w ? (p.cal_w > 0 ? '+' : '') + p.cal_w : '0';
-    const s = tr.insertCell(); s.append(el('span', 'tag ' + (STATUS_TAG[p.status] || ''), p.status));
+    const w = tr.insertCell(); const used = p.status === '數據新增' && !p.in_score ? 0 : p.cal_w; w.className = 'n ' + cls(used); w.textContent = used ? (used > 0 ? '+' : '') + used : '0';
+    const s = tr.insertCell(); s.append(el('span', 'tag ' + (STATUS_TAG[p.status] || ''), p.status === '數據新增' && !p.in_score ? '候選（未計分）' : p.status));
     hoverTip(tr, p.why);
   });
 }

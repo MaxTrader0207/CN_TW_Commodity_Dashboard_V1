@@ -140,13 +140,37 @@ def index_returns(data, empty):
     return out
 
 
-def excess_returns(idx_ret):
-    """{date: {sector: 類股漲跌 − 加權指數漲跌}}"""
+def estimate_betas(idx_ret, d_end=None):
+    """各類股對加權指數的 β（只用 d_end 以前的資料，回測時避免偷看測試期）"""
+    xs, ys = {}, {}
+    for d, row in idx_ret.items():
+        if (d_end and d > d_end) or TAIEX not in row:
+            continue
+        for n, v in row.items():
+            if n != TAIEX:
+                xs.setdefault(n, []).append(row[TAIEX])
+                ys.setdefault(n, []).append(v)
+    betas = {}
+    for n in xs:
+        x, y = xs[n], ys[n]
+        if len(x) < 60:
+            continue
+        mx, my = sum(x) / len(x), sum(y) / len(y)
+        vx = sum((a - mx) ** 2 for a in x)
+        betas[n] = round(sum((a - mx) * (b - my) for a, b in zip(x, y)) / vx, 3) if vx else 1.0
+    return betas
+
+
+def excess_returns(idx_ret, betas=None):
+    """{date: {sector: 類股漲跌 − β × 加權指數漲跌}}
+    β 調整後的超額報酬：去掉大盤漲跌的影響。只用「類股 − 加權指數」時，低 β 的防禦型類股
+    在大盤上漲日會被誤判為「受壓」，產生與產業無關的假關聯。betas 為 None 時 β 一律視為 1。"""
+    betas = betas or {}
     out = {}
     for d, row in idx_ret.items():
         if TAIEX not in row:
             continue
-        out[d] = {n: v - row[TAIEX] for n, v in row.items() if n != TAIEX}
+        out[d] = {n: v - betas.get(n, 1.0) * row[TAIEX] for n, v in row.items() if n != TAIEX}
     return out
 
 

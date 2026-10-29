@@ -35,6 +35,7 @@ T_LAG1 = 2.5             # 同日不顯著、但隔日顯著（領先關係）�
 T_DISCOVER = 4.0         # 對照表外組合：多重比較，門檻提高
 RHO_DISCOVER = 0.15
 MAX_DISCOVER_PER_COMMODITY = 3
+DISCOVER_IN_SCORE = False  # 數據新增的組合預設只列為候選，不計分；確認產業邏輯後請加進 mapping.py
 RHO_FULL = 0.30          # |ρ| 達此值給滿權重 1.0
 TRAIN_FRAC = 0.6
 TOP = 3
@@ -154,8 +155,10 @@ def build_links(cmd_ret, excess, tw_dates, d0=None, d1=None):
             cw = weight_from_rho(st["rho0"])
             why = f"歷史同日相關 ρ={st['rho0']:+.2f}（數據發現，待確認產業邏輯）"
             discovered.append({"ex": ex, "code": code, "name": name, "sector": sector, "manual_w": None,
-                               "why": why, **rnd(st), "cal_w": cw, "status": "數據新增"})
-            live[code].append({"sector": sector, "w": cw, "why": why, "src": "新增"})
+                               "why": why, **rnd(st), "cal_w": cw, "status": "數據新增",
+                               "in_score": DISCOVER_IN_SCORE})
+            if DISCOVER_IN_SCORE:
+                live[code].append({"sector": sector, "w": cw, "why": why, "src": "新增"})
     return pairs, discovered, live
 
 
@@ -284,7 +287,9 @@ def main():
 
     data, empty = H.update_index(s, start, today, checkpoint=git_checkpoint)
     git_checkpoint(f"cache: 類股指數 {len(data)} 天")
-    excess = {d: v for d, v in H.excess_returns(H.index_returns(data, empty)).items() if d >= start.isoformat()}
+    idx_ret = {d: v for d, v in H.index_returns(data, empty).items() if d >= start.isoformat()}
+    betas = H.estimate_betas(idx_ret)
+    excess = H.excess_returns(idx_ret, betas)
     tw_dates = sorted(excess)
     if len(tw_dates) < 200:
         print(f"⚠ 台股類股指數只有 {len(tw_dates)} 天，資料不足，下次執行會繼續補抓；本次不更新校準結果")
@@ -319,7 +324,9 @@ def main():
     out = {
         "generated_at": datetime.now(TPE).isoformat(timespec="minutes"),
         "period": {"start": tw_dates[0], "end": tw_dates[-1], "tw_days": len(tw_dates)},
-        "method": {"target": "類股指數漲跌 − 加權指數漲跌（超額報酬）",
+        "betas": betas,
+        "method": {"target": "類股指數漲跌 − β × 加權指數漲跌（β 調整超額報酬）",
+                   "discover_in_score": DISCOVER_IN_SCORE,
                    "signal": "陸期主力 收盤 ÷ 前一日結算價", "min_n": MIN_N, "t_valid": T_VALID,
                    "t_lag1": T_LAG1, "t_discover": T_DISCOVER, "rho_full": RHO_FULL, "train_frac": TRAIN_FRAC},
         "counts": counts,
@@ -335,7 +342,8 @@ def main():
         print(f"  {p['name']:<8}→{p['sector']:<6} 手動{p['manual_w']:+.1f} ρ0={p['rho0']} t0={p['t0']} "
               f"ρ1={p['rho1']} 實測{p['cal_w']:+.1f} {p['status']}")
     for p in discovered:
-        print(f"  [新增] {p['name']}→{p['sector']} ρ0={p['rho0']} t0={p['t0']} w={p['cal_w']}")
+        print(f"  [新增候選] {p['name']}→{p['sector']} ρ0={p['rho0']} t0={p['t0']} w={p['cal_w']}")
+    print("β：", {k: v for k, v in sorted(betas.items(), key=lambda kv: kv[1])})
     for k, v in test.items():
         print(f"回測（樣本外 {split}~）{k}：當日 {v['lag0']}")
         print(f"                     {k}：隔日 {v['lag1']}")

@@ -112,7 +112,14 @@ def update(payload, session=None, log=print):
         except Exception as e:  # noqa: BLE001
             log(f"⚠ 類股指數更新失敗：{e}")
     data, empty = H.load_index(), H.load_empty()
-    excess = H.excess_returns(H.index_returns(data, empty))
+    betas = None
+    cal = DATA / "calibration.json"
+    if cal.exists():
+        try:
+            betas = json.loads(cal.read_text(encoding="utf-8")).get("betas")
+        except Exception:  # noqa: BLE001
+            pass
+    excess = H.excess_returns(H.index_returns(data, empty), betas)   # 與校準同一把尺：β 調整超額報酬
     tw_dates = sorted(excess)
 
     led = load_ledger()
