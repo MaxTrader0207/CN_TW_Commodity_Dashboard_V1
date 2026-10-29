@@ -16,7 +16,13 @@ CORE = {"sina": "新浪陸期報價", "twse_quotes": "證交所上市收盤", "t
 FAIL = {"failure", "timed_out", "startup_failure"}
 
 
+DRY = os.environ.get("DRY_RUN") == "1"   # 本機測試：只印出會做的寫入動作
+
+
 def api(path, method="GET", data=None, ok_fail=False):
+    if DRY and method != "GET":
+        print(f"[DRY] {method} {path} {json.dumps(data, ensure_ascii=False)[:600]}")
+        return {"number": 0}
     cmd = ["gh", "api", "-X", method, path]
     if data is not None:
         cmd += ["--input", "-"]
@@ -67,7 +73,8 @@ def failure_detail(run):
         steps = [s["name"] for s in job.get("steps", []) if s.get("conclusion") in FAIL]
         lines.append(f"- 工作「{job['name']}」失敗於：{'、'.join(steps) or '（未知步驟）'}")
         for a in (api(f"repos/{REPO}/check-runs/{job['id']}/annotations", ok_fail=True) or [])[:6]:
-            if a.get("annotation_level") in ("failure", "warning"):
+            if a.get("annotation_level") == "failure" or (
+                    a.get("annotation_level") == "warning" and "Node.js" not in (a.get("message") or "")):
                 msg = (a.get("message") or "").strip().replace("\n", " ")[:300]
                 lines.append(f"  - {a.get('title') or a['annotation_level']}：{msg}")
     return "\n".join(lines) or "- （沒有取得失敗步驟，請開執行紀錄查看）"
