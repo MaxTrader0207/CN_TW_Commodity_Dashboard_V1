@@ -1,10 +1,21 @@
 {
- "run_at": "2026-10-29T19:14:32+08:00",
+ "run_at": "2026-10-29T20:50:58+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40863830396",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40876671699",
  "sources": [
+  {
+   "id": "twse_holiday",
+   "name": "證交所 休市日曆",
+   "url": "https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule",
+   "used_for": "判斷台股應有交易日、休市",
+   "status": "ok",
+   "rows": 24,
+   "data_date": null,
+   "note": "",
+   "fetched_at": "2026-10-29T20:50:59+08:00"
+  },
   {
    "id": "sina",
    "name": "新浪財經 陸期主力連續（上期所／大商所／鄭商所）",
@@ -14,18 +25,18 @@
    "rows": 52,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T19:14:33+08:00"
+   "fetched_at": "2026-10-29T20:51:00+08:00"
   },
   {
    "id": "twse_info",
    "name": "證交所 上市公司產業別",
    "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
    "used_for": "上市個股 → 類股",
-   "status": "ok",
-   "rows": 1088,
-   "data_date": "2026-10-28",
-   "note": "",
-   "fetched_at": "2026-10-29T19:14:34+08:00"
+   "status": "fail",
+   "rows": null,
+   "data_date": null,
+   "note": "Expecting value: line 1 column 1 (char 0)",
+   "fetched_at": "2026-10-29T20:51:00+08:00"
   },
   {
    "id": "isin_otc",
@@ -36,7 +47,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T19:15:06+08:00"
+   "fetched_at": "2026-10-29T20:53:08+08:00"
   },
   {
    "id": "twse_quotes",
@@ -47,7 +58,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T19:15:09+08:00"
+   "fetched_at": "2026-10-29T20:53:12+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -58,7 +69,7 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T19:15:16+08:00"
+   "fetched_at": "2026-10-29T20:53:30+08:00"
   },
   {
    "id": "twse_index",
@@ -69,7 +80,7 @@
    "rows": null,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T19:15:16+08:00"
+   "fetched_at": "2026-10-29T20:53:30+08:00"
   }
  ]
 }
