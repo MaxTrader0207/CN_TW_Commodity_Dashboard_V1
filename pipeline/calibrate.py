@@ -472,6 +472,11 @@ def main():
             st = pair_stats(series.get(item_code, {}), res, tw_stock_dates)
             rows.append({"code": code, "role": role, "why": why, **rnd(st), "verdict": stock_verdict(st, role)})
         stocks[item_code] = rows
+    # 保存本次輸入（陸期日K、個股殘差報酬），方便本機重現與除錯
+    import gzip
+    inp = {"klines": klines, "stock_res": closes_cache}
+    with gzip.open(H.CACHE_DIR / "calib_inputs.json.gz", "wt", encoding="utf-8") as f:
+        json.dump(inp, f, ensure_ascii=False)
     ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
