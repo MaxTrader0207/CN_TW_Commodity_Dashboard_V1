@@ -4,8 +4,13 @@ on:
   schedule:
     # 台北時間 週一~週五 17:10（陸期日盤 15:00 收盤、證交所 OpenAPI 當日資料已更新）
     - cron: "10 9 * * 1-5"
-    # 台北時間 週二~週六 08:10（陸期夜盤收盤後，台股開盤前）
-    - cron: "10 0 * * 2-6"
+    # 台北時間 週二~週六 盤前版：06:17／06:47／07:13／07:41／08:07 多次嘗試（GitHub 排程常延遲），
+    # 第一個準時完成的生效，之後的自動略過；06:17 起跑確保美盤已收盤（夏令 05:00、冬令 06:00 台北時間）
+    - cron: "17 22 * * 1-5"
+    - cron: "47 22 * * 1-5"
+    - cron: "13 23 * * 1-5"
+    - cron: "41 23 * * 1-5"
+    - cron: "7 0 * * 2-6"
   workflow_dispatch:
     inputs:
       session:
@@ -54,12 +59,12 @@ jobs:
               day|night) python pipeline/build.py --session "$IN_SESSION" ;;
               *) python pipeline/build.py ;;
             esac
-          elif [ "$SCHEDULE" = "10 0 * * 2-6" ]; then
-            # GitHub 排程可能延遲數小時；過了台股開盤（09:00）就不再算「盤前」，跳過以免覆蓋準時的訊號
-            if [ "$(TZ=Asia/Taipei date +%H)" -ge 9 ]; then
-              echo "夜盤版排程延遲到 $(TZ=Asia/Taipei date +%H:%M)，已過台股開盤，略過"
+          elif [ "$SCHEDULE" != "10 9 * * 1-5" ]; then
+            # 盤前版：GitHub 排程可能延遲數小時；過了台股開盤（09:00）就不再算「盤前」，跳過以免覆蓋準時的訊號
+            if [ "$(TZ=Asia/Taipei date +%-H)" -ge 9 ]; then
+              echo "盤前版排程延遲到 $(TZ=Asia/Taipei date +%H:%M)，已過台股開盤，略過"
             else
-              python pipeline/build.py --session night
+              python pipeline/build.py --session night --skip-if-done
             fi
           else
             python pipeline/build.py --session day

@@ -219,7 +219,7 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None)
     prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
     res = {}
     for lag in (0, 1):
-        bull, bear, spread, used = [], [], [], 0
+        bull, bear, spread, used, dirs = [], [], [], 0, []
         for d in days:
             if lag == 0:
                 # 同期：陸期 (p, d] 對應台股同一段期間的累計超額報酬（處理大陸長假）
@@ -245,6 +245,8 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None)
             if not row:
                 continue
             sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d, zsig).items() if s in row}
+            # 方向命中：每個有分數的類股，分數方向 × 實際超額報酬（適用於關聯很少、常常只有單邊的模型）
+            dirs += [math.copysign(1, v) * row[s] for s, v in sc.items() if abs(v) >= 1]
             b = [s for s, v in sorted(sc.items(), key=lambda kv: -kv[1]) if v > 0][:TOP]
             e = [s for s, v in sorted(sc.items(), key=lambda kv: kv[1]) if v < 0][:TOP]
             if not b and not e:
@@ -262,6 +264,9 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None)
             "spread_avg": avg(spread),
             "spread_win": round(sum(x > 0 for x in spread) / len(spread), 3) if spread else None,
             "spread_t": round(tstat(spread), 2) if len(spread) > 2 else None,
+            "dir_n": len(dirs), "dir_avg": avg(dirs),
+            "dir_win": round(sum(x > 0 for x in dirs) / len(dirs), 3) if dirs else None,
+            "dir_t": round(tstat(dirs), 2) if len(dirs) > 2 else None,
         }
     return res
 
@@ -533,10 +538,11 @@ def main():
                          "oos": oos})
         stocks[item_code] = rows
     # 國際商品：美國 D 日漲跌對齊到 D 之後第一個台股交易日（台股開盤前已知 → 檢驗的是預測力）
-    intl_rows, intl_info, intl_series = [], {}, {}
+    intl_rows, intl_info, intl_series, intl_closes = [], {}, {}, {}
     for code, sym, name, cn, links in INTL:
         try:
             closes, meta = H.fetch_yahoo(s, sym)
+            intl_closes[code] = closes
             ret = {d: v for d, v in H.intl_returns(closes).items() if d >= start.isoformat()}
             sh = H.shift_to_tw(ret, tw_dates)
             intl_series[code] = sh
@@ -567,9 +573,33 @@ def main():
         for f in v.get("follow", []):
             print(f"  [陸期跟隨] {code}→{f['cn']} ρ={f['rho']} t={f['t']} n={f['n']}")
 
-    # 保存本次輸入（陸期日K、個股殘差報酬），方便本機重現與除錯
+    # ── 盤前版（08:10）：國際隔夜（＋陸期）→ 當天台股 ──
+    # 所有序列都對齊到「資訊之後第一個台股交易日」，回測的同日（lag0）就是盤前預測力
+    intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
+    intl_live = {}
+    for r_ in intl_rows:
+        if r_["cal_w"]:
+            intl_live.setdefault(r_["code"], []).append(
+                {"sector": r_["sector"], "w": r_["cal_w"], "why": r_["why"], "src": "實測"})
+    _, _, intl_live_tr = build_links(intl_items, intl_series, excess_bt, tw_dates, d1=split)
+    cn_shift = {code: H.shift_to_tw(v, tw_dates) for code, v in series.items()}
+    pre_series = {**cn_shift, **intl_series}
+    zpre = {code: H.rolling_sigma(v) for code, v in pre_series.items()}
+    pre = {
+        "pre_intl": backtest(intl_items, intl_series, excess_bt, tw_dates, intl_live_tr, split, tw_dates[-1], zpre),
+        "pre_cn": backtest(items_all, cn_shift, excess_bt, tw_dates, live_all, split, tw_dates[-1], zpre),
+        "pre_combo": backtest(intl_items + items_all, pre_series, excess_bt, tw_dates, {**live_all, **intl_live_tr},
+                              split, tw_dates[-1], zpre),
+    }
+    test.update(pre)
+    for k, v in pre.items():
+        x = v['lag0']
+        print(f"盤前回測 {k}：方向命中 {x['dir_avg']}（勝率 {x['dir_win']}, t={x['dir_t']}, n={x['dir_n']}）｜"
+              f"多頭 {x['bull_avg']} 空頭 {x['bear_avg']} 價差 {x['spread_avg']} t={x['spread_t']}")
+
+    # 保存本次輸入（陸期日K、個股殘差報酬、國際日線），方便本機重現與除錯
     import gzip
-    inp = {"klines": klines, "stock_res": closes_cache,
+    inp = {"klines": klines, "stock_res": closes_cache, "intl": intl_closes,
            "pairs": {c: {d: list(v) for d, v in m.items()} for c, m in pairs_by.items()}}
     with gzip.open(H.CACHE_DIR / "calib_inputs.json.gz", "wt", encoding="utf-8") as f:
         json.dump(inp, f, ensure_ascii=False)
@@ -599,7 +629,7 @@ def main():
         "spreads": {code: {"name": name, "legs": legs, "sigma": sp_sigma.get(code), "days": len(spr_ret[code])}
                     for code, name, legs, _ in SPREADS},
         "stocks": stocks, "stock_meta": stock_meta,
-        "intl": {"pairs": intl_rows, "info": intl_info,
+        "intl": {"pairs": intl_rows, "info": intl_info, "live_links": intl_live,
                  "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "kline": kline_info,

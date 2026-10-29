@@ -162,6 +162,9 @@ summary{cursor:pointer;font-weight:600}
         <p class="hint" id="bt-hint">—</p>
         <div style="overflow-x:auto"><table class="vt" id="bt"></table></div>
         <p class="note" id="bt-note"></p>
+        <h3 style="margin-top:14px">盤前版回測（08:10 已知資訊 → 當天台股）</h3>
+        <div style="overflow-x:auto"><table class="vt" id="bt-pre"></table></div>
+        <p class="note" id="bt-pre-note"></p>
       </div>
     </div>
     <details style="margin-top:12px">
@@ -207,6 +210,7 @@ summary{cursor:pointer;font-weight:600}
     計算方式：商品訊號 = 今日漲跌 ÷ 近 20 個交易日波動度（z 分數，2σ 為滿格 ±1，觸及漲跌停再 ×1.5；抓不到日K時改用 漲跌 ÷ 漲跌停幅度）；價差同樣以 20 日波動度標準化；類股分數 = Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100。
     權重為正代表商品漲有利類股（產品報價、庫存利益），為負代表成本壓力。「共振」= 陸期訊號方向與類股當日平均漲跌同向。
     前5強／前5弱以台股最新收盤漲跌幅排序，僅計成交量 ≥ <span id="minlots">100</span> 張的個股。
+    盤前版（台股開盤前）另外把前一晚已收盤的美國期貨（原油、銅等）以實測的「美盤 → 次一台股交易日」權重計入分數。
     本頁為量化參考，非投資建議。
   </p>
 </div>
@@ -290,13 +294,15 @@ function sectorCard(s, i, side) {
   s.drivers.filter(d => d.contrib !== 0).slice(0, 6).forEach(d => {
     const c = el('span', 'chip' + (d.at_limit ? ' lim' : ''));
     const lim = d.at_limit === 'up' ? ' 漲停' : d.at_limit === 'down' ? ' 跌停' : '';
-    c.append(document.createTextNode((d.kind === 'spread' ? '〔價差〕' : '') + d.name + ' '));
+    c.append(document.createTextNode((d.kind === 'spread' ? '〔價差〕' : d.kind === 'intl' ? '〔國際〕' : '') + d.name + ' '));
     const zz = BOARD[d.code]?.z;
     const b = el('b', cls(d.chg), pct(d.chg) + lim + (zz != null && d.kind !== 'spread' ? ` ${zz > 0 ? '+' : ''}${zz}σ` : '')); c.append(b);
     c.append(document.createTextNode(' → '));
     c.append(el('b', cls(d.contrib), sc(d.contrib)));
     if (d.src === '新增') c.append(el('span', 'tag new', '新增'));
-    hoverTip(c, `${d.ex} ${d.code}｜${d.src || '手動'}權重 ${d.w > 0 ? '+' : ''}${d.w}｜${d.why}`);
+    const ib = d.kind === 'intl' ? BOARD[d.code] : null;
+    hoverTip(c, `${d.ex} ${d.code}｜${d.src || '手動'}權重 ${d.w > 0 ? '+' : ''}${d.w}｜${d.why}` +
+      (ib?.settled_date ? `\n美國 ${ib.settled_date} 收盤漲跌（台股收盤後才發生，對今天是新資訊）` : ''));
     chips.append(c);
   });
   card.append(chips);
@@ -342,7 +348,7 @@ function render(d) {
   if (mk.cn?.rolled?.length) notes.push(`主力合約今日換月：${mk.cn.rolled.map(c => d.commodities.find(x => x.code === c)?.name || c).join('、')}（漲跌已用新合約的昨結算計算）。`);
   $('#mkt-note').textContent = notes.join('　');
   $('#mkt-note').style.display = notes.length ? 'block' : 'none';
-  $('#m-session').textContent = d.session_label;
+  $('#m-session').textContent = d.premarket?.on ? '盤前版：陸期夜盤＋國際隔夜' : d.session_label;
   $('#m-time').textContent = '更新 ' + d.generated_at.replace('T', ' ').slice(0, 16);
   $('#m-tw').textContent = '台股資料日 ' + (d.tw_date || '—');
   $('#minlots').textContent = d.params.min_lots;
@@ -377,7 +383,8 @@ function render(d) {
   for (const ex of ['價差', '上期所', '大商所', '鄭商所', '廣期所', '國際']) {
     if (!d.commodities.some(c => c.ex === ex)) continue;
     board.append(el('div', 'ex-h', ex === '價差' ? '價差（加工利潤）：今日變化佔產品價格 %，括號為幾個標準差'
-      : ex === '國際' ? '國際對照（Yahoo，美國期貨最新價 vs 前一交易日；只做交叉確認，不計分）'
+      : ex === '國際' ? (d.premarket?.on ? '國際隔夜（Yahoo，最後一根已收盤的美國日線；標「盤前計分」的已計入類股分數）'
+                                        : '國際對照（Yahoo，美國期貨最新價 vs 前一交易日；日盤版只做交叉確認，不計分）')
       : ex + (ex === '上期所' ? '（含上海國際能源中心）　括號為今日漲跌是近 20 日波動度的幾倍（σ）' : '')));
     const g = el('div', 'board');
     d.commodities.filter(c => c.ex === ex).sort((a, b) => (b.chg ?? -99) - (a.chg ?? -99)).forEach(c => {
@@ -441,11 +448,15 @@ function intlTile(c) {
   if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
   const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
   const cn = (c.cn || []).map(x => BOARD[x]).filter(Boolean);
-  t.append(t1, el('div', 't2 ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg)),
-    el('div', 't3', cn.length ? '陸期 ' + cn.map(x => `${x.name} ${pct(x.chg)}`).join(' ') : ''));
+  if (c.links?.length) t1.append(el('span', 'tag ok', '盤前計分'));
+  const t2 = el('div', 't2 ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg));
+  if (c.links?.length && c.z != null) t2.append(el('small', null, ` (${c.z > 0 ? '+' : ''}${c.z}σ)`));
+  t.append(t1, t2,
+    el('div', 't3', (c.links?.length ? `美國 ${c.settled_date?.slice(5)} 收盤　` : '') +
+      (cn.length ? '陸期 ' + cn.map(x => `${x.name} ${pct(x.chg)}`).join(' ') : '')));
   hoverTip(t, `${c.symbol}　${c.bar_date ? '美國交易日 ' + c.bar_date : ''}${c.asof ? '（' + fmtTime(c.asof) + '）' : ''}\n` +
     (c.ref_links || []).map(l => `${l.sector}：${l.why}${l.status ? `｜實測 ${l.status}` : ''}`).join('\n') +
-    '\n只做交叉確認，不計入類股分數');
+    (c.links?.length ? '\n盤前版：以已收盤的美國日線計入類股分數（實測權重）' : '\n日盤版只做交叉確認，不計入類股分數'));
   return t;
 }
 
@@ -522,6 +533,21 @@ function renderCalibration(c) {
       if (bt[k]) btRow(t, label + '・÷漲跌停', bt[k][lag]);
       if (bt[k + '_z']) btRow(t, label + '・z 分數', bt[k + '_z'][lag]);
     }
+  }
+  const tp = $('#bt-pre'); tp.replaceChildren();
+  if (bt.pre_intl) {
+    const hh = tp.insertRow(); ['', '方向命中', '勝率', 't 值', '類股日數', '多空價差', 't 值'].forEach(x => hh.append(el('th', null, x)));
+    for (const [k, label] of [['pre_intl', '僅國際隔夜'], ['pre_cn', '僅陸期前一日'], ['pre_combo', '國際＋陸期']]) {
+      const m = bt[k]?.lag0; if (!m) continue;
+      const tr = tp.insertRow(); tr.insertCell().textContent = label;
+      for (const [v, f] of [[m.dir_avg, pp], [m.dir_win, wr], [m.dir_t, x => x == null ? '—' : x.toFixed(1)], [m.dir_n, x => x ?? '—'],
+                            [m.spread_avg, pp], [m.spread_t, x => x == null ? '—' : x.toFixed(1)]]) {
+        const c = tr.insertCell(); c.className = 'n ' + (f === pp ? cls(v) : ''); c.textContent = f(v);
+      }
+    }
+    $('#bt-pre-note').textContent = '把美國 D 日、陸期 D 日的漲跌，對到 D 之後第一個台股交易日（08:10 時都已知）。方向命中 = 每個有分數的類股，' +
+      '分數方向 × 當天超額報酬的平均；勝率 = 方向正確的比例。陸期夜盤無法從日K單獨取出，回測以「陸期前一日」代替，實際盤前版用的是夜盤漲跌。' +
+      '關聯少的模型常只有單邊訊號，多空價差會是空白，以方向命中為準。';
   }
   $('#bt-note').textContent = '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';

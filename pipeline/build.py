@@ -279,11 +279,16 @@ def spread_board(board, links_by_code, cal, pairs_by=None):
     return out
 
 
-def intl_board(session, board, cal):
-    """國際期貨（Yahoo）：最新價 vs 前一個交易日收盤；與對應陸期比對方向（同向／背離）。只做交叉確認，不計分。"""
+def intl_board(session, board, cal, premarket=False):
+    """國際期貨（Yahoo 日線）。
+    - 交叉確認：最新價（可能仍在交易中）vs 前一個交易日收盤，與對應陸期比對方向（同向／背離）。
+    - 盤前計分（premarket=True，夜盤版 08:10）：用「最後一根已收盤」的美國日線（每根於紐約 17:00 收盤），
+      漲跌 ÷ 前 20 日穩健波動度（z 分數），以實測的「美盤 → 次一台股交易日」權重計入類股分數。"""
     status = {(p["code"], p["sector"]): p for p in ((cal.get("intl") or {}).get("pairs") or [])}
+    live_links = (cal.get("intl") or {}).get("live_links") or {}
     by_code = {c["code"]: c for c in board}
-    out, ok, err = [], 0, ""
+    now_utc = datetime.now(timezone.utc)
+    out, ok, err, scored = [], 0, "", 0
     for code, sym, name, cn, links in INTL:
         item = {"ex": "國際", "code": code, "name": name, "kind": "intl", "symbol": sym, "links": [],
                 "cn": cn, "ref_links": [{"sector": sct, "w": w, "why": why,
@@ -291,30 +296,49 @@ def intl_board(session, board, cal):
                                          "rho": (status.get((code, sct)) or {}).get("rho0"),
                                          "t": (status.get((code, sct)) or {}).get("t0")} for sct, w, why in links]}
         try:
-            closes, meta = history.fetch_yahoo(session, sym, "5d")
+            closes, meta = history.fetch_yahoo(session, sym, "3mo")
             ds = sorted(closes)
-            if len(ds) < 2:
+            if len(ds) < 3:
                 raise ValueError("資料不足")
+            off = int(meta.get("gmtoffset") or -14400)
+            # 已收盤的日線：日期 X 的收盤時間 = X 當地 17:00
+            done = [d for d in ds
+                    if datetime.fromisoformat(d).replace(hour=17, tzinfo=timezone(timedelta(seconds=off))) <= now_utc]
             last, prev = closes[ds[-1]], closes[ds[-2]]
-            chg = round((last / prev - 1) * 100, 2)
+            chg_live = round((last / prev - 1) * 100, 2)
             asof = meta.get("regularMarketTime")
-            item.update(status="ok", last=round(last, 3), chg=chg, bar_date=ds[-1],
+            item.update(status="ok", last=round(last, 3), chg=chg_live, bar_date=ds[-1],
                         asof=datetime.fromtimestamp(asof, TPE).isoformat(timespec="minutes") if asof else None,
                         signal=0, at_limit=None)
+            if len(done) >= 22:
+                rets = history.intl_returns({d: closes[d] for d in done})
+                rd = sorted(rets)
+                if rd and rd[-1] == done[-1]:
+                    chg_set = round(rets[rd[-1]], 2)
+                    sd = history.robust_sigma([rets[d] for d in rd[-1 - history.Z_WINDOW:-1]])
+                    item.update(settled_date=done[-1], chg_settled=chg_set,
+                                sigma=round(sd, 3) if sd else None, z=round(chg_set / sd, 2) if sd else None)
+                    if premarket and sd and live_links.get(code):
+                        # 盤前：以已收盤的美國日線計分，頁面也改顯示這根
+                        item.update(chg=chg_set, links=live_links[code],
+                                    signal=round(history.z_signal(chg_set, sd), 4), norm="z")
+                        scored += 1
             ok += 1
             for c in cn:   # 交叉確認：國際與陸期方向
                 ci = by_code.get(c)
-                if ci and ci.get("chg") is not None and chg:
-                    ci.setdefault("intl", []).append({"code": code, "name": name, "chg": chg,
-                                                      "agree": (chg > 0) == (ci["chg"] > 0) if ci["chg"] else None})
+                if ci and ci.get("chg") is not None and item["chg"]:
+                    ci.setdefault("intl", []).append({"code": code, "name": name, "chg": item["chg"],
+                                                      "agree": (item["chg"] > 0) == (ci["chg"] > 0) if ci["chg"] else None})
         except Exception as e:  # noqa: BLE001
             item.update(status="missing", chg=None, signal=0, at_limit=None)
             err = str(e)[:120]
         out.append(item)
         time.sleep(0.2)
-    record("yahoo_intl", "Yahoo 國際期貨（交叉確認）", history.YAHOO.format("XX=F", "5d"), "國際價格 vs 陸期方向",
+    record("yahoo_intl", "Yahoo 國際期貨" + ("（盤前計分＋交叉確認）" if premarket else "（交叉確認）"),
+           history.YAHOO.format("XX=F", "3mo"), "隔夜美盤 → 台股" if premarket else "國際價格 vs 陸期方向",
            "ok" if ok == len(INTL) else "warn" if ok else "fail", ok, None,
-           err if ok < len(INTL) else "")
+           (err if ok < len(INTL) else "") + (f"｜{scored} 項計入盤前分數" if premarket else ""))
+    print(f"國際：{ok}/{len(INTL)}" + (f"，盤前計分 {scored} 項" if premarket else ""))
     return out
 
 
@@ -786,6 +810,11 @@ def main():
     try:
         session = run(now)
         write_status(now, session, True)
+    except SystemExit as e:
+        if e.code in (0, None):      # 正常略過（例如盤前版今天已完成），不改動狀態檔
+            return
+        write_status(now, "-", False, f"SystemExit: {e.code}")
+        raise
     except BaseException as e:
         write_status(now, "-", False, f"{type(e).__name__}: {e}"[:300])
         raise
@@ -795,9 +824,21 @@ def run(now):
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", choices=["day", "night"])
     ap.add_argument("--fixtures")
+    ap.add_argument("--skip-if-done", action="store_true",
+                    help="今天已有準時（09:00 前）的夜盤盤前版就不再執行（排程多次嘗試用）")
     a = ap.parse_args()
 
     session = a.session or ("night" if now.hour < 12 else "day")
+    if a.skip_if_done and session == "night":
+        f = DATA_DIR / "history" / f"{now.strftime('%Y-%m-%d')}_night.json"
+        if f.exists():
+            try:
+                g = json.loads(f.read_text(encoding="utf-8"))["generated_at"]
+                if datetime.fromisoformat(g).hour < 9:
+                    print(f"今天的盤前版已在 {g[11:16]} 完成，這次排程略過")
+                    raise SystemExit(0)
+            except (KeyError, ValueError):
+                pass
     src = FixtureSource(a.fixtures) if a.fixtures else Source()
 
     global HOLIDAYS
@@ -835,8 +876,9 @@ def run(now):
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
     board = board + spread_board(board, links_by_code, cal, pairs_by)
+    premarket = session == "night"
     if not a.fixtures:
-        board = board + intl_board(src.s, board, cal)
+        board = board + intl_board(src.s, board, cal, premarket=premarket)
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
     chips = {}
@@ -855,6 +897,8 @@ def run(now):
         "demo": bool(a.fixtures),
         "weights_mode": weights_mode, "calibration": cal_meta,
         "norm": NORM if sigmas else "limit",
+        "premarket": {"on": session == "night",
+                      "intl_scored": [c["code"] for c in board if c.get("kind") == "intl" and c.get("links")]},
         "market": {"cn": cn, "tw_open_today": tw_open_today,
                    "tw_holiday": HOLIDAYS.get(today.isoformat()),
                    "tw_expected": expected_trade_date(now)},
