@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-29T21:32:01+08:00",
+ "run_at": "2026-10-29T22:29:18+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40882777470",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40891930244",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,18 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T21:32:03+08:00"
+   "fetched_at": "2026-10-29T22:29:20+08:00"
+  },
+  {
+   "id": "sina_kline",
+   "name": "新浪財經 陸期日K（20 日波動度）",
+   "url": "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20_XX0=/InnerFuturesNewService.getDailyKLine?symbol=XX0",
+   "used_for": "漲跌 ÷ 波動度（z 分數）",
+   "status": "ok",
+   "rows": 55,
+   "data_date": null,
+   "note": "",
+   "fetched_at": "2026-10-29T22:29:54+08:00"
   },
   {
    "id": "sina",
@@ -25,7 +36,7 @@
    "rows": 55,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T21:32:04+08:00"
+   "fetched_at": "2026-10-29T22:29:55+08:00"
   },
   {
    "id": "twse_info",
@@ -36,7 +47,7 @@
    "rows": 1088,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-29T21:32:05+08:00"
+   "fetched_at": "2026-10-29T22:29:56+08:00"
   },
   {
    "id": "isin_otc",
@@ -47,7 +58,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T21:33:18+08:00"
+   "fetched_at": "2026-10-29T22:30:00+08:00"
   },
   {
    "id": "twse_quotes",
@@ -58,7 +69,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T21:33:24+08:00"
+   "fetched_at": "2026-10-29T22:30:02+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -69,7 +80,7 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T21:33:40+08:00"
+   "fetched_at": "2026-10-29T22:30:27+08:00"
   },
   {
    "id": "yahoo_intl",
@@ -80,7 +91,7 @@
    "rows": 13,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T21:33:44+08:00"
+   "fetched_at": "2026-10-29T22:30:31+08:00"
   },
   {
    "id": "insti",
@@ -91,7 +102,7 @@
    "rows": 7391,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T21:33:48+08:00"
+   "fetched_at": "2026-10-29T22:30:37+08:00"
   },
   {
    "id": "margin",
@@ -102,7 +113,7 @@
    "rows": 2223,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T21:33:48+08:00"
+   "fetched_at": "2026-10-29T22:30:37+08:00"
   },
   {
    "id": "volhist",
@@ -112,8 +123,8 @@
    "status": "ok",
    "rows": 5,
    "data_date": "2026-10-29",
-   "note": "本次回補 4 天",
-   "fetched_at": "2026-10-29T21:33:55+08:00"
+   "note": "",
+   "fetched_at": "2026-10-29T22:30:39+08:00"
   },
   {
    "id": "twse_index",
@@ -124,7 +135,7 @@
    "rows": null,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T21:33:55+08:00"
+   "fetched_at": "2026-10-29T22:30:39+08:00"
   }
  ]
 }
