@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-29T16:15:53+08:00",
+ "run_at": "2026-10-29T17:04:06+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40840876617",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40846711894",
  "sources": [
   {
    "id": "sina",
@@ -14,7 +14,7 @@
    "rows": 52,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T16:15:54+08:00"
+   "fetched_at": "2026-10-29T17:04:06+08:00"
   },
   {
    "id": "twse_info",
@@ -25,7 +25,7 @@
    "rows": 1088,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-29T16:15:56+08:00"
+   "fetched_at": "2026-10-29T17:04:08+08:00"
   },
   {
    "id": "isin_otc",
@@ -36,7 +36,7 @@
    "rows": 896,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T16:19:39+08:00"
+   "fetched_at": "2026-10-29T17:06:31+08:00"
   },
   {
    "id": "twse_quotes",
@@ -47,7 +47,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T16:19:46+08:00"
+   "fetched_at": "2026-10-29T17:06:34+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -58,7 +58,18 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T16:19:53+08:00"
+   "fetched_at": "2026-10-29T17:06:44+08:00"
+  },
+  {
+   "id": "twse_index",
+   "name": "證交所 類股指數（命中率開獎用）",
+   "url": "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=YYYYMMDD&type=IND&response=json",
+   "used_for": "多空類股的實際超額報酬",
+   "status": "ok",
+   "rows": null,
+   "data_date": "2026-10-29",
+   "note": "",
+   "fetched_at": "2026-10-29T17:07:10+08:00"
   }
  ]
 }

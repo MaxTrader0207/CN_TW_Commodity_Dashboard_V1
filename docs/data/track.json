@@ -1,0 +1,183 @@
+{
+ "updated": "2026-10-29T17:04+08:00",
+ "since": "2026-10-28",
+ "index_last": "2026-10-29",
+ "summary": {
+  "day": {
+   "next": {
+    "n": 1,
+    "bull_avg": -0.523,
+    "bull_win": 0.333,
+    "bear_avg": 0.661,
+    "bear_win": 0.0,
+    "spread_avg": -1.183,
+    "spread_win": 0.0
+   },
+   "same": {
+    "n": 2,
+    "bull_avg": -0.972,
+    "bull_win": 0.333,
+    "bear_avg": -0.58,
+    "bear_win": 0.5,
+    "spread_avg": -0.392,
+    "spread_win": 0.5
+   }
+  },
+  "night": {
+   "next": {
+    "n": 0,
+    "bull_avg": null,
+    "bull_win": null,
+    "bear_avg": null,
+    "bear_win": null,
+    "spread_avg": null,
+    "spread_win": null
+   },
+   "same": {
+    "n": 0,
+    "bull_avg": null,
+    "bull_win": null,
+    "bear_avg": null,
+    "bear_win": null,
+    "spread_avg": null,
+    "spread_win": null
+   }
+  },
+  "all": {
+   "next": {
+    "n": 1,
+    "bull_avg": -0.523,
+    "bull_win": 0.333,
+    "bear_avg": 0.661,
+    "bear_win": 0.0,
+    "spread_avg": -1.183,
+    "spread_win": 0.0
+   }
+  },
+  "excluded": 1
+ },
+ "rows": [
+  {
+   "key": "2026-10-29_night",
+   "run_at": "2026-10-29T13:39+08:00",
+   "session": "night",
+   "valid": false,
+   "invalid_reason": "13:39 才產生，已過台股開盤",
+   "weights": "手動",
+   "bull": [
+    "橡膠",
+    "食品",
+    "油電燃氣"
+   ],
+   "bear": [
+    "建材營造",
+    "航運",
+    "紡織纖維"
+   ],
+   "same_date": null,
+   "next_date": "2026-10-29",
+   "same": null,
+   "next": {
+    "bull": [
+     1.237,
+     1.738,
+     -2.418
+    ],
+    "bear": [
+     0.701,
+     0.639,
+     1.456
+    ],
+    "bull_avg": 0.1856081066299642,
+    "bear_avg": 0.9318204391721966,
+    "spread": -0.7462123325422324
+   }
+  },
+  {
+   "key": "2026-10-29_day",
+   "run_at": "2026-10-29T17:04+08:00",
+   "session": "day",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "手動",
+   "bull": [
+    "塑膠",
+    "油電燃氣",
+    "橡膠"
+   ],
+   "bear": [
+    "電器電纜",
+    "航運",
+    "建材營造"
+   ],
+   "same_date": "2026-10-29",
+   "next_date": null,
+   "same": {
+    "bull": [
+     -0.606,
+     -2.418,
+     1.237
+    ],
+    "bear": [
+     0.642,
+     0.639,
+     0.701
+    ],
+    "bull_avg": -0.5957421664119833,
+    "bear_avg": 0.6603365287636942,
+    "spread": -1.2560786951756775
+   },
+   "next": null
+  },
+  {
+   "key": "2026-10-28_day",
+   "run_at": "2026-10-28T23:58+08:00",
+   "session": "day",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "手動",
+   "bull": [
+    "塑膠",
+    "油電燃氣",
+    "紡織纖維"
+   ],
+   "bear": [
+    "航運",
+    "建材營造",
+    "電器電纜"
+   ],
+   "same_date": "2026-10-28",
+   "next_date": "2026-10-29",
+   "same": {
+    "bull": [
+     3.308,
+     -4.607,
+     -2.746
+    ],
+    "bear": [
+     -1.822,
+     -2.393,
+     -1.245
+    ],
+    "bull_avg": -1.348175172900101,
+    "bear_avg": -1.8200930265799646,
+    "spread": 0.4719178536798636
+   },
+   "next": {
+    "bull": [
+     -0.606,
+     -2.418,
+     1.456
+    ],
+    "bear": [
+     0.639,
+     0.701,
+     0.642
+    ],
+    "bull_avg": -0.5226337828655373,
+    "bear_avg": 0.6603365287636942,
+    "spread": -1.1829703116292314
+   }
+  }
+ ]
+}
