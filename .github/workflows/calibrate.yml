@@ -1,0 +1,42 @@
+name: Calibrate weights
+
+on:
+  schedule:
+    # 台北時間 每週六 10:20：補抓類股指數、重算實測權重與回測
+    - cron: "20 2 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Calibrate
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -o pipefail
+          mkdir -p docs/data
+          python pipeline/calibrate.py 2>&1 | tee docs/data/calibrate_log.txt
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data pipeline/cache
+          git diff --cached --quiet || git commit -m "calibrate: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+          git pull --rebase -X ours origin main || true
+          git push
