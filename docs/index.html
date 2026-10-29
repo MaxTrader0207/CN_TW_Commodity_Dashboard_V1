@@ -126,6 +126,23 @@ summary{cursor:pointer;font-weight:600}
 .legend .sw{width:14px;height:10px;border-radius:2px;display:inline-block}
 .cov td.lst{min-width:12em}
 .cov td:first-child,.cov td:last-child{white-space:nowrap}
+.tile,.chip.click{cursor:pointer}
+.tile:hover{border-color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;z-index:8;padding:4vh 12px;overflow-y:auto}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:100%;max-width:760px;padding:14px 16px 18px;position:relative}
+@media(max-width:480px){.modal{padding:0}.sheet{border-radius:0;min-height:100vh;padding:12px}}
+.sheet h3{margin:16px 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+.sheet .x{position:absolute;right:10px;top:8px;background:none;border:0;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+.dh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding-right:28px}
+.dh .nm{font-size:18px;font-weight:700}
+.dh .big{font-family:var(--mono);font-size:20px;font-weight:700}
+.dstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:10px}
+.dstats .kpi .v{font-size:15px}
+.chart{width:100%;height:auto;display:block;touch-action:pan-y}
+.sheet .vt td:first-child,.sheet .vt td .mk,.sheet .vt td .tag{white-space:nowrap}
+.chart text{fill:var(--muted);font-size:10px;font-family:var(--mono)}
+.chart-tip{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;margin-top:2px}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -241,6 +258,9 @@ summary{cursor:pointer;font-weight:600}
   </p>
 </div>
 <div id="tip"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="sheet" id="sheet"><button class="x" id="d-close" aria-label="關閉">×</button><div id="d-body"></div></div>
+</div>
 
 <script src="config.js"></script>
 <script>
@@ -260,6 +280,7 @@ function hoverTip(node, text) {
 
 let BOARD = {};   // code → 商品／價差（含受惠股）
 let CHIPS = {};   // 代號 → 籌碼（法人、量比、融資券）
+let LATEST = null, KL = null;   // 目前顯示的資料、商品日K摘要（詳細面板用，第一次打開時才載入）
 const lots = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toLocaleString();
 function chipTip(code) {
   const c = CHIPS[code]; if (!c) return '';
@@ -326,6 +347,7 @@ function sectorCard(s, i, side) {
     c.append(document.createTextNode(' → '));
     c.append(el('b', cls(d.contrib), sc(d.contrib)));
     if (d.src === '新增') c.append(el('span', 'tag new', '新增'));
+    c.classList.add('click'); c.onclick = () => openDetail(d.code);
     const ib = d.kind === 'intl' ? BOARD[d.code] : null;
     hoverTip(c, `${d.ex} ${d.code}｜${d.src || '手動'}權重 ${d.w > 0 ? '+' : ''}${d.w}｜${d.why}` +
       (ib?.settled_date ? `\n美國 ${ib.settled_date} 收盤漲跌（台股收盤後才發生，對今天是新資訊）` : ''));
@@ -383,6 +405,7 @@ function render(d) {
     (d.calibration?.generated_at ? `（校準 ${d.calibration.generated_at.slice(0, 10)}）` : '');
   const byName = Object.fromEntries(d.sectors.map(s => [s.name, s]));
   BOARD = Object.fromEntries(d.commodities.map(c => [c.code, c]));
+  LATEST = d;
   CHIPS = d.chips || {};
 
   for (const side of ['bull', 'bear']) {
@@ -437,6 +460,7 @@ function render(d) {
       const sg = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + 'σ';
       const sg1 = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1);
       if (c.m5 != null || c.m20 != null) t.append(el('div', 't4', `5/20日 ${sg1(c.m5)}/${sg1(c.m20)}σ`));
+      t.onclick = () => openDetail(c.code);
       hoverTip(t, (c.sigma ? `近 20 日波動度 ${c.sigma}%／日，今日 ${c.z > 0 ? '+' : ''}${c.z}σ（2σ 為訊號滿格）\n` : '') +
         (c.m5 != null ? `多日動能：5 日累計 ${sg(c.m5)}、20 日累計 ${sg(c.m20)}（累計漲跌 ÷ (σ×√天數)）${d.momentum?.adopt ? '，5 日動能已計入分數' : '，僅顯示、不計分'}\n` : '') +
         (c.limit ? `漲跌停 ±${+c.limit.toFixed(2)}%（${c.limit_src === '預設' || !c.limit_src ? '預設值' : c.limit_src + ' 公告'}${limChanged ? `；一般 ±${c.limit_default}%` : ''}）\n` : '') +
@@ -478,6 +502,7 @@ function kpiBox(k, v, s, vcls) {
 
 function intlTile(c) {
   const t = el('div', 'tile intl');
+  t.onclick = () => openDetail(c.code);
   const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / 4);
   if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
   const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
@@ -496,6 +521,7 @@ function intlTile(c) {
 
 function spreadTile(c) {
   const t = el('div', 'tile spr');
+  t.onclick = () => openDetail(c.code);
   const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.z || 0) / 3);
   if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
   const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
@@ -762,6 +788,187 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseout', e => { if (e.target.closest?.('.hc')) tip.style.display = 'none'; });
 
+// ── 商品詳細面板 ──
+const SVGNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const sg2 = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + 'σ';
+const rtx = (r, t) => r == null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(2)} (${(t ?? 0).toFixed(1)})`;
+
+function priceChart(rows, c) {
+  // rows: [[日期, 收盤, 漲跌%, z]]；上半部收盤線、下半部每日 z 柱（觸及漲跌停加框）
+  const W = innerWidth < 600 ? 380 : 700, H = 230, P = { l: innerWidth < 600 ? 44 : 52, r: 8, t: 8 }, PH = 150, ZT = 170, ZH = 50;
+  const n = rows.length, xs = i => P.l + (W - P.l - P.r) * (n === 1 ? 0.5 : i / (n - 1));
+  const cl = rows.map(r => r[1]).filter(v => v != null);
+  const lo = Math.min(...cl), hi = Math.max(...cl), span = hi - lo || 1;
+  const ys = v => P.t + PH * (1 - (v - lo) / span);
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': `${c.name} 近 ${n} 日收盤與每日 z 分數` });
+  for (const v of [lo, lo + span / 2, hi]) {
+    svg.append(sv('line', { x1: P.l, x2: W - P.r, y1: ys(v), y2: ys(v), stroke: 'var(--line)', 'stroke-dasharray': '2 3' }));
+    const t = sv('text', { x: P.l - 4, y: ys(v) + 3, 'text-anchor': 'end' }); t.textContent = +v.toPrecision(5); svg.append(t);
+  }
+  let dpath = '';
+  rows.forEach((r, i) => { if (r[1] != null) dpath += (dpath ? 'L' : 'M') + xs(i).toFixed(1) + ' ' + ys(r[1]).toFixed(1); });
+  svg.append(sv('path', { d: dpath, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 1.6 }));
+  // z 柱：±3σ 滿高
+  const z0 = ZT + ZH / 2, bw = Math.max(1.5, (W - P.l - P.r) / n * 0.7);
+  svg.append(sv('line', { x1: P.l, x2: W - P.r, y1: z0, y2: z0, stroke: 'var(--line)' }));
+  for (const zz of [2, -2]) svg.append(sv('line', { x1: P.l, x2: W - P.r, y1: z0 - zz / 3 * ZH / 2, y2: z0 - zz / 3 * ZH / 2, stroke: 'var(--line)', 'stroke-dasharray': '2 3' }));
+  const zl = sv('text', { x: P.l - 4, y: z0 + 3, 'text-anchor': 'end' }); zl.textContent = 'z'; svg.append(zl);
+  const z2 = sv('text', { x: P.l - 4, y: z0 - ZH / 3 + 3, 'text-anchor': 'end' }); z2.textContent = '+2σ'; svg.append(z2);
+  rows.forEach((r, i) => {
+    if (r[3] == null) return;
+    const h = Math.min(1, Math.abs(r[3]) / 3) * ZH / 2;
+    const lim = r[2] != null && c.limit && Math.abs(r[2]) >= c.limit - 0.1;
+    svg.append(sv('rect', { x: xs(i) - bw / 2, y: r[3] > 0 ? z0 - h : z0, width: bw, height: Math.max(h, 0.5),
+      fill: r[3] > 0 ? 'var(--up)' : 'var(--dn)', opacity: Math.abs(r[3]) >= 2 ? 1 : 0.55, stroke: lim ? 'var(--accent)' : 'none' }));
+  });
+  // 日期標籤（首、中、尾）
+  for (const i of [0, Math.floor((n - 1) / 2), n - 1]) {
+    const t = sv('text', { x: xs(i), y: H - 2, 'text-anchor': i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle' });
+    t.textContent = rows[i][0].slice(5).replace('-', '/'); svg.append(t);
+  }
+  // 十字線
+  const cross = sv('line', { y1: P.t, y2: ZT + ZH, stroke: 'var(--muted)', 'stroke-width': 0.8, visibility: 'hidden' });
+  const dot = sv('circle', { r: 3, fill: 'var(--accent)', visibility: 'hidden' });
+  svg.append(cross, dot);
+  const info = el('div', 'chart-tip', '移動滑鼠或手指看每日數字');
+  const pick = ev => {
+    const b = svg.getBoundingClientRect(), x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - b.left;
+    const i = Math.max(0, Math.min(n - 1, Math.round(((x / b.width * W) - P.l) / (W - P.l - P.r) * (n - 1))));
+    const r = rows[i];
+    cross.setAttribute('x1', xs(i)); cross.setAttribute('x2', xs(i)); cross.setAttribute('visibility', 'visible');
+    if (r[1] != null) { dot.setAttribute('cx', xs(i)); dot.setAttribute('cy', ys(r[1])); dot.setAttribute('visibility', 'visible'); }
+    info.textContent = `${r[0]}　收盤 ${r[1] ?? '—'}　漲跌 ${pct(r[2])}　${sg2(r[3])}`;
+  };
+  svg.addEventListener('mousemove', pick); svg.addEventListener('touchmove', pick, { passive: true }); svg.addEventListener('touchstart', pick, { passive: true });
+  const wrap = el('div'); wrap.append(svg, info);
+  return wrap;
+}
+
+function vtable(head, rows) {
+  const box = el('div'); box.style.overflowX = 'auto';
+  const t = el('table', 'vt'); const h = t.insertRow(); head.forEach(x => h.append(el('th', null, x)));
+  rows.forEach(r => { const tr = t.insertRow(); r.forEach(cell => { const td = tr.insertCell(); if (cell instanceof Node) td.append(cell); else if (cell && typeof cell === 'object') { td.textContent = cell.t; if (cell.c) td.className = cell.c; } else td.textContent = cell ?? '—'; }); });
+  box.append(t); return box;
+}
+
+async function openDetail(code) {
+  const c = BOARD[code]; if (!c) return;
+  tip.style.display = 'none';
+  const body = $('#d-body'); body.replaceChildren();
+  const kind = c.kind || 'commodity';
+  // 標頭
+  const h = el('div', 'dh');
+  h.append(el('span', 'nm', c.name), el('span', 'rank', `${c.ex}${kind === 'commodity' ? '・' + c.code : kind === 'intl' ? '・' + (c.symbol || '') : ''}`));
+  const big = el('span', 'big ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg) + (c.at_limit === 'up' ? ' 漲停' : c.at_limit === 'down' ? ' 跌停' : ''));
+  h.append(big);
+  if (c.rolled) h.append(el('span', 'tag lag', '今日換月'));
+  h.querySelector('.nm').id = 'd-title';
+  body.append(h);
+  const ks = el('div', 'dstats');
+  const kp = (k, v, sub, vc) => ks.append(kpiBox(k, v, sub, vc));
+  if (kind === 'commodity') {
+    kp('最新價', c.last ?? '—', `昨結算 ${c.base ?? '—'}${c.quote_time ? '・' + c.quote_time.replace(/(\d\d)(\d\d)(\d\d)/, '$1:$2') : ''}`);
+    kp('今日 z', sg2(c.z), c.sigma ? `20 日波動度 ${c.sigma}%` : '', cls(c.z));
+    kp('5 日動能', sg2(c.m5), LATEST?.momentum?.adopt ? '已計入分數' : '僅參考', cls(c.m5));
+    kp('20 日動能', sg2(c.m20), '累計 ÷ (σ×√天數)', cls(c.m20));
+    kp('漲跌停', c.limit ? `±${+c.limit.toFixed(2)}%` : '—', c.limit_src && c.limit_src !== '預設' ? c.limit_src : '預設值');
+    kp('持倉量', c.oi ? Math.round(c.oi).toLocaleString() : '—', c.quote_date || '');
+  } else if (kind === 'spread') {
+    kp('今日變化', pct(c.chg), '佔產品價格', cls(c.chg));
+    kp('今日 z', sg2(c.z), c.sigma ? `20 日波動度 ${c.sigma}%` : '', cls(c.z));
+    kp('目前水準', c.level ?? '—', '價差絕對值');
+  } else {
+    kp('最新漲跌', pct(c.chg), c.bar_date ? `美國 ${c.bar_date}` : '', cls(c.chg));
+    if (c.settled_date) kp('已收盤日線', pct(c.chg_settled), `美國 ${c.settled_date}`, cls(c.chg_settled));
+    kp('z', sg2(c.z), c.sigma ? `20 日波動度 ${c.sigma}%` : '', cls(c.z));
+  }
+  body.append(ks);
+  if (kind === 'spread' && c.legs?.length)
+    body.append(el('p', 'note', '組成：' + c.legs.map(l => `${l.coef > 0 ? '+' : '−'}${Math.abs(l.coef) === 1 ? '' : Math.abs(l.coef) + '×'}${BOARD[l.code]?.name || l.code}`).join(' ').replace(/^\+/, '')));
+
+  // 走勢圖
+  if (kind === 'commodity') {
+    body.append(el('h3', null, '近 120 個交易日：收盤（上）與每日 z 分數（下，金框 = 觸及漲跌停）'));
+    const slot = el('div', 'empty', '載入中…'); body.append(slot);
+    try {
+      KL ??= await (await fetch('data/klines.json?t=' + Date.now())).json();
+      const rows = (KL.data[code] || []).slice();
+      if (c.quote_date && c.last != null && (!rows.length || rows.at(-1)[0] < c.quote_date)) rows.push([c.quote_date, c.last, c.chg, c.z]);
+      slot.replaceWith(rows.length > 1 ? priceChart(rows, c) : el('div', 'empty', '沒有日K資料'));
+      if (rows.length) {
+        body.append(el('h3', null, '最近 10 天'));
+        body.append(vtable(['日期', '收盤', '漲跌', 'z'], rows.slice(-10).reverse().map(r =>
+          [r[0], r[1] ?? '—', { t: pct(r[2]), c: 'n ' + cls(r[2]) }, { t: sg2(r[3]), c: 'n ' + (Math.abs(r[3] ?? 0) >= 2 ? cls(r[3]) : 'flat') }])));
+      }
+    } catch (e) { slot.textContent = '日K資料尚未產生（下次每日更新後出現）'; }
+  }
+
+  // 類股關聯
+  body.append(el('h3', null, kind === 'intl' ? '對應類股（美盤隔夜 → 次一台股交易日實測）' : '對應類股：權重與歷史實測'));
+  const used = Object.fromEntries((c.links || []).map(l => [l.sector, l]));
+  const manual = Object.fromEntries((c.manual || []).map(l => [l.sector, l.w]));
+  const calRows = kind === 'intl' ? (CAL?.intl?.pairs || []).filter(p => p.code === code)
+                                  : (CAL?.pairs || []).concat(CAL?.discovered || []).filter(p => p.code === code);
+  const secs = [...new Set([...Object.keys(used), ...Object.keys(manual), ...calRows.map(p => p.sector), ...(c.ref_links || []).map(l => l.sector)])];
+  const contrib = s => LATEST?.sectors?.find(x => x.name === s)?.drivers?.find(d => d.code === code)?.contrib;
+  body.append(vtable(['類股', '手動', '採用', '同日 ρ (t)', '隔日 ρ (t)', '判定', '今日貢獻'], secs.map(s => {
+    const p = calRows.find(x => x.sector === s) || {};
+    const u = used[s]?.w, ct = contrib(s);
+    const st = el('span', 'tag ' + (STATUS_TAG[p.status] || 'no'), p.status || '—');
+    return [s, manual[s] != null ? (manual[s] > 0 ? '+' : '') + manual[s] : (p.manual_w != null ? (p.manual_w > 0 ? '+' : '') + p.manual_w : '—'),
+      { t: u != null ? (u > 0 ? '+' : '') + u : '0', c: 'n ' + cls(u) }, { t: rtx(p.rho0, p.t0), c: 'n' }, { t: rtx(p.rho1, p.t1), c: 'n' }, st,
+      { t: ct != null ? sc(ct) : '—', c: 'n ' + cls(ct) }];
+  })));
+  const why = [...(c.links || []), ...(c.ref_links || [])].filter((l, i, a) => l.why && a.findIndex(x => x.sector === l.sector) === i);
+  if (why.length) body.append(el('p', 'note', why.map(l => `${l.sector}：${l.why}`).join('；')));
+  if (!CAL) body.append(el('p', 'note', '實測數字載入中或尚未校準。'));
+
+  // 受惠／受壓個股
+  if (c.stocks?.length) {
+    body.append(el('h3', null, '直接受惠／受壓個股（今日）'));
+    body.append(vtable(['個股', '角色', '今日', '實測', '原因'], c.stocks.map(x => {
+      const v = el('span'); if (x.verdict) v.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[x.verdict] || 'no'), x.verdict + (x.oos_same ? '・樣本外確認' : '')));
+      return [`${x.code} ${x.name || ''}`, el('span', 'mk ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'),
+        { t: pct(x.chg_pct), c: 'n ' + cls(x.chg_pct) }, v, x.why];
+    })));
+  }
+
+  // 國際對照／對應陸期
+  if (kind === 'commodity') {
+    const intl = Object.values(BOARD).filter(x => x.kind === 'intl' && (x.cn || []).includes(code));
+    if (intl.length) {
+      body.append(el('h3', null, '國際對照'));
+      body.append(vtable(['國際商品', '最新漲跌', '已收盤日線', '陸期跟隨 ρ (t)'], intl.map(x => {
+        const f = (CAL?.intl?.info?.[x.code]?.follow || []).find(y => y.cn === code);
+        return [x.name, { t: pct(x.chg), c: 'n ' + cls(x.chg) }, { t: x.settled_date ? `${pct(x.chg_settled)}（${x.settled_date.slice(5)}）` : '—', c: 'n ' + cls(x.chg_settled) },
+          { t: f ? rtx(f.rho, f.t) : '—', c: 'n' }];
+      })));
+      body.append(el('p', 'note', '「陸期跟隨」= 美國前一晚漲跌與當天陸期漲跌的相關，越高代表陸期主要是跟著國際價格走。'));
+    }
+  } else if (kind === 'intl' && c.cn?.length) {
+    body.append(el('h3', null, '對應陸期'));
+    body.append(vtable(['陸期', '今日漲跌', 'z', '跟隨 ρ (t)'], c.cn.map(k => {
+      const x = BOARD[k] || {}; const f = (CAL?.intl?.info?.[code]?.follow || []).find(y => y.cn === k);
+      return [x.name || k, { t: pct(x.chg), c: 'n ' + cls(x.chg) }, { t: sg2(x.z), c: 'n' }, { t: f ? rtx(f.rho, f.t) : '—', c: 'n' }];
+    })));
+  }
+  // 換月紀錄
+  const rolls = (CAL?.rolls?.[code] || []).slice(-3).reverse();
+  if (rolls.length) body.append(el('p', 'note', '最近換月：' + rolls.map(r => `${r.date} ${r.from}→${r.to}`).join('、')));
+
+  $('#modal').classList.add('on'); document.body.style.overflow = 'hidden';
+  $('#sheet').scrollTop = 0; $('#modal').scrollTop = 0; $('#d-close').focus();
+  try { history.replaceState(null, '', '#' + code); } catch (e) {}
+}
+function closeDetail() {
+  $('#modal').classList.remove('on'); document.body.style.overflow = '';
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+}
+$('#d-close').onclick = closeDetail;
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeDetail(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').classList.contains('on')) closeDetail(); });
+
 async function loadVerify() {
   try {
     const t = await (await fetch('data/track.json?t=' + Date.now())).json();
@@ -892,9 +1099,11 @@ async function load(key) {
     });
     sel.onchange = () => load(sel.value);
   } catch (e) { $('#hist').style.display = 'none'; }
-  load('');
+  await load('');
   loadStatus();
-  loadVerify();
+  await loadVerify();
+  const hc = decodeURIComponent(location.hash.slice(1));
+  if (hc && BOARD[hc]) openDetail(hc);
 })();
 </script>
 </body>

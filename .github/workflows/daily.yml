@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
   pages: write
   id-token: write
 
@@ -83,5 +84,6 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     permissions:
       contents: read
+      actions: read
       pages: write
       id-token: write

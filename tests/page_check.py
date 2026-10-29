@@ -46,6 +46,17 @@ def main():
               tiles: document.querySelectorAll('#board .tile').length,
               bars: document.querySelectorAll('#bars .bar-track').length,
               time: document.querySelector('#m-time').textContent })""")
+            # 詳細面板：點第一個商品格，要能打開且不破版
+            page.evaluate("document.querySelectorAll('details').forEach(d => d.open = false)")
+            page.click("#board .tile")
+            page.wait_for_timeout(1200)
+            r["detail"] = page.evaluate("""() => ({ on: document.querySelector('#modal').classList.contains('on'),
+              title: document.querySelector('#d-title')?.textContent, sw: document.documentElement.scrollWidth })""")
+            if not r["detail"]["on"] or not r["detail"]["title"]:
+                problems.append(f"{name}：點商品格沒有打開詳細面板")
+            if r["detail"]["sw"] > r["cw"] + 1:
+                problems.append(f"{name}：詳細面板超出畫面 {r['detail']['sw']}px")
+            page.keyboard.press("Escape")
             print(f"[{LABEL}{name} {w}px] {r}")
             if errs:
                 problems.append(f"{name}：JS 錯誤 {errs[:3]}")

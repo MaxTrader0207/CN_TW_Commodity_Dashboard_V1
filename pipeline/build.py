@@ -178,6 +178,7 @@ NORM = os.environ.get("NORM", "z")   # z：漲跌 ÷ 20 日波動度；limit：�
 
 
 PAST_RET = {}     # 各商品今天以前最近 19 個交易日的漲跌（多日動能用）
+KLINE_DUMP = {}   # 詳細面板用的日K摘要 → docs/data/klines.json
 MOMENTUM = {"adopt": False}   # 校準檔決定是否把 5 日動能加進即時計分
 
 
@@ -191,7 +192,7 @@ def live_sigmas(src):
     for _, code, _, limit, _ in COMMODITIES:
         try:
             rows = history.fetch_kline(src.s, code)
-            pairs = history.naive_pairs(rows[-60:])
+            pairs = history.naive_pairs(rows[-140:])
             for d, b in (roll.get(code) or {}).get("base", {}).items():
                 if d in pairs:
                     pairs[d] = (pairs[d][0], b)
@@ -200,6 +201,12 @@ def live_sigmas(src):
             ret, _ = history.pairs_returns(pairs, limit)
             sd = history.robust_sigma([ret[d] for d in sorted(ret)[-history.Z_WINDOW:]])
             PAST_RET[code] = [ret[d] for d in sorted(ret)[-19:]]
+            # 詳細面板用：最近 120 天 收盤、換月修正後漲跌、當日 z（以當天以前 20 日波動度計算）
+            rs = history.rolling_sigma(ret)
+            close = {r["d"]: float(r["c"]) for r in rows}
+            KLINE_DUMP[code] = [[d, close.get(d), round(ret[d], 2) if d in ret else None,
+                                 round(ret[d] / rs[d], 2) if d in ret and rs.get(d) else None]
+                                for d in sorted(close)[-120:] if d < today]
             if sd:
                 sig[code] = sd
                 ok += 1
@@ -999,6 +1006,10 @@ def run(now):
             update_score_history(payload, skip=cn["stale"] or not tw_open_today)
         except Exception as e:  # noqa: BLE001
             print("⚠ 分數歷史更新失敗：", e)
+    if KLINE_DUMP:
+        (DATA_DIR / "klines.json").write_text(json.dumps(
+            {"generated_at": payload["generated_at"], "fields": ["日期", "收盤", "漲跌%", "z"], "data": KLINE_DUMP},
+            ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     write_outputs(payload)
     print("多頭：", bull, "空頭：", bear)
     return session

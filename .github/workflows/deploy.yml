@@ -5,12 +5,12 @@ name: Deploy pages
 on:
   push:
     branches: [main]
-    paths: ["docs/**", ".github/workflows/deploy.yml"]
   workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -44,6 +44,19 @@ jobs:
             gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow \
               || echo "::warning title=Pages 來源::無法自動切換，請到 Settings → Pages → Source 選 GitHub Actions"
           fi
+      - name: Wait for legacy Pages build
+        # Pages 來源還是「從分支建置」時，push main 會另外觸發 GitHub 內建的 pages build（不含 data 分支資料）；
+        # 等它結束後再部署，確保最後上線的是完整版本
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then sleep 30; fi
+          for i in $(seq 1 40); do
+            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?per_page=20" \
+                 --jq '[.workflow_runs[] | select(.name == "pages build and deployment" and .status != "completed")] | length' 2>/dev/null || echo 0)
+            [ "$n" = "0" ] && exit 0
+            echo "等待 GitHub 內建 Pages 建置結束（$n 個進行中）"; sleep 10
+          done
       - uses: actions/configure-pages@v5
       - name: Check site
         run: |
