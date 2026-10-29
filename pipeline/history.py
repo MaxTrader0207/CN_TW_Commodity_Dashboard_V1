@@ -9,7 +9,7 @@ import csv
 import json
 import re
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from mapping import INDUSTRY_CODE
@@ -356,3 +356,48 @@ def pairs_returns(pairs, limit):
             continue
         out[d] = r
     return out, dropped
+
+
+# ───────────── Yahoo 日線（國際期貨、個股）─────────────
+YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{}?range={}&interval=1d"
+
+
+def fetch_yahoo(session, symbol, rng="2y"):
+    """回傳 ({交易所當地日期: 收盤}, meta)。優先用還原權息收盤（個股），期貨則用收盤。"""
+    r = session.get(YAHOO.format(symbol, rng), timeout=25)
+    res = ((r.json().get("chart") or {}).get("result") or [None])[0]
+    if not res:
+        raise ValueError(f"{symbol} 無資料（HTTP {r.status_code}）")
+    meta = res.get("meta") or {}
+    off = int(meta.get("gmtoffset") or 0)
+    ts = res.get("timestamp") or []
+    ind = res.get("indicators") or {}
+    closes = ((ind.get("adjclose") or [{}])[0].get("adjclose")) or (ind.get("quote") or [{}])[0].get("close") or []
+    out = {}
+    for t, c in zip(ts, closes):
+        if c:
+            out[datetime.utcfromtimestamp(t + off).date().isoformat()] = float(c)
+    return out, meta
+
+
+def intl_returns(closes, cap=15.0):
+    """{美國日期: 漲跌%}；超過 cap 的視為連續月換約跳空剔除（Yahoo 連續月未做換月修正）"""
+    ds = sorted(closes)
+    out = {}
+    for p, c in zip(ds, ds[1:]):
+        if closes[p]:
+            r = (closes[c] / closes[p] - 1) * 100
+            if abs(r) <= cap:
+                out[c] = r
+    return out
+
+
+def shift_to_tw(ret, tw_dates):
+    """美國 D 日的漲跌 → 對齊到 D 之後第一個台股交易日（同一台股日有多個美國日時加總）"""
+    import bisect
+    out = {}
+    for d, r in ret.items():
+        i = bisect.bisect_right(tw_dates, d)
+        if i < len(tw_dates) and (date.fromisoformat(tw_dates[i]) - date.fromisoformat(d)).days <= 5:
+            out[tw_dates[i]] = out.get(tw_dates[i], 0) + r
+    return out

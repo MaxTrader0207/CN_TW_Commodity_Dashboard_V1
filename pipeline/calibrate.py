@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import history as H  # noqa: E402
 from build import LIMIT_BONUS, TPE, UA, norm  # noqa: E402
-from mapping import BENEFICIARIES, COMMODITIES, SPREADS  # noqa: E402
+from mapping import BENEFICIARIES, COMMODITIES, INTL, SPREADS  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "data" / "calibration.json"
 
@@ -528,6 +528,41 @@ def main():
             rows.append({"code": code, "role": role, "why": why, **rnd(st), "verdict": stock_verdict(st, role),
                          "oos": oos})
         stocks[item_code] = rows
+    # 國際商品：美國 D 日漲跌對齊到 D 之後第一個台股交易日（台股開盤前已知 → 檢驗的是預測力）
+    intl_rows, intl_info, intl_series = [], {}, {}
+    for code, sym, name, cn, links in INTL:
+        try:
+            closes, meta = H.fetch_yahoo(s, sym)
+            ret = {d: v for d, v in H.intl_returns(closes).items() if d >= start.isoformat()}
+            sh = H.shift_to_tw(ret, tw_dates)
+            intl_series[code] = sh
+            # 陸期是否跟著前一晚的國際價格走（同一個交易日的陸期漲跌）
+            follow = []
+            for c in cn:
+                xs = [sh[d] for d in sh if d in series.get(c, {})]
+                ys = [series[c][d] for d in sh if d in series.get(c, {})]
+                r, t = corr(xs, ys)
+                follow.append({"cn": c, "rho": None if r is None else round(r, 3), "t": None if t is None else round(t, 2),
+                               "n": len(xs)})
+            intl_info[code] = {"symbol": sym, "days": len(ret), "follow": follow}
+            sret_by = {sct: {d: row[sct] for d, row in excess.items() if sct in row} for sct, _, _ in links}
+            for sector, w, why in links:
+                st = pair_stats(sh, sret_by.get(sector, {}), tw_dates)
+                cw, status = judge(st, w)
+                intl_rows.append({"ex": "國際", "code": code, "name": name, "sector": sector, "manual_w": w, "why": why,
+                                  **rnd(st), "cal_w": cw, "status": status})
+        except Exception as e:  # noqa: BLE001
+            intl_info[code] = {"symbol": sym, "error": str(e)[:120]}
+            print(f"  ⚠ 國際 {sym} 失敗：{e}")
+        import time as _tm
+        _tm.sleep(0.3)
+    print(f"國際商品：{sum(1 for v in intl_info.values() if 'days' in v)}/{len(INTL)}")
+    for r_ in sorted(intl_rows, key=lambda r_: -abs(r_["t0"] or 0)):
+        print(f"  [國際] {r_['name']:<10}→{r_['sector']:<6} 隔夜→台股 ρ={r_['rho0']} t={r_['t0']} {r_['status']}")
+    for code, v in intl_info.items():
+        for f in v.get("follow", []):
+            print(f"  [陸期跟隨] {code}→{f['cn']} ρ={f['rho']} t={f['t']} n={f['n']}")
+
     # 保存本次輸入（陸期日K、個股殘差報酬），方便本機重現與除錯
     import gzip
     inp = {"klines": klines, "stock_res": closes_cache,
@@ -560,6 +595,8 @@ def main():
         "spreads": {code: {"name": name, "legs": legs, "sigma": sp_sigma.get(code), "days": len(spr_ret[code])}
                     for code, name, legs, _ in SPREADS},
         "stocks": stocks, "stock_meta": stock_meta,
+        "intl": {"pairs": intl_rows, "info": intl_info,
+                 "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "kline": kline_info,
         "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},

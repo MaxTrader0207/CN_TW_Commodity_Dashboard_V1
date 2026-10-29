@@ -17,11 +17,11 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mapping import BENEFICIARIES, COMMODITIES, INDUSTRY_CODE, SPREADS  # noqa: E402
+from mapping import BENEFICIARIES, COMMODITIES, INDUSTRY_CODE, INTL, SPREADS  # noqa: E402
 import history  # noqa: E402
 import track  # noqa: E402
 
@@ -184,7 +184,7 @@ def commodity_board(src, links_by_code):
             err = str(e)[:160]
     ds = sorted({q["date"] for q in quotes.values() if q.get("date")})
     n, total = len(quotes), len(symbols)
-    record("sina", "新浪財經 陸期主力連續（上期所／大商所／鄭商所）", SINA_URL + "nf_XX0",
+    record("sina", "新浪財經 陸期主力連續（上期所／大商所／鄭商所／廣期所）", SINA_URL + "nf_XX0",
            "商品漲跌 → 類股多空分數", "ok" if n == total else "warn" if n else "fail",
            n, ds[-1] if ds else None, err or ("" if n == total else f"{total - n} 個商品缺報價"))
     board = []
@@ -233,6 +233,188 @@ def spread_board(board, links_by_code, cal):
         out.append(item)
     ok = sum(i["status"] == "ok" for i in out)
     print(f"價差：{ok}/{len(out)} 個可計算" + ("" if sig_tab else "（尚無校準 σ，暫不計分）"))
+    return out
+
+
+def intl_board(session, board, cal):
+    """國際期貨（Yahoo）：最新價 vs 前一個交易日收盤；與對應陸期比對方向（同向／背離）。只做交叉確認，不計分。"""
+    status = {(p["code"], p["sector"]): p for p in ((cal.get("intl") or {}).get("pairs") or [])}
+    by_code = {c["code"]: c for c in board}
+    out, ok, err = [], 0, ""
+    for code, sym, name, cn, links in INTL:
+        item = {"ex": "國際", "code": code, "name": name, "kind": "intl", "symbol": sym, "links": [],
+                "cn": cn, "ref_links": [{"sector": sct, "w": w, "why": why,
+                                         "status": (status.get((code, sct)) or {}).get("status"),
+                                         "rho": (status.get((code, sct)) or {}).get("rho0"),
+                                         "t": (status.get((code, sct)) or {}).get("t0")} for sct, w, why in links]}
+        try:
+            closes, meta = history.fetch_yahoo(session, sym, "5d")
+            ds = sorted(closes)
+            if len(ds) < 2:
+                raise ValueError("資料不足")
+            last, prev = closes[ds[-1]], closes[ds[-2]]
+            chg = round((last / prev - 1) * 100, 2)
+            asof = meta.get("regularMarketTime")
+            item.update(status="ok", last=round(last, 3), chg=chg, bar_date=ds[-1],
+                        asof=datetime.fromtimestamp(asof, TPE).isoformat(timespec="minutes") if asof else None,
+                        signal=0, at_limit=None)
+            ok += 1
+            for c in cn:   # 交叉確認：國際與陸期方向
+                ci = by_code.get(c)
+                if ci and ci.get("chg") is not None and chg:
+                    ci.setdefault("intl", []).append({"code": code, "name": name, "chg": chg,
+                                                      "agree": (chg > 0) == (ci["chg"] > 0) if ci["chg"] else None})
+        except Exception as e:  # noqa: BLE001
+            item.update(status="missing", chg=None, signal=0, at_limit=None)
+            err = str(e)[:120]
+        out.append(item)
+        time.sleep(0.2)
+    record("yahoo_intl", "Yahoo 國際期貨（交叉確認）", history.YAHOO.format("XX=F", "5d"), "國際價格 vs 陸期方向",
+           "ok" if ok == len(INTL) else "warn" if ok else "fail", ok, None,
+           err if ok < len(INTL) else "")
+    return out
+
+
+# ───────────────────────── 籌碼面 ─────────────────────────
+T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86?date={}&selectType=ALLBUT0999&response=json"
+TPEX_INSTI_URL = "https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=AL&date={}&response=json"
+MARGN_URL = "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={}&selectType=ALL&response=json"
+TPEX_MARGIN_URL = "https://www.tpex.org.tw/www/zh-tw/margin/balance?date={}&response=json"
+MI_INDEX_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date={}&type=ALLBUT0999&response=json"
+VOL_HIST = ROOT / "pipeline" / "cache" / "vol_hist.json"
+
+
+def _lots(x):
+    v = num(x)
+    return None if v is None else round(v / 1000)
+
+
+def _fetch_json(src, url):
+    r = src._get(url)
+    try:
+        return r.json()
+    except ValueError:
+        raise ValueError(f"非 JSON：{r.text[:80]!r}")
+
+
+def load_insti(src, d):
+    """三大法人買賣超（張）：{代號: {f 外資, t 投信, d 自營, sum 合計}}"""
+    out = {}
+    j = _fetch_json(src, T86_URL.format(d.replace("-", "")))
+    if j.get("stat") != "OK":
+        raise ValueError(f"證交所 T86：{j.get('stat')}")
+    f = {k: i for i, k in enumerate(j["fields"])}
+    for r in j["data"]:
+        fx = (_lots(r[f["外陸資買賣超股數(不含外資自營商)"]]) or 0) + (_lots(r[f["外資自營商買賣超股數"]]) or 0)
+        out[r[0].strip()] = {"f": fx, "t": _lots(r[f["投信買賣超股數"]]), "d": _lots(r[f["自營商買賣超股數"]]),
+                             "sum": _lots(r[f["三大法人買賣超股數"]])}
+    n_twse = len(out)
+    j = _fetch_json(src, TPEX_INSTI_URL.format(d.replace("-", "%2F")))
+    rows = (j.get("tables") or [{}])[0].get("data") or []
+    for r in rows:
+        out[r[0].strip()] = {"f": _lots(r[10]), "t": _lots(r[13]), "d": _lots(r[22]), "sum": _lots(r[23])}
+    return out, n_twse, len(rows)
+
+
+def load_margin(src, d):
+    """融資、融券餘額增減（張）：{代號: {mg 融資增減, st 融券增減, mgb 融資餘額, stb 融券餘額}}"""
+    out = {}
+    j = _fetch_json(src, MARGN_URL.format(d.replace("-", "")))
+    for tb in j.get("tables", []):
+        if "融資融券彙總" not in (tb.get("title") or ""):
+            continue
+        for r in tb.get("data", []):
+            a, b, c, e = num(r[5]), num(r[6]), num(r[11]), num(r[12])
+            if b is not None:
+                out[r[0].strip()] = {"mg": None if a is None else round(b - a), "st": None if c is None or e is None else round(e - c),
+                                     "mgb": round(b), "stb": None if e is None else round(e)}
+    n_twse = len(out)
+    j = _fetch_json(src, TPEX_MARGIN_URL.format(d.replace("-", "%2F")))
+    rows = (j.get("tables") or [{}])[0].get("data") or []
+    for r in rows:
+        a, b, c, e = num(r[2]), num(r[6]), num(r[10]), num(r[14])
+        if b is not None:
+            out[r[0].strip()] = {"mg": None if a is None else round(b - a), "st": None if c is None or e is None else round(e - c),
+                                 "mgb": round(b), "stb": None if e is None else round(e)}
+    return out, n_twse, len(rows)
+
+
+def update_vol_hist(src, stocks, industry, tw_date, keep=10):
+    """成交量歷史（張）：今天的寫入快取；上市股缺少的前幾個交易日用證交所 MI_INDEX 回補（上櫃無歷史端點，逐日累積）"""
+    hist = json.loads(VOL_HIST.read_text(encoding="utf-8")) if VOL_HIST.exists() else {}
+    hist[tw_date] = {c: s["lots"] for c, s in stocks.items() if c in industry}
+    # 回補前 5 個交易日（只回補上市）
+    d = date.fromisoformat(tw_date)
+    need, back = [], d
+    while len(need) < 5:
+        back -= timedelta(days=1)
+        if history.is_tw_trading_day(back, HOLIDAYS):
+            need.append(back.isoformat())
+        if (d - back).days > 20:
+            break
+    filled = 0
+    for k in need:
+        if k in hist and len(hist[k]) > 500:
+            continue
+        try:
+            j = _fetch_json(src, MI_INDEX_URL.format(k.replace("-", "")))
+            for tb in j.get("tables", []):
+                if "每日收盤行情" not in (tb.get("title") or ""):
+                    continue
+                f = {x: i for i, x in enumerate(tb["fields"])}
+                row = hist.setdefault(k, {})
+                for r in tb["data"]:
+                    c = r[f["證券代號"]].strip()
+                    if c in industry:
+                        row[c] = _lots(r[f["成交股數"]])
+                filled += 1
+            time.sleep(1.0)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠ 成交量回補 {k} 失敗：{e}")
+    hist = {k: hist[k] for k in sorted(hist)[-keep:]}
+    VOL_HIST.parent.mkdir(parents=True, exist_ok=True)
+    VOL_HIST.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return hist, filled
+
+
+def volume_ratio(hist, code, tw_date):
+    prev = [hist[k].get(code) for k in sorted(hist) if k < tw_date][-5:]
+    prev = [v for v in prev if v]
+    today = (hist.get(tw_date) or {}).get(code)
+    if len(prev) < 3 or not today:
+        return None
+    return round(today / (sum(prev) / len(prev)), 2)
+
+
+def build_chips(src, stocks, industry, tw_date, codes):
+    """顯示中的個股：法人買賣超、量比、融資券增減"""
+    insti, margin, hist = {}, {}, {}
+    try:
+        insti, n1, n2 = load_insti(src, tw_date)
+        record("insti", "三大法人買賣超（證交所 T86＋櫃買）", T86_URL.format("YYYYMMDD"), "個股籌碼：外資、投信、自營",
+               "ok" if n1 and n2 else "warn", len(insti), tw_date, "" if n1 and n2 else f"上市 {n1}／上櫃 {n2} 筆")
+    except Exception as e:  # noqa: BLE001
+        record("insti", "三大法人買賣超（證交所 T86＋櫃買）", T86_URL.format("YYYYMMDD"), "個股籌碼：外資、投信、自營",
+               "fail", note=str(e)[:160])
+    try:
+        margin, n1, n2 = load_margin(src, tw_date)
+        record("margin", "融資融券（證交所＋櫃買）", MARGN_URL.format("YYYYMMDD"), "個股融資、融券增減",
+               "ok" if n1 and n2 else "warn", len(margin), tw_date, "" if n1 and n2 else f"上市 {n1}／上櫃 {n2} 筆")
+    except Exception as e:  # noqa: BLE001
+        record("margin", "融資融券（證交所＋櫃買）", MARGN_URL.format("YYYYMMDD"), "個股融資、融券增減",
+               "fail", note=str(e)[:160])
+    try:
+        hist, filled = update_vol_hist(src, stocks, industry, tw_date)
+        record("volhist", "成交量歷史（量比用）", "pipeline/cache/vol_hist.json", "量比 = 今日量 ÷ 前 5 日均量",
+               "ok", len(hist), tw_date, f"本次回補 {filled} 天" if filled else "")
+    except Exception as e:  # noqa: BLE001
+        record("volhist", "成交量歷史（量比用）", "pipeline/cache/vol_hist.json", "量比", "fail", note=str(e)[:160])
+    out = {}
+    for c in codes:
+        i, m = insti.get(c) or {}, margin.get(c) or {}
+        out[c] = {"inst": i.get("sum"), "f": i.get("f"), "t": i.get("t"), "d": i.get("d"),
+                  "vr": volume_ratio(hist, c, tw_date) if hist else None,
+                  "mg": m.get("mg"), "st": m.get("st"), "mgb": m.get("mgb"), "stb": m.get("stb")}
     return out
 
 
@@ -609,8 +791,17 @@ def run(now):
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
     board = board + spread_board(board, links_by_code, cal)
+    if not a.fixtures:
+        board = board + intl_board(src.s, board, cal)
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
+    chips = {}
+    if not a.fixtures and tw_date:
+        shown = {x["code"] for sc in sectors for x in sc["strong"] + sc["weak"]}
+        shown |= {x["code"] for c in board for x in c.get("stocks", [])}
+        chips = build_chips(src, stocks, industry, tw_date, sorted(shown))
+        print(f"籌碼：{len(chips)} 檔（法人 {sum(1 for v in chips.values() if v['inst'] is not None)}、"
+              f"量比 {sum(1 for v in chips.values() if v['vr'] is not None)}、融資券 {sum(1 for v in chips.values() if v['mg'] is not None)}）")
     payload = {
         "generated_at": now.isoformat(timespec="minutes"),
         "run_date": now.strftime("%Y-%m-%d"),
@@ -625,7 +816,7 @@ def run(now):
         "params": {"min_lots": MIN_LOTS, "limit_bonus": LIMIT_BONUS},
         "sources": SOURCES,
         "run_url": os.environ.get("RUN_URL"),
-        "commodities": board, "sectors": sectors, "bull": bull, "bear": bear,
+        "commodities": board, "sectors": sectors, "bull": bull, "bear": bear, "chips": chips,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號

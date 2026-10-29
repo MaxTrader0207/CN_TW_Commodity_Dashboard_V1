@@ -109,13 +109,18 @@ summary{cursor:pointer;font-weight:600}
 .mk{font-size:10.5px;padding:0 4px;border-radius:3px;margin-left:4px;border:1px solid currentColor;vertical-align:1px}
 .mk.p{color:var(--up)} .mk.c{color:var(--dn)}
 .tile.spr .t2 small{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px}
+.lists table td.ch{font-size:11.5px}
+.lists{overflow-x:auto}
+.xb{font-size:10.5px;margin-left:4px;padding:0 4px;border-radius:3px;border:1px solid currentColor}
+.xb.ag{color:var(--muted)} .xb.dv{color:var(--accent)}
+.tile.intl .t3{white-space:normal}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>陸期 × 台股 多空儀表板<small>上期所／大商所／鄭商所 商品期貨 → 三竹類股 關聯訊號</small></h1>
+    <h1>陸期 × 台股 多空儀表板<small>上期所／大商所／鄭商所／廣期所 商品期貨 → 三竹類股 關聯訊號</small></h1>
     <div class="meta">
       <span class="pill" id="m-session">—</span>
       <span class="pill" id="m-time">—</span>
@@ -169,6 +174,11 @@ summary{cursor:pointer;font-weight:600}
       <div style="overflow-x:auto"><table class="vt" id="cal"></table></div>
     </details>
     <details style="margin-top:12px">
+      <summary id="intl-summary">國際商品實測（隔夜美盤 → 台股）</summary>
+      <p class="note" id="intl-note"></p>
+      <div style="overflow-x:auto"><table class="vt" id="intl"></table></div>
+    </details>
+    <details style="margin-top:12px">
       <summary id="stk-summary">受惠／受壓個股實測</summary>
       <p class="note" id="stk-note"></p>
       <div style="overflow-x:auto"><table class="vt" id="stk"></table></div>
@@ -218,6 +228,20 @@ function hoverTip(node, text) {
 }
 
 let BOARD = {};   // code → 商品／價差（含受惠股）
+let CHIPS = {};   // 代號 → 籌碼（法人、量比、融資券）
+const lots = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toLocaleString();
+function chipTip(code) {
+  const c = CHIPS[code]; if (!c) return '';
+  return `\n三大法人 ${lots(c.inst)} 張（外資 ${lots(c.f)}、投信 ${lots(c.t)}、自營 ${lots(c.d)}）` +
+    `\n量比 ${c.vr ?? '—'}（今日量 ÷ 前 5 日均量）` +
+    `\n融資 ${lots(c.mg)}（餘 ${c.mgb?.toLocaleString() ?? '—'}）　融券 ${lots(c.st)}（餘 ${c.stb?.toLocaleString() ?? '—'}）`;
+}
+function chipCells(tr, code) {
+  const c = CHIPS[code] || {};
+  const a = tr.insertCell(); a.className = 'n ch ' + cls(c.inst); a.textContent = c.inst == null ? '—' : lots(c.inst);
+  const v = tr.insertCell(); v.className = 'n ch'; v.textContent = c.vr == null ? '—' : c.vr + 'x';
+  if (c.vr >= 2) v.style.color = 'var(--accent)';
+}
 
 function benMap(sector) {
   // 這個類股的主要驅動商品 → 受惠／受壓個股（股票代號 → 角色與來源）
@@ -231,6 +255,9 @@ function benMap(sector) {
 function stockTable(rows, ben) {
   const t = el('table');
   if (!rows.length) { const tr = t.insertRow(); const td = tr.insertCell(); td.className = 'flat'; td.textContent = '無資料'; return t; }
+  if (Object.keys(CHIPS).length) {
+    const h = t.insertRow(); ['', '', '收盤', '漲跌', '法人(張)', '量比'].forEach(x => { const c = el('th', null, x); c.style.cssText = 'font-size:10.5px;color:var(--muted);font-weight:500;text-align:right'; h.append(c); });
+  }
   rows.forEach(s => {
     const tr = t.insertRow();
     tr.insertCell().textContent = s.code;
@@ -242,6 +269,7 @@ function stockTable(rows, ben) {
     }
     const c = tr.insertCell(); c.className = 'n'; c.textContent = s.close;
     const p = tr.insertCell(); p.className = 'n ' + cls(s.chg_pct); p.textContent = pct(s.chg_pct);
+    if (Object.keys(CHIPS).length) { chipCells(tr, s.code); hoverTip(tr, `${s.code} ${s.name}${b ? `\n${b.via}：${b.why}` : ''}${chipTip(s.code)}`); }
   });
   return t;
 }
@@ -287,8 +315,9 @@ function sectorCard(s, i, side) {
       if (x.verdict) v.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[x.verdict] || 'no'),
         '實測' + x.verdict + (x.oos_same ? '・樣本外確認' : '')));
       const p = tr.insertCell(); p.className = 'n ' + cls(x.chg_pct); p.textContent = pct(x.chg_pct);
+      if (Object.keys(CHIPS).length) chipCells(tr, x.code);
       hoverTip(tr, `${x.why}${x.rho0 != null ? `\n歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}` : ''}` +
-        (x.oos_same ? '\n前 60% 與後 40% 期間都顯著、方向一致' : '') + (x.oos_next ? '\n隔日關聯在測試期仍成立' : ''));
+        (x.oos_same ? '\n前 60% 與後 40% 期間都顯著、方向一致' : '') + (x.oos_next ? '\n隔日關聯在測試期仍成立' : '') + chipTip(x.code));
     });
     box.append(t);
     card.append(box);
@@ -319,6 +348,7 @@ function render(d) {
     (d.calibration?.generated_at ? `（校準 ${d.calibration.generated_at.slice(0, 10)}）` : '');
   const byName = Object.fromEntries(d.sectors.map(s => [s.name, s]));
   BOARD = Object.fromEntries(d.commodities.map(c => [c.code, c]));
+  CHIPS = d.chips || {};
 
   for (const side of ['bull', 'bear']) {
     const box = $('#' + side); box.replaceChildren();
@@ -342,13 +372,15 @@ function render(d) {
   });
 
   const board = $('#board'); board.replaceChildren();
-  for (const ex of ['價差', '上期所', '大商所', '鄭商所']) {
+  for (const ex of ['價差', '上期所', '大商所', '鄭商所', '廣期所', '國際']) {
     if (!d.commodities.some(c => c.ex === ex)) continue;
     board.append(el('div', 'ex-h', ex === '價差' ? '價差（加工利潤）：今日變化佔產品價格 %，括號為幾個標準差'
+      : ex === '國際' ? '國際對照（Yahoo，美國期貨最新價 vs 前一交易日；只做交叉確認，不計分）'
       : ex + (ex === '上期所' ? '（含上海國際能源中心）' : '')));
     const g = el('div', 'board');
     d.commodities.filter(c => c.ex === ex).sort((a, b) => (b.chg ?? -99) - (a.chg ?? -99)).forEach(c => {
       if (c.kind === 'spread') return g.append(spreadTile(c));
+      if (c.kind === 'intl') return g.append(intlTile(c));
       const t = el('div', 'tile');
       const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / c.limit);
       if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
@@ -356,9 +388,14 @@ function render(d) {
       const t1 = el('div', 't1'); t1.append(el('b', null, c.name), el('span', null, c.code));
       const lim = c.at_limit === 'up' ? ' 漲停' : c.at_limit === 'down' ? ' 跌停' : '';
       if (c.rolled) t1.append(el('span', 'tag lag', '換月'));
+      if (c.intl?.length) {
+        const ag = c.intl.filter(x => x.agree === true).length, dv = c.intl.filter(x => x.agree === false).length;
+        if (ag || dv) t1.append(el('span', 'xb ' + (dv > ag ? 'dv' : 'ag'), dv > ag ? '國際背離' : '國際同向'));
+      }
       t.append(t1, el('div', 't2 ' + cls(c.chg), pct(c.chg) + lim),
         el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ')));
-      hoverTip(t, c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n'));
+      hoverTip(t, c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n') +
+        (c.intl?.length ? '\n\n國際對照：' + c.intl.map(x => `${x.name} ${pct(x.chg)}`).join('、') : ''));
       g.append(t);
     });
     board.append(g);
@@ -366,7 +403,7 @@ function render(d) {
 
   const map = $('#map'); map.replaceChildren();
   const hr = map.insertRow(); ['交易所', '商品', '目前採用（權重）', '邏輯'].forEach(x => { const th = el('th', null, x); hr.append(th); });
-  d.commodities.forEach(c => {
+  d.commodities.filter(c => c.kind !== 'intl').forEach(c => {
     const tr = map.insertRow();
     tr.insertCell().textContent = c.ex;
     tr.insertCell().textContent = `${c.name} ${c.code}`;
@@ -391,6 +428,20 @@ function kpiBox(k, v, s, vcls) {
   const b = el('div', 'kpi'); b.append(el('div', 'k', k), el('div', 'v ' + (vcls || ''), v));
   if (s) b.append(el('div', 's', s));
   return b;
+}
+
+function intlTile(c) {
+  const t = el('div', 'tile intl');
+  const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / 4);
+  if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
+  const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
+  const cn = (c.cn || []).map(x => BOARD[x]).filter(Boolean);
+  t.append(t1, el('div', 't2 ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg)),
+    el('div', 't3', cn.length ? '陸期 ' + cn.map(x => `${x.name} ${pct(x.chg)}`).join(' ') : ''));
+  hoverTip(t, `${c.symbol}　${c.bar_date ? '美國交易日 ' + c.bar_date : ''}${c.asof ? '（' + fmtTime(c.asof) + '）' : ''}\n` +
+    (c.ref_links || []).map(l => `${l.sector}：${l.why}${l.status ? `｜實測 ${l.status}` : ''}`).join('\n') +
+    '\n只做交叉確認，不計入類股分數');
+  return t;
 }
 
 function spreadTile(c) {
@@ -533,6 +584,27 @@ function renderStocks(c) {
   });
 }
 
+function renderIntl(c) {
+  const it = c.intl; if (!it) return;
+  $('#intl-note').textContent = '美國 D 日的漲跌，對到 D 之後第一個台股交易日的類股超額報酬（台股開盤前就已知，所以這裡的相關就是預測力）。' +
+    '「陸期跟隨」= 同一天的陸期是否跟著前一晚的國際價格走。Yahoo 連續月未做換月修正，單日超過 ±15% 的換約跳空已剔除。';
+  const t = $('#intl'); t.replaceChildren();
+  const h = t.insertRow(); ['國際商品', '類股', '手動', '隔夜→台股 ρ (t)', 'n', '判定', '陸期跟隨 ρ (t)'].forEach(x => h.append(el('th', null, x)));
+  const rt = (r, tv) => r == null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(2)} (${(tv ?? 0).toFixed(1)})`;
+  it.pairs.slice().sort((a, b) => Math.abs(b.t0 || 0) - Math.abs(a.t0 || 0)).forEach(p => {
+    const tr = t.insertRow();
+    tr.insertCell().textContent = p.name;
+    tr.insertCell().textContent = p.sector;
+    const m = tr.insertCell(); m.className = 'n'; m.textContent = (p.manual_w > 0 ? '+' : '') + p.manual_w;
+    const a = tr.insertCell(); a.className = 'n ' + (Math.abs(p.t0 || 0) >= 2 ? cls(p.rho0) : 'flat'); a.textContent = rt(p.rho0, p.t0);
+    const n = tr.insertCell(); n.className = 'n'; n.textContent = p.n;
+    tr.insertCell().append(el('span', 'tag ' + (STATUS_TAG[p.status] || ''), p.status));
+    const f = (it.info[p.code]?.follow || []).map(x => `${BOARD[x.cn]?.name || x.cn} ${rt(x.rho, x.t)}`).join('、');
+    tr.insertCell().textContent = f || '—';
+    hoverTip(tr, p.why);
+  });
+}
+
 async function loadVerify() {
   try {
     const t = await (await fetch('data/track.json?t=' + Date.now())).json();
@@ -542,6 +614,7 @@ async function loadVerify() {
     const c = await (await fetch('data/calibration.json?t=' + Date.now())).json();
     renderCalibration(c);
     renderStocks(c);
+    renderIntl(c);
   } catch (e) {
     $('#bt-hint').textContent = '尚未完成第一次校準（每週六自動執行）。';
     $('#cal-summary').textContent = '關聯實測表（尚未校準）';
