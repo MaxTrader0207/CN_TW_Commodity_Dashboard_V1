@@ -401,3 +401,61 @@ def shift_to_tw(ret, tw_dates):
         if i < len(tw_dates) and (date.fromisoformat(tw_dates[i]) - date.fromisoformat(d)).days <= 5:
             out[tw_dates[i]] = out.get(tw_dates[i], 0) + r
     return out
+
+
+# ───────────── 波動度標準化（z 分數）─────────────
+Z_WINDOW = 20      # 用過去 20 個交易日估計波動度
+Z_FULL = 2.0       # 2 個標準差 = 訊號滿格
+
+
+def robust_sigma(xs):
+    """穩健標準差：中位數絕對離差 × 1.4826，偶爾一天的極端值（如未修正的換月）不會把波動度撐大"""
+    xs = sorted(x for x in xs if x is not None)
+    n = len(xs)
+    if n < 10:
+        return None
+    med = xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+    dev = sorted(abs(x - med) for x in xs)
+    mad = dev[n // 2] if n % 2 else (dev[n // 2 - 1] + dev[n // 2]) / 2
+    if mad > 0:
+        return mad * 1.4826
+    m = sum(xs) / n
+    sd = (sum((x - m) ** 2 for x in xs) / (n - 1)) ** 0.5
+    return sd or None
+
+
+def rolling_sigma(ret, window=Z_WINDOW):
+    """{d: 以 d 之前（不含 d）最近 window 筆漲跌估計的波動度}：回測時不偷看當天"""
+    ds = sorted(ret)
+    out = {}
+    for i, d in enumerate(ds):
+        if i >= 10:
+            sd = robust_sigma(ret[x] for x in ds[max(0, i - window):i])
+            if sd:
+                out[d] = sd
+    return out
+
+
+def z_signal(r, sd, limit=None, bonus=False):
+    """z 分數訊號：漲跌 ÷ 波動度，2σ 滿格（±1）；觸及漲跌停仍 ×LIMIT_BONUS"""
+    sig = max(-1.0, min(1.0, r / (Z_FULL * sd)))
+    if bonus and limit and abs(r) >= limit - 0.1:
+        sig *= 1.5
+    return sig
+
+
+def spread_returns(pairs_by, legs, limits):
+    """價差每日變化（佔產品前一日結算價的 %）。pairs_by[code] = {date: (收盤, 同合約前一日結算)}；
+    任一腿漲跌超過異常門檻的日子剔除。"""
+    by = {}
+    for code, _ in legs:
+        m = pairs_by.get(code)
+        if not m:
+            return {}
+        by[code] = {d: (c, b) for d, (c, b) in m.items() if b > 0 and abs((c / b - 1) * 100) <= anomaly_cap(limits[code])}
+    prod = legs[0][0]
+    out = {}
+    for d in set.intersection(*(set(m) for m in by.values())):
+        delta = sum(coef * (by[c][d][0] - by[c][d][1]) for c, coef in legs)
+        out[d] = delta / by[prod][d][1] * 100
+    return out

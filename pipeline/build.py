@@ -174,7 +174,38 @@ def load_links():
         return manual, "手動", None, {}
 
 
-def commodity_board(src, links_by_code):
+NORM = os.environ.get("NORM", "z")   # z：漲跌 ÷ 20 日波動度；limit：漲跌 ÷ 漲跌停幅度（舊）
+
+
+def live_sigmas(src):
+    """抓各商品日K，用最近 20 個交易日（不含今天）的漲跌估計穩健波動度；同時回傳每日 (收盤, 前結算) 給價差用。
+    換月日用快取的換月對照修正；快取之後才發生的換月由穩健估計吸收。"""
+    roll = json.loads(history.ROLL_JSON.read_text(encoding="utf-8")) if history.ROLL_JSON.exists() else {}
+    sig, pairs_by, ok, err = {}, {}, 0, ""
+    today = datetime.now(TPE).date().isoformat()
+    for _, code, _, limit, _ in COMMODITIES:
+        try:
+            rows = history.fetch_kline(src.s, code)
+            pairs = history.naive_pairs(rows[-60:])
+            for d, b in (roll.get(code) or {}).get("base", {}).items():
+                if d in pairs:
+                    pairs[d] = (pairs[d][0], b)
+            pairs = {d: v for d, v in pairs.items() if d < today}
+            pairs_by[code] = pairs
+            ret, _ = history.pairs_returns(pairs, limit)
+            sd = history.robust_sigma([ret[d] for d in sorted(ret)[-history.Z_WINDOW:]])
+            if sd:
+                sig[code] = sd
+                ok += 1
+        except Exception as e:  # noqa: BLE001
+            err = str(e)[:120]
+        time.sleep(0.1)
+    record("sina_kline", "新浪財經 陸期日K（20 日波動度）", history.KLINE_URL.format("XX"), "漲跌 ÷ 波動度（z 分數）",
+           "ok" if ok == len(COMMODITIES) else "warn" if ok else "fail", ok, None, err if ok < len(COMMODITIES) else "")
+    return sig, pairs_by
+
+
+def commodity_board(src, links_by_code, sigmas=None):
     symbols = [f"nf_{c[1]}0" for c in COMMODITIES]
     quotes, err = {}, ""
     for i in range(0, len(symbols), 30):          # 分批避免網址過長
@@ -198,9 +229,15 @@ def commodity_board(src, links_by_code):
         else:
             chg = q["chg"]
             at_limit = "up" if chg >= limit - 0.1 else "down" if chg <= -(limit - 0.1) else None
-            sig = max(-1.0, min(1.0, chg / limit))
-            if at_limit:
-                sig *= LIMIT_BONUS
+            sd = (sigmas or {}).get(code)
+            if NORM == "z" and sd:
+                sig = history.z_signal(chg, sd, limit, True)
+                item.update(sigma=round(sd, 3), z=round(chg / sd, 2), norm="z")
+            else:
+                sig = max(-1.0, min(1.0, chg / limit))
+                if at_limit:
+                    sig *= LIMIT_BONUS
+                item.update(norm="limit")
             item.update(status="ok", last=q["last"], base=q["base"], chg=chg, signal=round(sig, 4),
                         at_limit=at_limit, quote_date=q["date"], quote_time=q.get("time"),
                         settle=q.get("settle"), oi=q.get("oi"))
@@ -208,17 +245,23 @@ def commodity_board(src, links_by_code):
     return board
 
 
-def spread_board(board, links_by_code, cal):
-    """價差（加工利潤）：Δ價差 ÷ 產品前一日結算價 × 100；訊號以歷史 2σ 為滿格（σ 來自校準檔）"""
+def spread_board(board, links_by_code, cal, pairs_by=None):
+    """價差（加工利潤）：Δ價差 ÷ 產品前一日結算價 × 100；訊號以最近 20 日波動度的 2σ 為滿格
+    （抓不到日K時退回校準檔的長期 σ）"""
     q = {c["code"]: c for c in board if c["status"] == "ok"}
     sig_tab = (cal.get("spreads") or {})
+    limits = {code: limit for _, code, _, limit, _ in COMMODITIES}
     out = []
     for code, name, legs, links in SPREADS:
         item = {"ex": "價差", "code": code, "name": name, "kind": "spread",
                 "legs": [{"code": c, "coef": k} for c, k in legs],
                 "links": links_by_code.get(code, []),
                 "manual": [{"sector": s, "w": w} for s, w, _ in links]}
-        sd = (sig_tab.get(code) or {}).get("sigma")
+        sd = None
+        if pairs_by:
+            hist = history.spread_returns(pairs_by, legs, limits)
+            sd = history.robust_sigma([hist[d] for d in sorted(hist)[-history.Z_WINDOW:]])
+        sd = sd or (sig_tab.get(code) or {}).get("sigma")
         if not all(c in q for c, _ in legs) or not sd:
             item.update(status="missing", chg=None, signal=0, at_limit=None, limit=None)
             out.append(item)
@@ -774,8 +817,9 @@ def run(now):
         except Exception:  # noqa: BLE001
             pass
     links_by_code, weights_mode, cal_meta, cal = load_links()
-    print(f"計分權重：{weights_mode}")
-    board = commodity_board(src, links_by_code)
+    print(f"計分權重：{weights_mode}；標準化：{'z 分數（20 日波動度）' if NORM == 'z' else '漲跌停幅度'}")
+    sigmas, pairs_by = live_sigmas(src) if (NORM == "z" and not a.fixtures) else ({}, None)
+    board = commodity_board(src, links_by_code, sigmas)
     ok = sum(c["status"] == "ok" for c in board)
     print(f"陸期：{ok}/{len(board)} 個商品取得報價")
     cn = china_status(board, now, None if a.fixtures else prev_payload)
@@ -790,7 +834,7 @@ def run(now):
     stocks, tw_date = load_quotes(src, now)
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
-    board = board + spread_board(board, links_by_code, cal)
+    board = board + spread_board(board, links_by_code, cal, pairs_by)
     if not a.fixtures:
         board = board + intl_board(src.s, board, cal)
     attach_beneficiaries(board, stocks, cal)
@@ -810,6 +854,7 @@ def run(now):
         "tw_date": tw_date,
         "demo": bool(a.fixtures),
         "weights_mode": weights_mode, "calibration": cal_meta,
+        "norm": NORM if sigmas else "limit",
         "market": {"cn": cn, "tw_open_today": tw_open_today,
                    "tw_holiday": HOLIDAYS.get(today.isoformat()),
                    "tw_expected": expected_trade_date(now)},

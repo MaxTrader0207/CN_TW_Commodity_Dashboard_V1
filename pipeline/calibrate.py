@@ -188,8 +188,9 @@ def rnd(st):
 
 
 # ───────────── 回測 ─────────────
-def daily_scores(items, cmd_ret, links_by_code, d):
-    """仿 build.score_sectors：回傳 {sector: score}"""
+def daily_scores(items, cmd_ret, links_by_code, d, zsig=None):
+    """仿 build.score_sectors：回傳 {sector: score}。
+    zsig=None：訊號 = 漲跌 ÷ 漲跌停幅度（舊）；zsig={code: {d: σ}}：訊號 = 漲跌 ÷ 滾動 20 日波動度，2σ 滿格（新）"""
     num, den = {}, {}
     for ex, code, name, limit, _, bonus in items:
         for l in links_by_code.get(code, []):
@@ -198,6 +199,13 @@ def daily_scores(items, cmd_ret, links_by_code, d):
             r = cmd_ret.get(code, {}).get(d)
             if r is None:
                 continue
+            sd = (zsig or {}).get(code, {}).get(d) if zsig is not None else None
+            if zsig is not None:
+                if not sd:
+                    continue
+                sig = H.z_signal(r, sd, limit if bonus else None, bonus)
+                num[s] = num.get(s, 0) + l["w"] * sig
+                continue
             sig = max(-1.0, min(1.0, r / limit))
             if bonus and abs(r) >= limit - 0.1:
                 sig *= LIMIT_BONUS
@@ -205,7 +213,7 @@ def daily_scores(items, cmd_ret, links_by_code, d):
     return {s: num.get(s, 0) / norm(den[s]) * 100 for s in den if den[s]}
 
 
-def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1):
+def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None):
     all_days = sorted({d for c in cmd_ret.values() for d in c})
     days = [d for d in all_days if d0 <= d <= d1]
     prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
@@ -236,7 +244,7 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1):
                 row = excess.get(t)
             if not row:
                 continue
-            sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d).items() if s in row}
+            sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d, zsig).items() if s in row}
             b = [s for s, v in sorted(sc.items(), key=lambda kv: -kv[1]) if v > 0][:TOP]
             e = [s for s, v in sorted(sc.items(), key=lambda kv: kv[1]) if v < 0][:TOP]
             if not b and not e:
@@ -271,21 +279,7 @@ def manual_links(items):
 
 
 # ───────────── 價差 ─────────────
-def spread_returns(pairs_by, legs, limits):
-    """價差每日變化（佔產品前一日結算價的 %）。pairs_by[code] = {date: (收盤, 同合約前一日結算)}（已做換月修正）；
-    任一腿漲跌超過漲跌停 +1.5%（資料異常）的日子剔除。"""
-    by = {}
-    for code, _ in legs:
-        m = pairs_by.get(code)
-        if not m:
-            return {}
-        by[code] = {d: (c, b) for d, (c, b) in m.items() if b > 0 and abs((c / b - 1) * 100) <= H.anomaly_cap(limits[code])}
-    prod = legs[0][0]
-    out = {}
-    for d in set.intersection(*(set(m) for m in by.values())):
-        delta = sum(coef * (by[c][d][0] - by[c][d][1]) for c, coef in legs)
-        out[d] = delta / by[prod][d][1] * 100
-    return out
+spread_returns = H.spread_returns
 
 
 def sigma(xs):
@@ -491,6 +485,16 @@ def main():
     test = {"manual": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1]),
             "calibrated": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1]),
             "calibrated_spreads": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1])}
+    # 標準化方式比較：滾動 20 日波動度（z 分數，只用當天以前的資料）
+    zsig = {code: H.rolling_sigma(v) for code, v in series.items()}
+    test.update({
+        "manual_z": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1], zsig),
+        "calibrated_z": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1], zsig),
+        "calibrated_spreads_z": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1], zsig)})
+    for k in ("manual", "calibrated", "calibrated_spreads"):
+        a, b = test[k], test[k + "_z"]
+        print(f"標準化比較 {k}：同日價差 {a['lag0']['spread_avg']}(t {a['lag0']['spread_t']}) → z {b['lag0']['spread_avg']}(t {b['lag0']['spread_t']})"
+              f"｜隔日 {a['lag1']['spread_avg']}(t {a['lag1']['spread_t']}) → z {b['lag1']['spread_avg']}(t {b['lag1']['spread_t']})")
 
     # 個股層級：受惠／受壓名單實測
     stocks, stock_meta = {}, {}

@@ -108,6 +108,7 @@ summary{cursor:pointer;font-weight:600}
 .ben .via{color:var(--muted);font-size:11.5px}
 .mk{font-size:10.5px;padding:0 4px;border-radius:3px;margin-left:4px;border:1px solid currentColor;vertical-align:1px}
 .mk.p{color:var(--up)} .mk.c{color:var(--dn)}
+.tile .t2 small{font-size:11px;color:var(--muted);font-weight:400;margin-left:2px}
 .tile.spr .t2 small{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px}
 .lists table td.ch{font-size:11.5px}
 .lists{overflow-x:auto}
@@ -203,7 +204,7 @@ summary{cursor:pointer;font-weight:600}
   </section>
 
   <p class="foot">
-    計算方式：商品訊號 = 漲跌幅 ÷ 漲跌停幅度（上限 ±1，觸及漲跌停再 ×1.5）；類股分數 = Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100。
+    計算方式：商品訊號 = 今日漲跌 ÷ 近 20 個交易日波動度（z 分數，2σ 為滿格 ±1，觸及漲跌停再 ×1.5；抓不到日K時改用 漲跌 ÷ 漲跌停幅度）；價差同樣以 20 日波動度標準化；類股分數 = Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100。
     權重為正代表商品漲有利類股（產品報價、庫存利益），為負代表成本壓力。「共振」= 陸期訊號方向與類股當日平均漲跌同向。
     前5強／前5弱以台股最新收盤漲跌幅排序，僅計成交量 ≥ <span id="minlots">100</span> 張的個股。
     本頁為量化參考，非投資建議。
@@ -290,7 +291,8 @@ function sectorCard(s, i, side) {
     const c = el('span', 'chip' + (d.at_limit ? ' lim' : ''));
     const lim = d.at_limit === 'up' ? ' 漲停' : d.at_limit === 'down' ? ' 跌停' : '';
     c.append(document.createTextNode((d.kind === 'spread' ? '〔價差〕' : '') + d.name + ' '));
-    const b = el('b', cls(d.chg), pct(d.chg) + lim); c.append(b);
+    const zz = BOARD[d.code]?.z;
+    const b = el('b', cls(d.chg), pct(d.chg) + lim + (zz != null && d.kind !== 'spread' ? ` ${zz > 0 ? '+' : ''}${zz}σ` : '')); c.append(b);
     c.append(document.createTextNode(' → '));
     c.append(el('b', cls(d.contrib), sc(d.contrib)));
     if (d.src === '新增') c.append(el('span', 'tag new', '新增'));
@@ -376,13 +378,13 @@ function render(d) {
     if (!d.commodities.some(c => c.ex === ex)) continue;
     board.append(el('div', 'ex-h', ex === '價差' ? '價差（加工利潤）：今日變化佔產品價格 %，括號為幾個標準差'
       : ex === '國際' ? '國際對照（Yahoo，美國期貨最新價 vs 前一交易日；只做交叉確認，不計分）'
-      : ex + (ex === '上期所' ? '（含上海國際能源中心）' : '')));
+      : ex + (ex === '上期所' ? '（含上海國際能源中心）　括號為今日漲跌是近 20 日波動度的幾倍（σ）' : '')));
     const g = el('div', 'board');
     d.commodities.filter(c => c.ex === ex).sort((a, b) => (b.chg ?? -99) - (a.chg ?? -99)).forEach(c => {
       if (c.kind === 'spread') return g.append(spreadTile(c));
       if (c.kind === 'intl') return g.append(intlTile(c));
       const t = el('div', 'tile');
-      const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / c.limit);
+      const strength = c.chg == null ? 0 : Math.min(1, c.z != null ? Math.abs(c.z) / 3 : Math.abs(c.chg) / c.limit);
       if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
       if (c.at_limit) t.style.borderColor = 'var(--accent)';
       const t1 = el('div', 't1'); t1.append(el('b', null, c.name), el('span', null, c.code));
@@ -392,9 +394,12 @@ function render(d) {
         const ag = c.intl.filter(x => x.agree === true).length, dv = c.intl.filter(x => x.agree === false).length;
         if (ag || dv) t1.append(el('span', 'xb ' + (dv > ag ? 'dv' : 'ag'), dv > ag ? '國際背離' : '國際同向'));
       }
-      t.append(t1, el('div', 't2 ' + cls(c.chg), pct(c.chg) + lim),
+      const t2 = el('div', 't2 ' + cls(c.chg), pct(c.chg) + lim);
+      if (c.z != null) t2.append(el('small', null, ` (${c.z > 0 ? '+' : ''}${c.z}σ)`));
+      t.append(t1, t2,
         el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ')));
-      hoverTip(t, c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n') +
+      hoverTip(t, (c.sigma ? `近 20 日波動度 ${c.sigma}%／日，今日 ${c.z > 0 ? '+' : ''}${c.z}σ（2σ 為訊號滿格）\n` : '') +
+        c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n') +
         (c.intl?.length ? '\n\n國際對照：' + c.intl.map(x => `${x.name} ${pct(x.chg)}`).join('、') : ''));
       g.append(t);
     });
@@ -511,12 +516,13 @@ function renderCalibration(c) {
   const t = $('#bt'); t.replaceChildren();
   const h = t.insertRow(); ['', '天數', '多頭', '勝率', '空頭', '勝率', '價差', 't 值'].forEach(x => h.append(el('th', null, x)));
   const sec = (txt) => { const r = t.insertRow(); const c0 = r.insertCell(); c0.colSpan = 8; c0.append(el('b', null, txt)); };
-  sec('隔日（預測力）');
-  btRow(t, '手動權重', bt.manual.lag1); btRow(t, '實測權重', bt.calibrated.lag1);
-  if (bt.calibrated_spreads) btRow(t, '實測＋價差', bt.calibrated_spreads.lag1);
-  sec('同日（關聯是否存在）');
-  btRow(t, '手動權重', bt.manual.lag0); btRow(t, '實測權重', bt.calibrated.lag0);
-  if (bt.calibrated_spreads) btRow(t, '實測＋價差', bt.calibrated_spreads.lag0);
+  for (const [lag, title] of [['lag1', '隔日（預測力）'], ['lag0', '同日（關聯是否存在）']]) {
+    sec(title);
+    for (const [k, label] of [['manual', '手動權重'], ['calibrated', '實測權重'], ['calibrated_spreads', '實測＋價差']]) {
+      if (bt[k]) btRow(t, label + '・÷漲跌停', bt[k][lag]);
+      if (bt[k + '_z']) btRow(t, label + '・z 分數', bt[k + '_z'][lag]);
+    }
+  }
   $('#bt-note').textContent = '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 
