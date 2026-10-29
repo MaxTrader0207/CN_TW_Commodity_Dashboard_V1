@@ -459,3 +459,107 @@ def spread_returns(pairs_by, legs, limits):
         delta = sum(coef * (by[c][d][0] - by[c][d][1]) for c, coef in legs)
         out[d] = delta / by[prod][d][1] * 100
     return out
+
+
+# ───────────── 漲跌停幅度（交易所公告，每日更新）─────────────
+LIMITS_JSON = CACHE_DIR / "limits.json"
+SHFE_PARAM_URL = "https://www.shfe.com.cn/data/busiparamdata/future/ContractDailyTradeArgument{}.dat"
+INE_PARAM_URL = "https://www.ine.cn/data/busiparamdata/future/ContractDailyTradeArgument{}.dat"
+ZCE_PARAM_URL = "http://www.czce.com.cn/cn/DFSStaticFiles/Future/{}/{}/FutureDataClearParams.txt"
+
+
+def _mode(vals):
+    """同一商品各合約的漲跌停幅度取眾數（主力合約通常與多數合約相同；交割月合約另有較寬的幅度）"""
+    c = {}
+    for v in vals:
+        c[v] = c.get(v, 0) + 1
+    return max(c.items(), key=lambda kv: (kv[1], -kv[0]))[0] if c else None
+
+
+def parse_shfe_params(j):
+    by = {}
+    for x in j.get("ContractDailyTradeArgument", []):
+        m = re.match(r"[a-z]+", x.get("INSTRUMENTID", ""))
+        try:
+            v = float(x.get("UPPER_VALUE") or 0) * 100
+        except ValueError:
+            continue
+        if m and v > 0:
+            by.setdefault(m.group(0).upper(), []).append(round(v, 2))
+    return {k: _mode(v) for k, v in by.items()}
+
+
+def parse_zce_params(text):
+    by = {}
+    for line in text.splitlines():
+        cols = [c.strip() for c in line.split("|")]
+        if len(cols) < 6:
+            continue
+        m = re.match(r"([A-Z]+)\d{3}$", cols[0])
+        v = re.search(r"([\d.]+)", cols[5])
+        if m and v:
+            by.setdefault(m.group(1), []).append(float(v.group(1)))
+    return {k: _mode(v) for k, v in by.items()}
+
+
+def update_limits(session, today: date, codes, log=print, lookback=7):
+    """抓上期所／上海國際能源中心／鄭商所公告的每日漲跌停幅度（%），快取於 limits.json。
+    大商所、廣期所官網有反爬蟲機制，抓不到，沿用 mapping.py 的預設值。
+    回傳 ({code: {limit, date, src}}, {來源: 狀態說明})"""
+    cache = json.loads(LIMITS_JSON.read_text(encoding="utf-8")) if LIMITS_JSON.exists() else {}
+    status = {}
+    srcs = [("上期所", lambda d: SHFE_PARAM_URL.format(d.strftime("%Y%m%d")), "json"),
+            ("能源中心", lambda d: INE_PARAM_URL.format(d.strftime("%Y%m%d")), "json"),
+            ("鄭商所", lambda d: ZCE_PARAM_URL.format(d.year, d.strftime("%Y%m%d")), "zce")]
+    for name, url_of, kind in srcs:
+        got = None
+        for k in range(lookback):
+            d = today - timedelta(days=k)
+            if d.weekday() >= 5:
+                continue
+            try:
+                r = session.get(url_of(d), timeout=20)
+                if r.status_code != 200:
+                    continue
+                r.encoding = "utf-8"
+                vals = parse_shfe_params(r.json()) if kind == "json" else parse_zce_params(r.text)
+                if vals:
+                    got = (d.isoformat(), vals)
+                    break
+            except Exception as e:  # noqa: BLE001
+                status[name] = f"失敗：{str(e)[:80]}"
+        if not got:
+            status.setdefault(name, "抓不到")
+            continue
+        n = 0
+        for code, v in got[1].items():
+            if code in codes:
+                cache[code] = {"limit": v, "date": got[0], "src": name}
+                n += 1
+        status[name] = f"ok {n} 個商品（{got[0]}）"
+        log(f"漲跌停幅度 {name}：{n} 個商品（{got[0]}）")
+    LIMITS_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
+    return cache, status
+
+
+def load_limits():
+    return json.loads(LIMITS_JSON.read_text(encoding="utf-8")) if LIMITS_JSON.exists() else {}
+
+
+# ───────────── 多日動能 ─────────────
+MOM_COMBO_W = 0.5   # 組合訊號 = 1 日 z ＋ 0.5 × 5 日動能 z
+
+
+def momentum_z(ret, sig, n):
+    """{d: n 日累計漲跌 ÷ (σ_d × √n)}；σ_d 為 d 之前的滾動波動度（不偷看），累計含 d 當天"""
+    ds = sorted(ret)
+    out = {}
+    for i, d in enumerate(ds):
+        sd = sig.get(d)
+        if sd and i >= n - 1:
+            out[d] = sum(ret[x] for x in ds[i - n + 1:i + 1]) / (sd * n ** 0.5)
+    return out
+
+
+def combo_z(z1, z5, w=MOM_COMBO_W):
+    return z1 + w * z5 if z5 is not None else z1

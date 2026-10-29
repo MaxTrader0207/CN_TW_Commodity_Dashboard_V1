@@ -115,6 +115,16 @@ summary{cursor:pointer;font-weight:600}
 .xb{font-size:10.5px;margin-left:4px;padding:0 4px;border-radius:3px;border:1px solid currentColor}
 .xb.ag{color:var(--muted)} .xb.dv{color:var(--accent)}
 .tile.intl .t3{white-space:normal}
+.tile .t4{font-size:10.5px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.heat-wrap{overflow-x:auto;padding-bottom:4px}
+.heat{display:grid;gap:1px;font-size:11.5px;align-items:center}
+.heat .hn{position:sticky;left:0;background:var(--panel);padding-right:6px;white-space:nowrap;z-index:1}
+.heat .hc{height:14px;min-width:6px;border-radius:1px;background:var(--panel2)}
+.heat .hd{font-size:10px;color:var(--muted);font-family:var(--mono);white-space:nowrap;overflow:visible;height:14px}
+.legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend .sw{width:14px;height:10px;border-radius:2px;display:inline-block}
+.cov td.lst{min-width:12em}
+.cov td:first-child,.cov td:last-child{white-space:nowrap}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -183,6 +193,11 @@ summary{cursor:pointer;font-weight:600}
       <div style="overflow-x:auto"><table class="vt" id="intl"></table></div>
     </details>
     <details style="margin-top:12px">
+      <summary id="cov-summary">類股覆蓋範圍（哪些類股有陸期／國際商品可對應）</summary>
+      <p class="note" id="cov-note"></p>
+      <div style="overflow-x:auto"><table class="vt cov" id="cov"></table></div>
+    </details>
+    <details style="margin-top:12px">
       <summary id="stk-summary">受惠／受壓個股實測</summary>
       <p class="note" id="stk-note"></p>
       <div style="overflow-x:auto"><table class="vt" id="stk"></table></div>
@@ -192,6 +207,16 @@ summary{cursor:pointer;font-weight:600}
   <section>
     <h2>全部關聯類股 陸期助攻分數</h2>
     <div class="card"><div class="bars" id="bars"></div></div>
+  </section>
+
+  <section>
+    <h2>類股分數歷史（熱力圖）</h2>
+    <div class="card">
+      <div class="filters" id="heat-mode"></div>
+      <div class="heat-wrap"><div class="heat" id="heat"></div></div>
+      <div class="legend" id="heat-legend"></div>
+      <p class="note" id="heat-note"></p>
+    </div>
   </section>
 
   <section>
@@ -346,6 +371,7 @@ function render(d) {
   if (mk.tw_holiday) notes.push(`今日台股休市（${mk.tw_holiday}），台股資料為 ${d.tw_date || '—'}。`);
   else if (mk.tw_open_today === false) notes.push(`今日台股休市，台股資料為 ${d.tw_date || '—'}。`);
   if (mk.cn?.rolled?.length) notes.push(`主力合約今日換月：${mk.cn.rolled.map(c => d.commodities.find(x => x.code === c)?.name || c).join('、')}（漲跌已用新合約的昨結算計算）。`);
+  if (d.industry?.stale?.length) notes.push(`⚠ ${d.industry.stale.join('、')}（來源抓取失敗，沿用舊快取），新上市櫃股票可能沒有類股。`);
   $('#mkt-note').textContent = notes.join('　');
   $('#mkt-note').style.display = notes.length ? 'block' : 'none';
   $('#m-session').textContent = d.premarket?.on ? '盤前版：陸期夜盤＋國際隔夜' : d.session_label;
@@ -397,6 +423,8 @@ function render(d) {
       const t1 = el('div', 't1'); t1.append(el('b', null, c.name), el('span', null, c.code));
       const lim = c.at_limit === 'up' ? ' 漲停' : c.at_limit === 'down' ? ' 跌停' : '';
       if (c.rolled) t1.append(el('span', 'tag lag', '換月'));
+      const limChanged = c.limit_default != null && c.limit_src && c.limit_src !== '預設' && Math.abs(c.limit - c.limit_default) >= 0.5;
+      if (limChanged) t1.append(el('span', 'tag new', `停板${+c.limit.toFixed(1)}%`));
       if (c.intl?.length) {
         const ag = c.intl.filter(x => x.agree === true).length, dv = c.intl.filter(x => x.agree === false).length;
         if (ag || dv) t1.append(el('span', 'xb ' + (dv > ag ? 'dv' : 'ag'), dv > ag ? '國際背離' : '國際同向'));
@@ -404,8 +432,12 @@ function render(d) {
       const t2 = el('div', 't2 ' + cls(c.chg), pct(c.chg) + lim);
       if (c.z != null) t2.append(el('small', null, ` (${c.z > 0 ? '+' : ''}${c.z}σ)`));
       t.append(t1, t2,
-        el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ')));
+        el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ') || '實測不顯著，不計分'));
+      const sg = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + 'σ';
+      if (c.m5 != null || c.m20 != null) t.append(el('div', 't4', `5日 ${sg(c.m5)}　20日 ${sg(c.m20)}`));
       hoverTip(t, (c.sigma ? `近 20 日波動度 ${c.sigma}%／日，今日 ${c.z > 0 ? '+' : ''}${c.z}σ（2σ 為訊號滿格）\n` : '') +
+        (c.m5 != null ? `多日動能：5 日累計 ${sg(c.m5)}、20 日累計 ${sg(c.m20)}（累計漲跌 ÷ (σ×√天數)）${d.momentum?.adopt ? '，5 日動能已計入分數' : '，僅顯示、不計分'}\n` : '') +
+        (c.limit ? `漲跌停 ±${+c.limit.toFixed(2)}%（${c.limit_src === '預設' || !c.limit_src ? '預設值' : c.limit_src + ' 公告'}${limChanged ? `；一般 ±${c.limit_default}%` : ''}）\n` : '') +
         c.links.map(l => `${l.sector}（${l.w > 0 ? '+' : ''}${l.w}）${l.why}`).join('\n') +
         (c.intl?.length ? '\n\n國際對照：' + c.intl.map(x => `${x.name} ${pct(x.chg)}`).join('、') : ''));
       g.append(t);
@@ -533,6 +565,8 @@ function renderCalibration(c) {
       if (bt[k]) btRow(t, label + '・÷漲跌停', bt[k][lag]);
       if (bt[k + '_z']) btRow(t, label + '・z 分數', bt[k + '_z'][lag]);
     }
+    for (const [k, label] of [['mom_1d', '動能・1 日'], ['mom_5d', '動能・5 日累計'], ['mom_20d', '動能・20 日累計'], ['mom_combo', '動能・1 日＋0.5×5 日']])
+      if (bt[k]) btRow(t, label, bt[k][lag]);
   }
   const tp = $('#bt-pre'); tp.replaceChildren();
   if (bt.pre_intl) {
@@ -549,7 +583,10 @@ function renderCalibration(c) {
       '分數方向 × 當天超額報酬的平均；勝率 = 方向正確的比例。陸期夜盤無法從日K單獨取出，回測以「陸期前一日」代替，實際盤前版用的是夜盤漲跌。' +
       '關聯少的模型常只有單邊訊號，多空價差會是空白，以方向命中為準。';
   }
-  $('#bt-note').textContent = '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
+  const mo = c.momentum;
+  $('#bt-note').textContent = (mo ? `「動能」列用實測＋價差權重、z 分數、不含漲跌停加成，比較 1 日、5 日、20 日累計漲跌與組合；` +
+    `${mo.adopt ? '組合版通過門檻，即時分數已加入 5 日動能。' : '組合版未通過門檻（' + mo.rule + '），即時分數仍只用 1 日 z，5 日／20 日動能只顯示在商品看板。'}` : '') +
+    '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 
   const counts = c.counts || {};
@@ -637,16 +674,105 @@ function renderIntl(c) {
   });
 }
 
+function renderCoverage(c, latest) {
+  const all = latest?.all_sectors; if (!all) return;
+  const st = {};
+  const get = s => st[s] ??= { manual: 0, same: [], next: [], intl: [], items: new Set() };
+  c.pairs.forEach(p => {
+    const x = get(p.sector);
+    if (p.manual_w) { x.manual++; x.items.add(p.name); }
+    if (p.status === '有效') x.same.push(p.name);
+    if (p.status === '隔日有效') x.next.push(p.name);
+  });
+  (c.intl?.pairs || []).forEach(p => { if (p.cal_w) get(p.sector).intl.push(p.name); });
+  const ELEC = ['半導體', '電腦週邊', '光電', '通信網路', '電子零組件', '電子通路', '資訊服務', '其他電子'];
+  const rows = all.map(s => ({ s, ...get(s), elec: ELEC.includes(s) }));
+  const lvl = r => r.same.length || r.next.length ? 0 : r.intl.length ? 1 : r.manual ? 2 : 3;
+  rows.sort((a, b) => lvl(a) - lvl(b) || (b.same.length + b.next.length) - (a.same.length + a.next.length) || b.manual - a.manual);
+  const nCov = rows.filter(r => lvl(r) <= 1).length;
+  $('#cov-summary').textContent = `類股覆蓋範圍（${all.length} 類中 ${nCov} 類有實測有效的商品）`;
+  const ecov = rows.filter(r => r.elec && lvl(r) <= 1).length;
+  $('#cov-note').textContent = `陸期多為原物料，主要覆蓋傳產類股；電子類 ${ELEC.length} 類中只有 ${ecov} 類有實測有效的商品可對應（對照表中的電子關聯：銅→銅箔基板、銀／矽→太陽能、錫→焊料、黃金→貴金屬回收），` +
+    '半導體、電腦週邊、通信網路等的股價主要由終端需求與美股科技股決定，不在本儀表板能解釋的範圍。「有效」= 同日關聯顯著且前後兩段一致；國際 = 美盤隔夜對次一台股交易日有預測力。';
+  const t = $('#cov'); t.replaceChildren();
+  const h = t.insertRow(); ['類股', '對照表商品', '同日有效', '隔日有效', '國際隔夜', '覆蓋'].forEach(x => h.append(el('th', null, x)));
+  const LV = [['ok', '有效覆蓋'], ['lag', '僅國際'], ['no', '僅對照表（實測不顯著）'], ['few', '無對應商品']];
+  rows.forEach(r => {
+    const tr = t.insertRow();
+    tr.insertCell().textContent = r.s + (r.elec ? '（電子）' : '');
+    const m = tr.insertCell(); m.className = 'n'; m.textContent = r.manual || '—';
+    if (r.items.size) hoverTip(m, [...r.items].join('、'));
+    for (const arr of [r.same, r.next, r.intl]) {
+      const c2 = tr.insertCell(); c2.textContent = arr.length ? arr.join('、') : '—'; c2.className = arr.length ? 'lst' : 'flat';
+    }
+    const [k, v] = LV[lvl(r)]; tr.insertCell().append(el('span', 'tag ' + k, v));
+  });
+}
+
+let HEAT = null, heatMode = 's';
+function renderHeat(h) {
+  HEAT = h;
+  const days = (h.days || []).filter(r => r.s && Object.keys(r.s).length);
+  const box = $('#heat'); box.replaceChildren();
+  if (!days.length) { box.append(el('div', 'empty', '尚無分數歷史，下次校準後產生。')); return; }
+  const m = $('#heat-mode'); m.replaceChildren();
+  for (const [k, label] of [['s', '陸期分數'], ['a', '實際超額報酬'], ['x', '方向是否一致']]) {
+    const b = el('button', heatMode === k ? 'on' : '', label); b.onclick = () => { heatMode = k; renderHeat(HEAT); }; m.append(b);
+  }
+  const secs = {};
+  days.forEach(r => Object.entries(r.s).forEach(([k, v]) => { secs[k] = (secs[k] || 0) + Math.abs(v); }));
+  const names = Object.keys(secs).filter(k => secs[k] / days.length >= 1).sort((a, b) => secs[b] - secs[a]);
+  box.style.gridTemplateColumns = `max-content repeat(${days.length}, minmax(6px, 1fr))`;
+  const col = (v, full) => { const a = Math.min(1, Math.abs(v) / full); return v === 0 ? 'var(--panel2)' : `rgba(${v > 0 ? '255,77,79' : '34,197,94'},${(0.12 + a * 0.88).toFixed(2)})`; };
+  // 日期列：每月第一個交易日標記
+  box.append(el('div', 'hn', ''));
+  let prevM = '';
+  days.forEach(r => { const mo = r.d.slice(5, 7); box.append(el('div', 'hd', mo !== prevM ? r.d.slice(5).replace('-', '/') : '')); prevM = mo; });
+  let agree = 0, tot = 0;
+  names.forEach(n => {
+    box.append(el('div', 'hn', n));
+    days.forEach(r => {
+      const sv = r.s[n] ?? 0, av = r.a?.[n];
+      const cell = el('div', 'hc');
+      if (heatMode === 's') cell.style.background = col(sv, 60);
+      else if (heatMode === 'a') { if (av != null) cell.style.background = col(av, 2); }
+      else if (av != null && Math.abs(sv) >= 10) { cell.style.background = (sv > 0) === (av > 0) ? 'var(--accent)' : '#3b4656'; }
+      if (av != null && Math.abs(sv) >= 10) { tot++; if ((sv > 0) === (av > 0)) agree++; }
+      cell.dataset.t = `${r.d}　${n}\n陸期分數 ${sc(sv)}${av != null ? `\n實際超額報酬 ${pp(av)}` : '\n實際：待類股指數更新'}\n${r.src === '即時' ? '當天日盤版實際分數' : '回填（全期實測權重重算）'}`;
+      box.append(cell);
+    });
+  });
+  const lg = $('#heat-legend'); lg.replaceChildren();
+  const sw = c => { const e = el('span', 'sw'); e.style.background = c; return e; };
+  if (heatMode === 'x') lg.append(sw('var(--accent)'), document.createTextNode('同向'), sw('#3b4656'), document.createTextNode('反向'),
+    document.createTextNode('　（只標 |分數| ≥ 10 的格子）'));
+  else lg.append(sw(col(-1, 1)), document.createTextNode(heatMode === 's' ? '空頭 −60' : '−2%'), sw(col(-0.3, 1)), sw('var(--panel2)'), sw(col(0.3, 1)),
+    sw(col(1, 1)), document.createTextNode(heatMode === 's' ? '+60 多頭' : '+2%'));
+  const nLive = days.filter(r => r.src === '即時').length;
+  $('#heat-note').textContent = `最近 ${days.length} 個台股交易日（${days[0].d}～${days.at(-1).d}），列出平均 |分數| ≥ 1 的 ${names.length} 個類股，依分數強度排序。` +
+    `|分數| ≥ 10 的 ${tot} 格中，陸期方向與當天類股 β 調整超額報酬同向 ${tot ? Math.round(agree / tot * 100) : '—'}%。` +
+    `回填天數以本次全期實測權重重算（樣本內，會高估一致率）${nLive ? `；其中 ${nLive} 天是當天日盤版的實際分數` : ''}。`;
+}
+document.addEventListener('mousemove', e => {
+  const c = e.target.closest?.('.hc'); if (!c || !c.dataset.t) return;
+  tip.textContent = c.dataset.t; tip.style.display = 'block';
+  tip.style.left = Math.min(e.clientX + 12, innerWidth - 270) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+});
+document.addEventListener('mouseout', e => { if (e.target.closest?.('.hc')) tip.style.display = 'none'; });
+
 async function loadVerify() {
   try {
     const t = await (await fetch('data/track.json?t=' + Date.now())).json();
     renderTrack(t);
   } catch (e) { $('#tk-kpis').replaceChildren(el('div', 'empty', '尚無追蹤資料，下次更新後開始累積。')); }
+  try { renderHeat(await (await fetch('data/score_history.json?t=' + Date.now())).json()); }
+  catch (e) { $('#heat').replaceChildren(el('div', 'empty', '尚無分數歷史，下次校準後產生。')); }
   try {
     const c = await (await fetch('data/calibration.json?t=' + Date.now())).json();
     renderCalibration(c);
     renderStocks(c);
     renderIntl(c);
+    try { renderCoverage(c, await (await fetch('data/latest.json?t=' + Date.now())).json()); } catch (e) {}
   } catch (e) {
     $('#bt-hint').textContent = '尚未完成第一次校準（每週六自動執行）。';
     $('#cal-summary').textContent = '關聯實測表（尚未校準）';

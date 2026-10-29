@@ -403,6 +403,24 @@ def git_checkpoint(msg):
 
 
 
+HEAT_DAYS = 120
+SCORE_HIST = OUT.parent / "score_history.json"
+
+
+def write_score_history(rows):
+    """回填的日子覆蓋舊回填；即時（每日 build 寫入）的日子保留即時分數，只補實際報酬"""
+    old = json.loads(SCORE_HIST.read_text(encoding="utf-8")) if SCORE_HIST.exists() else {"days": []}
+    by = {r["d"]: r for r in rows}
+    for r in old.get("days", []):
+        if r.get("src") == "即時":
+            r["a"] = r.get("a") or by.get(r["d"], {}).get("a") or {}
+            by[r["d"]] = r
+    days = sorted(by.values(), key=lambda r: r["d"])[-(HEAT_DAYS + 60):]
+    SCORE_HIST.write_text(json.dumps({"generated_at": datetime.now(TPE).isoformat(timespec="minutes"),
+                                      "note": "回填＝以本次全期實測權重重算（樣本內）；即時＝當天日盤版實際分數",
+                                      "days": days}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def main():
     import requests
     ap = argparse.ArgumentParser()
@@ -496,6 +514,31 @@ def main():
         "manual_z": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1], zsig),
         "calibrated_z": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1], zsig),
         "calibrated_spreads_z": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1], zsig)})
+    # 多日動能：1 日 z、5 日、20 日累計（÷ σ√n）、組合（1 日 ＋ 0.5 × 5 日），同一組樣本內權重、不加漲跌停加成，公平比較
+    zs = {n: {code: H.momentum_z(series[code], zsig[code], n) for code in series} for n in (1, 5, 20)}
+    combo = {code: {d: H.combo_z(z, zs[5][code].get(d)) for d, z in zs[1][code].items()} for code in series}
+    unit = {code: {d: 1.0 for d in v} for code, v in combo.items()}
+    items_nb = [(*it[:5], False) for it in items_all]
+    mom = {f"mom_{k}": backtest(items_nb, v, excess_bt, tw_dates, live_all, split, tw_dates[-1], unit)
+           for k, v in (("1d", zs[1]), ("5d", zs[5]), ("20d", zs[20]), ("combo", combo))}
+    test.update(mom)
+    b1, bc = mom["mom_1d"], mom["mom_combo"]
+    g = lambda r, lag: r[lag]["spread_t"] or 0  # noqa: E731
+    mom_adopt = g(bc, "lag1") > g(b1, "lag1") + 0.3 and g(bc, "lag0") >= g(b1, "lag0") - 0.3
+    for k, v in mom.items():
+        print(f"動能回測 {k}：同日價差 {v['lag0']['spread_avg']}(t {v['lag0']['spread_t']})｜隔日 {v['lag1']['spread_avg']}(t {v['lag1']['spread_t']})")
+    print(f"動能組合是否採用於即時計分：{mom_adopt}")
+    # 歷史分數熱力圖：最近 HEAT_DAYS 個台股交易日，用全期實測權重＋z 分數回填（樣本內，僅供觀察）
+    heat_days = [d for d in tw_dates[-HEAT_DAYS:]]
+    hist_rows = []
+    for d in heat_days:
+        sc = daily_scores(items, series, live, d, zsig)
+        if not sc:
+            continue
+        hist_rows.append({"d": d, "src": "回填", "s": {k: round(v, 1) for k, v in sc.items()},
+                          "a": {k: round(v, 3) for k, v in excess.get(d, {}).items() if k in sc}})
+    write_score_history(hist_rows)
+    print(f"分數熱力圖回填：{len(hist_rows)} 天")
     for k in ("manual", "calibrated", "calibrated_spreads"):
         a, b = test[k], test[k + "_z"]
         print(f"標準化比較 {k}：同日價差 {a['lag0']['spread_avg']}(t {a['lag0']['spread_t']}) → z {b['lag0']['spread_avg']}(t {b['lag0']['spread_t']})"
@@ -631,6 +674,8 @@ def main():
         "stocks": stocks, "stock_meta": stock_meta,
         "intl": {"pairs": intl_rows, "info": intl_info, "live_links": intl_live,
                  "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"},
+        "momentum": {"adopt": mom_adopt, "combo_w": H.MOM_COMBO_W,
+                     "rule": "組合版隔日價差 t 值比 1 日版高 0.3 以上、且同日 t 值不低於 1 日版 −0.3 才採用"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "kline": kline_info,
         "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},

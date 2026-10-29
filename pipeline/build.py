@@ -177,11 +177,16 @@ def load_links():
 NORM = os.environ.get("NORM", "z")   # z：漲跌 ÷ 20 日波動度；limit：漲跌 ÷ 漲跌停幅度（舊）
 
 
+PAST_RET = {}     # 各商品今天以前最近 19 個交易日的漲跌（多日動能用）
+MOMENTUM = {"adopt": False}   # 校準檔決定是否把 5 日動能加進即時計分
+
+
 def live_sigmas(src):
     """抓各商品日K，用最近 20 個交易日（不含今天）的漲跌估計穩健波動度；同時回傳每日 (收盤, 前結算) 給價差用。
     換月日用快取的換月對照修正；快取之後才發生的換月由穩健估計吸收。"""
     roll = json.loads(history.ROLL_JSON.read_text(encoding="utf-8")) if history.ROLL_JSON.exists() else {}
     sig, pairs_by, ok, err = {}, {}, 0, ""
+    PAST_RET.clear()
     today = datetime.now(TPE).date().isoformat()
     for _, code, _, limit, _ in COMMODITIES:
         try:
@@ -194,6 +199,7 @@ def live_sigmas(src):
             pairs_by[code] = pairs
             ret, _ = history.pairs_returns(pairs, limit)
             sd = history.robust_sigma([ret[d] for d in sorted(ret)[-history.Z_WINDOW:]])
+            PAST_RET[code] = [ret[d] for d in sorted(ret)[-19:]]
             if sd:
                 sig[code] = sd
                 ok += 1
@@ -219,9 +225,12 @@ def commodity_board(src, links_by_code, sigmas=None):
            "商品漲跌 → 類股多空分數", "ok" if n == total else "warn" if n else "fail",
            n, ds[-1] if ds else None, err or ("" if n == total else f"{total - n} 個商品缺報價"))
     board = []
-    for ex, code, name, limit, links in COMMODITIES:
+    for ex, code, name, limit0, links in COMMODITIES:
         q = quotes.get(code)
-        item = {"ex": ex, "code": code, "name": name, "limit": limit,
+        lim = LIVE_LIMITS.get(code) or {}
+        limit = lim.get("limit") or limit0
+        item = {"ex": ex, "code": code, "name": name, "limit": limit, "limit_default": limit0,
+                "limit_src": f"{lim['src']} {lim['date']}" if lim else "預設",
                 "links": links_by_code.get(code, []),
                 "manual": [{"sector": s, "w": w} for s, w, _ in links]}
         if not q:
@@ -231,8 +240,16 @@ def commodity_board(src, links_by_code, sigmas=None):
             at_limit = "up" if chg >= limit - 0.1 else "down" if chg <= -(limit - 0.1) else None
             sd = (sigmas or {}).get(code)
             if NORM == "z" and sd:
-                sig = history.z_signal(chg, sd, limit, True)
-                item.update(sigma=round(sd, 3), z=round(chg / sd, 2), norm="z")
+                past = PAST_RET.get(code, [])
+                m5 = (sum(past[-4:]) + chg) / (sd * 5 ** 0.5) if len(past) >= 4 else None
+                m20 = (sum(past[-19:]) + chg) / (sd * 20 ** 0.5) if len(past) >= 19 else None
+                if MOMENTUM.get("adopt") and m5 is not None:
+                    zc = history.combo_z(chg / sd, m5, MOMENTUM.get("combo_w", history.MOM_COMBO_W))
+                    sig = max(-1.0, min(1.0, zc / history.Z_FULL)) * (LIMIT_BONUS if at_limit else 1)
+                else:
+                    sig = history.z_signal(chg, sd, limit, True)
+                item.update(sigma=round(sd, 3), z=round(chg / sd, 2), norm="z",
+                            m5=None if m5 is None else round(m5, 2), m20=None if m20 is None else round(m20, 2))
             else:
                 sig = max(-1.0, min(1.0, chg / limit))
                 if at_limit:
@@ -556,6 +573,11 @@ def rows_date(rows, key="Date"):
     return max(ds) if ds else None
 
 
+INDUSTRY_META = ROOT / "pipeline" / "cache" / "industry_meta.json"
+INDUSTRY_STATE = {}
+STALE_DAYS = 7
+
+
 def load_industry(src):
     """回傳 {代號: 類股名稱}；上市用證交所 OpenAPI，上櫃用證交所 ISIN 頁；全部失敗時用上次快取。"""
     mapping = {}
@@ -585,10 +607,29 @@ def load_industry(src):
     merged = {**cached, **mapping}
     if len(merged) < 500:
         raise RuntimeError(f"產業別資料不足（{len(merged)} 檔）")
+    # 記錄各產業別來源上次成功的日子；失敗且快取超過 STALE_DAYS 天 → 警示（新上市櫃股票會缺類股）
+    meta = json.loads(INDUSTRY_META.read_text(encoding="utf-8")) if INDUSTRY_META.exists() else {}
+    today = datetime.now(TPE).date()
+    stale = []
+    for sid, label in (("twse_info", "上市"), ("isin_otc", "上櫃")):
+        st = next((x for x in SOURCES if x["id"] == sid), None)
+        if st and st["status"] == "ok":
+            meta[sid] = today.isoformat()
+        elif meta.get(sid):
+            age = (today - date.fromisoformat(meta[sid])).days
+            st["note"] = (st.get("note") or "") + f"；上次成功 {meta[sid]}（{age} 天前）"
+            if age > STALE_DAYS:
+                stale.append(f"{label}產業別已 {age} 天未更新")
+        elif st:
+            stale.append(f"{label}產業別從未成功抓取")
+    INDUSTRY_META.parent.mkdir(parents=True, exist_ok=True)
+    INDUSTRY_META.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    INDUSTRY_STATE.update(last_ok=meta, stale=stale)
     if any(x["id"] in ("twse_info", "isin_otc") and x["status"] == "fail" for x in SOURCES):
         n_cache = len(set(merged) - set(mapping))
         record("industry_cache", "產業別快取（補位）", "pipeline/industry_cache.json",
-               "即時來源失敗的部分改用上次成功資料", "warn", n_cache, note=f"{n_cache} 檔沿用快取")
+               "即時來源失敗的部分改用上次成功資料", "fail" if stale else "warn", n_cache,
+               note=f"{n_cache} 檔沿用快取" + ("；⚠ " + "、".join(stale) + "，新上市櫃股票可能沒有類股" if stale else ""))
     if len(mapping) >= 500 or not cached:
         CACHE_FILE.write_text(json.dumps(merged, ensure_ascii=False, indent=0), encoding="utf-8")
     return merged
@@ -603,6 +644,7 @@ def roc_to_iso(s):
     return None
 
 
+LIVE_LIMITS = {}   # 交易所公告的漲跌停幅度 {code: {limit, date, src}}，run() 開頭載入
 HOLIDAYS = {}   # 台股休市日 {日期: 名稱}，run() 開頭載入
 
 
@@ -781,6 +823,26 @@ def score_sectors(board, industry, stocks):
 
 
 # ───────────────────────── 輸出 ─────────────────────────
+SCORE_HIST = DATA_DIR / "score_history.json"
+
+
+def update_score_history(payload, skip=False):
+    """日盤版：把今天各類股分數記入熱力圖歷史（src=即時），並用類股指數快取補上各日的 β 調整超額報酬"""
+    h = json.loads(SCORE_HIST.read_text(encoding="utf-8")) if SCORE_HIST.exists() else {"days": []}
+    by = {r["d"]: r for r in h.get("days", [])}
+    d = payload.get("tw_date")
+    if payload["session"] == "day" and d == payload["run_date"] and not skip:
+        by[d] = {"d": d, "src": "即時", "s": {x["name"]: x["score"] for x in payload["sectors"]},
+                 "a": by.get(d, {}).get("a") or {}}
+    cal = json.loads(CALIBRATION.read_text(encoding="utf-8")) if CALIBRATION.exists() else {}
+    excess = history.excess_returns(history.index_returns(history.load_index(), history.load_empty()), cal.get("betas"))
+    for r in by.values():
+        if not r.get("a") and r["d"] in excess:
+            r["a"] = {k: round(v, 3) for k, v in excess[r["d"]].items() if k in r["s"]}
+    h["days"] = sorted(by.values(), key=lambda r: r["d"])[-180:]
+    SCORE_HIST.write_text(json.dumps(h, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+
 def write_outputs(payload):
     hist = DATA_DIR / "history"
     hist.mkdir(parents=True, exist_ok=True)
@@ -849,6 +911,18 @@ def run(now):
         record("twse_holiday", "證交所 休市日曆", history.HOLIDAY_URL, "判斷台股應有交易日、休市",
                "fail" if h_err and not HOLIDAYS else "warn" if h_err else "ok", len(HOLIDAYS), None,
                h_err or "")
+    global LIVE_LIMITS
+    codes = {c[1] for c in COMMODITIES}
+    if a.fixtures:
+        LIVE_LIMITS = {}
+    else:
+        LIVE_LIMITS, l_st = history.update_limits(src.s, now.date(), codes)
+        LIVE_LIMITS = {k: v for k, v in LIVE_LIMITS.items() if k in codes}
+        bad = [k for k, v in l_st.items() if not v.startswith("ok")]
+        record("limits", "上期所／能源中心／鄭商所 每日漲跌停幅度", history.SHFE_PARAM_URL.format("YYYYMMDD"),
+               "判斷漲跌停、異常值門檻（大商所／廣期所用預設值）",
+               "ok" if not bad else "warn" if len(bad) < len(l_st) else "fail", len(LIVE_LIMITS), None,
+               "；".join(f"{k} {v}" for k, v in l_st.items()))
     today = now.date()
     tw_open_today = history.is_tw_trading_day(today, HOLIDAYS)
     prev_payload = None
@@ -858,6 +932,7 @@ def run(now):
         except Exception:  # noqa: BLE001
             pass
     links_by_code, weights_mode, cal_meta, cal = load_links()
+    MOMENTUM.update(cal.get("momentum") or {})
     print(f"計分權重：{weights_mode}；標準化：{'z 分數（20 日波動度）' if NORM == 'z' else '漲跌停幅度'}")
     sigmas, pairs_by = live_sigmas(src) if (NORM == "z" and not a.fixtures) else ({}, None)
     board = commodity_board(src, links_by_code, sigmas)
@@ -897,8 +972,11 @@ def run(now):
         "demo": bool(a.fixtures),
         "weights_mode": weights_mode, "calibration": cal_meta,
         "norm": NORM if sigmas else "limit",
+        "momentum": {"adopt": bool(MOMENTUM.get("adopt")), "combo_w": MOMENTUM.get("combo_w")},
         "premarket": {"on": session == "night",
                       "intl_scored": [c["code"] for c in board if c.get("kind") == "intl" and c.get("links")]},
+        "industry": INDUSTRY_STATE,
+        "all_sectors": sorted(set(INDUSTRY_CODE.values())),
         "market": {"cn": cn, "tw_open_today": tw_open_today,
                    "tw_holiday": HOLIDAYS.get(today.isoformat()),
                    "tw_expected": expected_trade_date(now)},
@@ -917,6 +995,10 @@ def run(now):
         except Exception as e:  # noqa: BLE001
             record("twse_index", "證交所 類股指數（命中率開獎用）", history.IND_URL.format("YYYYMMDD"),
                    "多空類股的實際超額報酬", "fail", note=str(e)[:160])
+        try:
+            update_score_history(payload, skip=cn["stale"] or not tw_open_today)
+        except Exception as e:  # noqa: BLE001
+            print("⚠ 分數歷史更新失敗：", e)
     write_outputs(payload)
     print("多頭：", bull, "空頭：", bear)
     return session
