@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-29T18:51:33+08:00",
+ "run_at": "2026-10-29T19:14:32+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40860838230",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/40863830396",
  "sources": [
   {
    "id": "sina",
@@ -14,7 +14,7 @@
    "rows": 52,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T18:51:36+08:00"
+   "fetched_at": "2026-10-29T19:14:33+08:00"
   },
   {
    "id": "twse_info",
@@ -25,7 +25,7 @@
    "rows": 1088,
    "data_date": "2026-10-28",
    "note": "",
-   "fetched_at": "2026-10-29T18:51:38+08:00"
+   "fetched_at": "2026-10-29T19:14:34+08:00"
   },
   {
    "id": "isin_otc",
@@ -33,10 +33,10 @@
    "url": "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4",
    "used_for": "上櫃個股 → 類股",
    "status": "ok",
-   "rows": 896,
+   "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-29T18:56:06+08:00"
+   "fetched_at": "2026-10-29T19:15:06+08:00"
   },
   {
    "id": "twse_quotes",
@@ -47,7 +47,7 @@
    "rows": 1365,
    "data_date": "2026-10-29",
    "note": "採用官網（另：OpenAPI 2026-10-28）",
-   "fetched_at": "2026-10-29T18:56:10+08:00"
+   "fetched_at": "2026-10-29T19:15:09+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -58,7 +58,7 @@
    "rows": 6232,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T18:56:26+08:00"
+   "fetched_at": "2026-10-29T19:15:16+08:00"
   },
   {
    "id": "twse_index",
@@ -69,7 +69,7 @@
    "rows": null,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-29T18:56:26+08:00"
+   "fetched_at": "2026-10-29T19:15:16+08:00"
   }
  ]
 }
