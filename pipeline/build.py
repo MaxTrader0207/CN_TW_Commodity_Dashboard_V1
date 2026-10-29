@@ -22,6 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mapping import COMMODITIES, INDUSTRY_CODE  # noqa: E402
+import history  # noqa: E402
+import track  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "docs" / "data"
@@ -147,7 +149,28 @@ def parse_sina(text):
     return out
 
 
-def commodity_board(src):
+CALIBRATION = ROOT / "docs" / "data" / "calibration.json"
+
+
+def load_links():
+    """每日計分用的「商品 → 類股」權重：有校準結果用實測權重，否則用 mapping.py 的手動權重。"""
+    manual = {code: [{"sector": s, "w": w, "why": why, "src": "手動"} for s, w, why in links]
+              for _, code, _, _, links in COMMODITIES}
+    if os.environ.get("WEIGHTS") == "manual" or not CALIBRATION.exists():
+        return manual, "手動", None
+    try:
+        cal = json.loads(CALIBRATION.read_text(encoding="utf-8"))
+        live = cal["live_links"]
+        links = {code: live.get(code, manual[code]) for code in manual}
+        meta = {"generated_at": cal.get("generated_at"), "period": cal.get("period"),
+                "counts": cal.get("counts")}
+        return links, "實測", meta
+    except Exception as e:  # noqa: BLE001
+        print("⚠ 校準檔讀取失敗，改用手動權重：", e)
+        return manual, "手動", None
+
+
+def commodity_board(src, links_by_code):
     symbols = [f"nf_{c[1]}0" for c in COMMODITIES]
     quotes, err = {}, ""
     for i in range(0, len(symbols), 30):          # 分批避免網址過長
@@ -164,7 +187,8 @@ def commodity_board(src):
     for ex, code, name, limit, links in COMMODITIES:
         q = quotes.get(code)
         item = {"ex": ex, "code": code, "name": name, "limit": limit,
-                "links": [{"sector": s, "w": w, "why": why} for s, w, why in links]}
+                "links": links_by_code.get(code, []),
+                "manual": [{"sector": s, "w": w} for s, w, _ in links]}
         if not q:
             item.update(status="missing", chg=None, signal=0, at_limit=None)
         else:
@@ -387,7 +411,7 @@ def score_sectors(board, industry, stocks):
             contrib = l["w"] * c["signal"]
             sec["num"] += contrib
             sec["drivers"].append({"code": c["code"], "name": c["name"], "ex": c["ex"], "chg": c["chg"],
-                                   "at_limit": c["at_limit"], "w": l["w"], "why": l["why"],
+                                   "at_limit": c["at_limit"], "w": l["w"], "why": l["why"], "src": l.get("src", "手動"),
                                    "_raw": contrib})
     by_sector = {}
     for code, sec_name in industry.items():
@@ -463,7 +487,9 @@ def run(now):
     session = a.session or ("night" if now.hour < 12 else "day")
     src = FixtureSource(a.fixtures) if a.fixtures else Source()
 
-    board = commodity_board(src)
+    links_by_code, weights_mode, cal_meta = load_links()
+    print(f"計分權重：{weights_mode}")
+    board = commodity_board(src, links_by_code)
     ok = sum(c["status"] == "ok" for c in board)
     print(f"陸期：{ok}/{len(board)} 個商品取得報價")
     if ok < len(board) * 0.5:
@@ -481,11 +507,22 @@ def run(now):
         "session_label": "夜盤收盤（台股盤前）" if session == "night" else "日盤收盤",
         "tw_date": tw_date,
         "demo": bool(a.fixtures),
+        "weights_mode": weights_mode, "calibration": cal_meta,
         "params": {"min_lots": MIN_LOTS, "limit_bonus": LIMIT_BONUS},
         "sources": SOURCES,
         "run_url": os.environ.get("RUN_URL"),
         "commodities": board, "sectors": sectors, "bull": bull, "bear": bear,
     }
+    if not a.fixtures:
+        # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號
+        try:
+            tr = track.update(payload, getattr(src, "s", None))
+            last = tr.get("index_last")
+            record("twse_index", "證交所 類股指數（命中率開獎用）", history.IND_URL.format("YYYYMMDD"),
+                   "多空類股的實際超額報酬", "ok" if last else "warn", None, last)
+        except Exception as e:  # noqa: BLE001
+            record("twse_index", "證交所 類股指數（命中率開獎用）", history.IND_URL.format("YYYYMMDD"),
+                   "多空類股的實際超額報酬", "fail", note=str(e)[:160])
     write_outputs(payload)
     print("多頭：", bull, "空頭：", bear)
     return session

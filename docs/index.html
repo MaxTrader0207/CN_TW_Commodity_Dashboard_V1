@@ -80,6 +80,26 @@ summary{cursor:pointer;font-weight:600}
 .src-stat{font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
 .src-head{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px}
 .src-head b{color:var(--fg)}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.vcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.vcard h3{margin:0 0 2px;font-size:14px}
+.vcard .hint{color:var(--muted);font-size:12px;margin:0 0 8px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--panel2);border-radius:8px;padding:8px}
+.kpi .k{font-size:11px;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:18px;font-weight:700}
+.kpi .s{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.vt th{text-align:left;font-size:11.5px;color:var(--muted);font-weight:600;padding:4px 3px;border-bottom:1px solid var(--line);white-space:nowrap}
+.vt td{padding:4px 3px;white-space:normal;vertical-align:top}
+.vt td.n{white-space:nowrap}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--dn);border-color:currentColor} .tag.lag{color:#60a5fa;border-color:currentColor}
+.tag.rev{color:var(--up);border-color:currentColor} .tag.no{color:var(--muted)} .tag.new{color:var(--accent);border-color:currentColor}
+.tag.few{color:var(--muted);border-style:dashed}
+.note{color:var(--muted);font-size:12px;line-height:1.6;margin:8px 0 0}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
+.filters button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer}
+.filters button.on{border-color:var(--accent);color:var(--accent)}
 #tip{position:fixed;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -91,6 +111,7 @@ summary{cursor:pointer;font-weight:600}
       <span class="pill" id="m-session">—</span>
       <span class="pill" id="m-time">—</span>
       <span class="pill" id="m-tw">—</span>
+      <span class="pill" id="m-weights">—</span>
       <select id="hist" aria-label="歷史資料"></select>
       <button class="btn" id="refresh">⟳ 立即更新</button>
       <span class="upd" id="upd"></span>
@@ -110,6 +131,34 @@ summary{cursor:pointer;font-weight:600}
     <div class="bull"><p class="col-h"><span class="dot"></span>多頭助攻 前3類股</p><div id="bull"></div></div>
     <div class="bear"><p class="col-h"><span class="dot"></span>空頭壓力 前3類股</p><div id="bear"></div></div>
   </div>
+
+  <section id="verify">
+    <h2>訊號驗證</h2>
+    <div class="vgrid">
+      <div class="vcard">
+        <h3>實盤命中率</h3>
+        <p class="hint" id="tk-hint">多空前 3 類股在訊號後下一個台股交易日的表現（類股指數 − 加權指數）</p>
+        <div id="tk-kpis"></div>
+        <p class="note" id="tk-note"></p>
+      </div>
+      <div class="vcard">
+        <h3>歷史回測（樣本外）</h3>
+        <p class="hint" id="bt-hint">—</p>
+        <div style="overflow-x:auto"><table class="vt" id="bt"></table></div>
+        <p class="note" id="bt-note"></p>
+      </div>
+    </div>
+    <details style="margin-top:12px">
+      <summary>近期訊號開獎紀錄</summary>
+      <div style="overflow-x:auto;margin-top:8px"><table class="vt" id="tk-rows"></table></div>
+    </details>
+    <details style="margin-top:12px">
+      <summary id="cal-summary">關聯實測表（手動權重 vs 歷史資料）</summary>
+      <p class="note" id="cal-note"></p>
+      <div class="filters" id="cal-filters"></div>
+      <div style="overflow-x:auto"><table class="vt" id="cal"></table></div>
+    </details>
+  </section>
 
   <section>
     <h2>全部關聯類股 陸期助攻分數</h2>
@@ -185,7 +234,8 @@ function sectorCard(s, i, side) {
     const b = el('b', cls(d.chg), pct(d.chg) + lim); c.append(b);
     c.append(document.createTextNode(' → '));
     c.append(el('b', cls(d.contrib), sc(d.contrib)));
-    hoverTip(c, `${d.ex} ${d.code}｜權重 ${d.w > 0 ? '+' : ''}${d.w}｜${d.why}`);
+    if (d.src === '新增') c.append(el('span', 'tag new', '新增'));
+    hoverTip(c, `${d.ex} ${d.code}｜${d.src || '手動'}權重 ${d.w > 0 ? '+' : ''}${d.w}｜${d.why}`);
     chips.append(c);
   });
   card.append(chips);
@@ -204,6 +254,8 @@ function render(d) {
   $('#m-time').textContent = '更新 ' + d.generated_at.replace('T', ' ').slice(0, 16);
   $('#m-tw').textContent = '台股資料日 ' + (d.tw_date || '—');
   $('#minlots').textContent = d.params.min_lots;
+  $('#m-weights').textContent = '權重 ' + (d.weights_mode || '手動') +
+    (d.calibration?.generated_at ? `（校準 ${d.calibration.generated_at.slice(0, 10)}）` : '');
   const byName = Object.fromEntries(d.sectors.map(s => [s.name, s]));
 
   for (const side of ['bull', 'bear']) {
@@ -247,16 +299,138 @@ function render(d) {
   }
 
   const map = $('#map'); map.replaceChildren();
-  const hr = map.insertRow(); ['交易所', '商品', '關聯類股（權重）', '邏輯'].forEach(x => { const th = el('th', null, x); hr.append(th); });
+  const hr = map.insertRow(); ['交易所', '商品', '目前採用（權重）', '邏輯'].forEach(x => { const th = el('th', null, x); hr.append(th); });
   d.commodities.forEach(c => {
     const tr = map.insertRow();
     tr.insertCell().textContent = c.ex;
     tr.insertCell().textContent = `${c.name} ${c.code}`;
     const s = tr.insertCell();
-    c.links.forEach((l, i) => { if (i) s.append(document.createElement('br')); s.append(el('span', l.w > 0 ? 'up' : 'dn', `${l.sector} ${l.w > 0 ? '+' : ''}${l.w}`)); });
+    if (!c.links.length) s.append(el('span', 'flat', '（實測皆不顯著，暫不計分）'));
+    c.links.forEach((l, i) => {
+      if (i) s.append(document.createElement('br'));
+      s.append(el('span', l.w > 0 ? 'up' : 'dn', `${l.sector} ${l.w > 0 ? '+' : ''}${l.w}`));
+      if (l.src && l.src !== '手動') s.append(document.createTextNode(' '), el('span', 'tag ' + (l.src === '新增' ? 'new' : 'ok'), l.src));
+    });
     const w = tr.insertCell();
     c.links.forEach((l, i) => { if (i) w.append(document.createElement('br')); w.append(document.createTextNode(l.why)); });
   });
+}
+
+// ── 訊號驗證 ──
+const pp = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';   // 超額報酬（百分點）
+const wr = v => v == null ? '—' : Math.round(v * 100) + '%';
+const SESS = { day: '日盤版', night: '夜盤版' };
+
+function kpiBox(k, v, s, vcls) {
+  const b = el('div', 'kpi'); b.append(el('div', 'k', k), el('div', 'v ' + (vcls || ''), v));
+  if (s) b.append(el('div', 's', s));
+  return b;
+}
+
+function renderTrack(t) {
+  const box = $('#tk-kpis'); box.replaceChildren();
+  const all = t.summary.all.next;
+  $('#tk-hint').textContent = `自 ${t.since || '—'} 起累積；多空前 3 類股在訊號後下一個台股交易日的超額報酬（類股指數 − 加權指數）`;
+  for (const [key, label] of [['all', '全部'], ['night', '夜盤版（盤前）'], ['day', '日盤版（收盤後）']]) {
+    const m = key === 'all' ? all : t.summary[key].next;
+    box.append(el('div', 'k', label + `　已開獎 ${m.n} 次`));
+    const g = el('div', 'kpis'); g.style.marginBottom = '8px';
+    g.append(kpiBox('多頭隔日', pp(m.bull_avg), '勝率 ' + wr(m.bull_win), cls(m.bull_avg)),
+             kpiBox('空頭隔日', pp(m.bear_avg), '勝率 ' + wr(m.bear_win), cls(m.bear_avg)),
+             kpiBox('多空價差', pp(m.spread_avg), '為正 ' + wr(m.spread_win), cls(m.spread_avg)));
+    box.append(g);
+  }
+  const n = all.n;
+  $('#tk-note').textContent = (n < 20 ? `目前只開獎 ${n} 次，樣本太少，數字只供觀察，累積 20 次以上再判斷。` : '') +
+    (t.summary.excluded ? `另有 ${t.summary.excluded} 筆因排程延遲、在盤中才產生的訊號不計入。` : '') +
+    '多頭勝率 = 類股跑贏加權指數的比例；空頭勝率 = 跑輸的比例。';
+
+  const tb = $('#tk-rows'); tb.replaceChildren();
+  const h = tb.insertRow(); ['訊號時間', '版本', '多頭 3', '空頭 3', '開獎日', '多頭', '空頭', '價差'].forEach(x => h.append(el('th', null, x)));
+  t.rows.forEach(r => {
+    const tr = tb.insertRow();
+    tr.insertCell().textContent = r.run_at.replace('T', ' ').slice(5, 16);
+    const v = tr.insertCell(); v.textContent = SESS[r.session] || r.session;
+    if (!r.valid) { v.append(document.createElement('br'), el('span', 'tag no', '不計')); hoverTip(v, r.invalid_reason); }
+    tr.insertCell().textContent = r.bull.join('、') || '—';
+    tr.insertCell().textContent = r.bear.join('、') || '—';
+    const x = r.next;
+    tr.insertCell().textContent = r.next_date ? r.next_date.slice(5) : '待開獎';
+    for (const k of ['bull_avg', 'bear_avg', 'spread']) {
+      const c = tr.insertCell(); c.className = 'n ' + cls(x?.[k]); c.textContent = x ? pp(x[k]) : '—';
+    }
+  });
+}
+
+function btRow(t, label, m) {
+  const tr = t.insertRow();
+  tr.insertCell().textContent = label;
+  for (const [v, f] of [[m.days, x => x ?? '—'], [m.bull_avg, pp], [m.bull_win, wr], [m.bear_avg, pp], [m.bear_win, wr], [m.spread_avg, pp], [m.spread_t, x => x == null ? '—' : x.toFixed(1)]]) {
+    const c = tr.insertCell(); c.className = 'n ' + (f === pp ? cls(v) : ''); c.textContent = f(v);
+  }
+}
+
+let CAL = null, calFilter = 'all';
+const STATUS_TAG = { '有效': 'ok', '隔日有效': 'lag', '方向相反': 'rev', '不顯著': 'no', '數據新增': 'new', '樣本不足': 'few' };
+
+function renderCalibration(c) {
+  CAL = c;
+  const bt = c.backtest;
+  $('#bt-hint').textContent = `${bt.train[0]}～${bt.train[1]} 校準權重，${bt.test[0]}～${bt.test[1]} 測試（測試期沒用來調權重）`;
+  const t = $('#bt'); t.replaceChildren();
+  const h = t.insertRow(); ['', '天數', '多頭', '勝率', '空頭', '勝率', '價差', 't 值'].forEach(x => h.append(el('th', null, x)));
+  const sec = (txt) => { const r = t.insertRow(); const c0 = r.insertCell(); c0.colSpan = 8; c0.append(el('b', null, txt)); };
+  sec('隔日（預測力）');
+  btRow(t, '手動權重', bt.manual.lag1); btRow(t, '實測權重', bt.calibrated.lag1);
+  sec('同日（關聯是否存在）');
+  btRow(t, '手動權重', bt.manual.lag0); btRow(t, '實測權重', bt.calibrated.lag0);
+  $('#bt-note').textContent = '數字為選出類股的平均超額報酬（類股指數 − 加權指數）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
+    '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
+
+  const counts = c.counts || {};
+  $('#cal-summary').textContent = `關聯實測表（${c.period.start}～${c.period.end}，${c.period.tw_days} 個交易日）`;
+  $('#cal-note').textContent = `依歷史資料重新檢驗每組「商品 → 類股」：` +
+    Object.entries(counts).map(([k, v]) => `${k} ${v}`).join('、') +
+    `。同日相關 ρ0 衡量陸期與類股超額報酬是否同步；隔日 ρ1 衡量預測力。|t| ≥ 2 且前後兩段方向一致才採用；` +
+    `「數據新增」是對照表外、門檻更嚴（|t| ≥ 4）的組合，仍需自行確認產業邏輯。一次檢驗上百組，約有 5% 的組合會純屬巧合而「顯著」。`;
+  const f = $('#cal-filters'); f.replaceChildren();
+  for (const k of ['all', '有效', '隔日有效', '方向相反', '不顯著', '數據新增', '樣本不足']) {
+    if (k !== 'all' && !counts[k]) continue;
+    const b = el('button', calFilter === k ? 'on' : '', k === 'all' ? '全部' : `${k} ${counts[k]}`);
+    b.onclick = () => { calFilter = k; renderCalibration(CAL); };
+    f.append(b);
+  }
+  const t2 = $('#cal'); t2.replaceChildren();
+  const h2 = t2.insertRow(); ['商品', '類股', '手動', '同日 ρ0 (t)', '隔日 ρ1 (t)', 'n', '採用', '判定'].forEach(x => h2.append(el('th', null, x)));
+  const rows = c.pairs.concat(c.discovered).filter(p => calFilter === 'all' || p.status === calFilter)
+    .sort((a, b) => Math.abs(b.t0 || 0) - Math.abs(a.t0 || 0));
+  const rt = (r, t) => r == null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(2)} (${t.toFixed(1)})`;
+  rows.forEach(p => {
+    const tr = t2.insertRow();
+    tr.insertCell().textContent = `${p.name} ${p.code}`;
+    tr.insertCell().textContent = p.sector;
+    const m = tr.insertCell(); m.className = 'n'; m.textContent = p.manual_w == null ? '—' : (p.manual_w > 0 ? '+' : '') + p.manual_w;
+    const a = tr.insertCell(); a.className = 'n ' + (Math.abs(p.t0 || 0) >= 2 ? cls(p.rho0) : 'flat'); a.textContent = rt(p.rho0, p.t0);
+    const b = tr.insertCell(); b.className = 'n ' + (Math.abs(p.t1 || 0) >= 2 ? cls(p.rho1) : 'flat'); b.textContent = rt(p.rho1, p.t1);
+    const n = tr.insertCell(); n.className = 'n'; n.textContent = p.n;
+    const w = tr.insertCell(); w.className = 'n ' + cls(p.cal_w); w.textContent = p.cal_w ? (p.cal_w > 0 ? '+' : '') + p.cal_w : '0';
+    const s = tr.insertCell(); s.append(el('span', 'tag ' + (STATUS_TAG[p.status] || ''), p.status));
+    hoverTip(tr, p.why);
+  });
+}
+
+async function loadVerify() {
+  try {
+    const t = await (await fetch('data/track.json?t=' + Date.now())).json();
+    renderTrack(t);
+  } catch (e) { $('#tk-kpis').replaceChildren(el('div', 'empty', '尚無追蹤資料，下次更新後開始累積。')); }
+  try {
+    const c = await (await fetch('data/calibration.json?t=' + Date.now())).json();
+    renderCalibration(c);
+  } catch (e) {
+    $('#bt-hint').textContent = '尚未完成第一次校準（每週六自動執行）。';
+    $('#cal-summary').textContent = '關聯實測表（尚未校準）';
+  }
 }
 
 const ST_LABEL = { ok: '正常', warn: '注意', fail: '失敗' };
@@ -323,7 +497,7 @@ async function waitForNewRun(prevRunAt) {
     if (st && st.run_at !== prevRunAt) {
       clearInterval(polling); $('#refresh').disabled = false;
       setUpd(st.ok ? '✓ 已更新 ' + fmtTime(st.run_at) : '✗ 更新失敗，見資料來源狀態');
-      $('#hist').value = ''; load('');
+      $('#hist').value = ''; load(''); loadVerify();
     } else if (Date.now() - started > 12 * 60000) {
       clearInterval(polling); $('#refresh').disabled = false; setUpd('等待逾時，請稍後重新整理');
     }
@@ -372,6 +546,7 @@ async function load(key) {
   } catch (e) { $('#hist').style.display = 'none'; }
   load('');
   loadStatus();
+  loadVerify();
 })();
 </script>
 </body>
