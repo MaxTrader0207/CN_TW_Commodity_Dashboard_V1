@@ -1,84 +1,81 @@
-== SHFE trade args HTTP 200 application/json len=70313
-{"ContractDailyTradeArgument":[{"INSTRUMENTID":"cu2611","SPEC_SHORTMARGINRATIO":"0.11","LOWER_VALUE":"0.09","HDEGE_SHORTMARGINRATIO":"0.1","PRICE_LIMITS":"","UPPER_VALUE":"0.09","SPEC_LONGMARGINRATIO":"0.11","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.1"},{"INSTRUMENTID":"cu2612","SPEC_SHORTMARGINRATIO":"0.11","LOWER_VALUE":"0.09","HDEGE_SHORTMARGINRATIO":"0.1","PRICE_LIMITS":"","UPPER_VALUE":"0.09","SPEC_LONGMARGINRATIO":"0.11","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.1"},{"INSTRUMENTID":"cu2701","SPEC_SHORTMARGINRATIO":"0.11","LOWER_VALUE":"0.09","HDEGE_SHORTMARGINRATIO":"0.1","PRICE_LIMITS":"","UPPER_VALUE":"0.09","SPEC_LONGMARGINRATIO":"0.11","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.1"},{"INSTRUMENTID":"cu2702","SPEC_SHORTMARGINRATIO":"0.11","LOWER_VALUE":"0.09","HDEGE_SHORTMARGINRATIO":"0.1","PRICE_LIMITS":"","UPPER_VALUE":"0.09","SPEC_LONGMARGINRATIO":"0.
+== SHFE codes HTTP 200 application/json len=70313
+{"ContractDailyTradeArgument":[{"INSTRUMENTID":"cu2611","SPEC_SHORTMARGINRATIO":"0.11","LOWER_VALUE":"0.09","HDEGE_SHORTMARGINRATIO":"0.1","PRICE_LIMITS":"","UPPER_VALU
 
-== SHFE trade args2 HTTP 404 text/html; charset=utf-8 len=4792
-<!DOCTYPE html>
+SHFE prefixes: ['ad', 'ag', 'al', 'ao', 'au', 'bc', 'br', 'bu', 'cu', 'ec', 'fu', 'hc', 'lu', 'ni', 'nr', 'op', 'pb', 'rb', 'ru', 'sc', 'sn', 'sp', 'ss', 'wr', 'zn']
+== INE HTTP 200 application/json len=14813
+{"ContractDailyTradeArgument":[{"INSTRUMENTID":"sc2611","SPEC_SHORTMARGINRATIO":"0.22","LOWER_VALUE":"0.2","HDEGE_SHORTMARGINRATIO":"0.21","PRICE_LIMITS":"","UPPER_VALUE":"0.2","SPEC_LONGMARGINRATIO":"0.22","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.21"},{"INSTRUMENTID":"sc2612","SPEC_SHORTMARGINRATIO":"0.18","LOWER_VALUE":"0.16","HDEGE_SHORTMARGINRATIO":"0.17","PRICE_LIMITS":"","UPPER_VALUE":"0.16","SPEC_LONGMARGINRATIO":"0.18","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.17"},{"INSTRUMENTID":"sc2701","SPEC_SHORTMARGINRATIO":"0.18","LOWER_VALUE":"0.16","HDEGE_SHORTMARGINRATIO":"0.17","PRICE_LIMITS":"","UPPER_VALUE":"0.16","SPEC_LONGMARGINRATIO":"0.18","TRADINGDAY":"20261029","HDEGE_LONGMARGINRATIO":"0.17"},{"INSTRUMENTID":"sc2702","S
+
+== ZCE clear params HTTP 412 text/html; charset=utf-8 len=2835
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="renderer" content="webkit">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <meta name="format-detection" content="telephone=no" />
-  <link rel="shortcut icon" href="favicon.ico">
-  <title>404</title>
-  <style>
-    html,
-    body {
-      height: 100%;
-      padding: 0;
-      margin: 0;
-    }
-    .outer_no_page {
-      height: 100%;
-      position: relative;
-    }
-    .inc-header {
-      width: 100%;
-      height: 0.5rem;
-      position: absolu
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta id="OAOzrcPVukpe" content="cmJ_CmnuUfSFMp6b6EVrjzTOJ0eyRxKqQWtikc8T6cKp8C-JnChn2DrQ1jrkENpK6i0o4ft3LJJSfqzZbUTcRD-JkIrvxX2Jf2JchKRg1Ftp3u9GNJ5zR6wK6gMC25zltVIBa4fgTM0nkcpa_xtBJ4Dqm5oPQJu0Lq0YeGb9SR3o3c8niwNa_kcjbxe_0ogXX9NZ2k6Tv_rJxwrTR8ehUG" r='m'><!--[if lt IE 9]><script r='m'>document.createElement("section")</script><![endif]--><script type="text/javascript" r='m'>$_ts=window['$_ts'];if(!$_ts)$_ts={};$_ts.nsd=91939;$_ts.cd="qxwSr1qlEn3qtkgmlaqfkfAbqk3mxGQLHGAHqclimpWqxGAbr1GuEGVWcqA3laqbqP3ktkWbrPG5qaZqxGAbr1GuxGEWmAAFxGq0HGVsqc3DxGQLWn3ctkgkiGlLHGEbrGaKrr3brcG5rAZqEAgUxG3Cr13mtkgcEGVAmaAMlaqbqc3rtkWsqc3oiGALWSWqxGEbqnGuxzgWWyZTJaQuWuAC-tKCyQSQZmREs2ny3dqAau9jhDhRstqEAKiUcEZW8609nfb-ulRGy9z6FJItoQ0q-qWctGKDWoBB8beH1kq6izwTJvRVQlxcNvx-WDASwuvKimxZAvAZFZStilR1FVmk4KrYHbJCUV6h3Ur9ICy2s_RrJvR9w6minUzhslQZYvM13sRswDzvwj9niDzvAuYR06YKHsYTJP5NJCQu3DVnhdwailexHCl0nYJNRomrYP5NJCQu3DVnhdwaioxzwbRG4oJ0wORGVn5NJCQu3DVnhdwaioY93Dwo_DrfUCfH11d6QkfO30eBQi2cp0GTQlZ_Zkr-IDLawOOIi0yeHOpA8IyWYVyjA97CTkfcMmrKsuUdK0wCpT0jJF2vJKrvW1N-4Of_WKmlJCBZRCqTF2QjJF2vJKrvW1N-4OfYJupJIoI3Q0QnJTqjJF2vJKrvW1N-4OfWplNewbhJYURXwKEdRHenQDSD3lSMjT2JrAA6rsciF6wSwUA5iF7_JkVSHuEuNuQ6JGWuWDK-RblDJkl6c_auJklnHOAT-OltWklnJO8XJsEumFtAFnJyekizP1VJsh56A6gUODI4K6PM61EmvxgqrGqcqnp9ic0DdglLHJefRjwrwvM8kWB4qeLAX5lysp
 
-== 9qihuo HTTP 200 text/html; charset=UTF-8 len=791480
-<!doctype html><html lang="zh-Hans" class="avgrund-ready b2dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" /><meta http-equiv="Cache-Control" content="no-transform" /><meta http-equiv="Cache-Control" content="no-siteapp" /><meta name="renderer" content="webkit"/><meta name="force-rendering" content="webkit"/><meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/><link rel="profile" href="http://gmpg.org/xfn/11"><meta name="theme-color" content="#ffffff"><title>2026年商品期货手续费一览表-每天更新 - 九期网</title><meta name='robots' content='max-image-preview:large' /><link rel='dns-prefetch' href='//res.wx.qq.com' /><link rel="alternate" type="application/rss+xml" title="九期网 &raquo; 2026年商品期货手续费一览表-每天更新 评论 Feed" href="https://www.9qihuo.com/qihuoshouxufei/feed" /><meta property="og:local
+== ZCE clear params txt HTTP 200 text/plain; charset=utf-8 len=37539
+					郑州商品交易所期货结算参数表(2026-10-29)
+合约代码|当日结算价|是否单边市|连续单边市天数|交易保证金率(%)|涨跌停板(%)|交易手续费|手续费收取方式|交割手续费|日内平今仓交易手续费|日持仓限额|交易限额
+AP611    |6,932.00   |N          |0              |10              |±8         |5.00       |绝对值           |0.00       |10.00      |40         |           
+AP612    |6,197.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+AP701    |5,524.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+AP703    |5,257.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+AP704    |5,217.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+AP705    |5,216.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+AP710    |6,837.00   |N          |0              |9               |±8         |5.00       |绝对值           |0.00       |10.00      |1000       |           
+CF611    |14,955.00  |N          |0              |10              |±6         |4.30       |绝对值           |0.00       |0.00       |4000       |10000      
+CF701    |15,170.00  |N          |0              |7               |±6         |4.30       |绝对值           |0.00       |0.00       |65530      |10000      
+CF703    |14,960.00  |N          |0              |7             
 
-== jiaoyixingqiu HTTP 200 text/html; charset=UTF-8 len=550584
-<!doctype html>
-<html lang="zh-Hans" class="avgrund-ready">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-	<meta name="renderer" content="webkit"/>
-	<meta name="force-rendering" content="webkit"/>
-	<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1"/>
-	<link rel="profile" href="http://gmpg.org/xfn/11">
-	<meta name="theme-color" content="#f9f9f9">
-	<title>期货手续费列表,保证金列表-实时更新 - 交易星球</title>
-<meta name='robots' content='index, follow, max-image-preview:large' />
-<link rel='dns-prefetch' href='//www.jiaoyixingqiu.com' />
-<link rel='dns-prefetch' href='//res.wx.qq.com' />
-<link rel='dns-prefetch' href='//at.alicdn.com' />
-<link rel="alternate" type="application/rss+xml" title="交易星球 &raquo; 期货手续费列表,保证金列表-实时更新 评论 Feed" href="https://www.jiaoyixingqiu.com/shouxuf
-
-== qhsxf HTTP 200 text/html len=4609
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
-
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+== DCE trade params HTTP 412 text/html; charset=utf-8 len=3162
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" >
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=yes,maximum-scale=2" />
-<meta name="applicable-device"content="pc,mobile">
-<meta name="MobileOptimized" content="width"/>
-<meta name="HandheldFriendly" content="true"/>
-<meta http-equiv="Cache-Control" content="no-transform" /> 
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta id="9wq7NOeAWkjr" content="_gvkIbsfVk1yWVYPPpLTHiynT1Xs_9Z1t4QRw0DGFnQDQ3i0xGbnSPq5YruC-d7V7J1kxtpJe9WT1NwkJhqVtIxAbgHUw1X1R9DRse-kF0ol2UbzFBBrNiRSQ0-WMAChgdvpxPe-qYGBzJ2oCFAQlAdAAXGXIMWlG74J7zP4WM0FM3gf99wuADw4UP500coM04A5Crti8CG3UHLcp1He8MlvfPhLvdnkyeDhGLvlpM-zDm1_G74FyHivCu1LyksGYGBSo8ikWZGJVrx6garwakIGBg-XpwF6UTPV4DjE15BeSSW_rlZx5xmFtoV5yPkJr1BhSa_rZUjsSjN179G9z8IxvvJ5PfqlsMvaRiLdMyiFSHeaOI9CDtk59x0sNRmfE6-BZTWeJ1Tto28HCRrM-Au2n5PxjLD8ObIM1OXnxLNXTKUrbfYrswgyVHg-DUp8VmHQXe_X4q6gBdg4IuZmaytEEH6fBLvsXbyCUuGxBDJ7DadAf1pmS_G50EwFcF3MefeATlFj86L" r='m'><!--[if lt IE 9]><script r='m'>document.createElement("section")</script><![endif]--><script type="text/javascript" r='m'>$_ts=window['$_ts'];if(!$_ts)$_ts={};$_ts.nsd=29667;$_ts.cd="qJJSr1qlhu9riqgciAQ0rs9ciqgkiAq0ckafiA3yruGviAV0ckaqiAWyEsGvHqqyrO7XEAaqmqAui1A0ckaqiAWyqkGviAQgkGAwqk9miAEgxuaqiAqyqsGvDqQ0ckaqiAVyqOGviAqyq17qmAALiAAgkGVyqOGiqu9GiqgcHqq4hf3Zqk7Xmu9cmAGZqk9qiAlgxnAmqr3lEr0qiAVyqOGvHqqyqk9ricQwqk9oiAAgxu9kiqgliAqqJGA3Hqqyrk9micQyqo9irsaqiA3yruGviAAqWN70Jq30WOpFa4nQ0V4s3trHmPK9huwQaPKWLF1jq0cWy8cw7ivCzoCBohXMwzvNHkgJbOzUXs0qjqErtatoWl6gRYJiAuJ-i7ezpTR0WlTuL2rxUlACMDsNiK3Z1ux8sexWiC34sOrOaDZyHCNEVYtGpbyiwbJXwjETVspV10yHZ9wa3YWesOOSMK3eQmyBwzetiTwNRDfp6ORcQ6xkYn5-JOWuiuZThdJSiTwHVlJbZ2JHJ6wtRn5-JOWuiuZThdJSi0G0J
+
+== DCE trade params2 HTTP 412 text/html; charset=utf-8 len=2775
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta id="9wq7NOeAWkjr" content="isBlXyv01SGDraWA59th6E0osxg-YQU1ZWaMwXKMPorZMousMCO_cle6_IAm-ElUA4q9ktf12oYyyYALxJ5qaiFo9s9zU7bsOIeJ8Lsd5RxvJlSB0FpNzPayFYxVMmG70M-209w8l3Q" r='m'><!--[if lt IE 9]><script r='m'>document.createElement("section")</script><![endif]--><script type="text/javascript" r='m'>$_ts=window['$_ts'];if(!$_ts)$_ts={};$_ts.nsd=5442;$_ts.cd="qJJSr1qlhu9riqgciAQ0rs9ciqgkiAq0ckaUiA3yruGviAV0ckaqiAWymuGvHqqyrO7XEAaqmqAuipE0ckaqiAWyqkGviAQgkGA-qk9miAEgxuaqiAqyqsGvhGQ0ckaqiAVyqOGviAqyqp0qmAALiAAgkGVyqOGiqu9KiqgcHqq4hf3Zqk7Xmu9cEaGZqk9qiAlgxnAmqr3lEc7qiAVyqOGvHqqyqk9ricQ-qk9oiAAgxu9kiqgliAqqqqA3Hqqyrk9micQyqxlirsaqiA3yruGviAAqWN70Jq30WOAom98LLYxIFO3rD1aRLRVnp80PjjSjlGD3pDmq0v4pCsUoscdGbypt0j-kFq1E8B0qjqErtatoWl6gRYJiAuJ-i7ezpTR0WlTuL2rxUlACMDsNiK3Z1ux8sexWiC34sOrOaDZyHCNEVYtGpbyiwbJXwjETVspV10yHZ9wa3YWesOOSMK3eQmyBwzetiTwNRDfp6ORcQ6xkYn5-JOWuiuZThdJSiTwHVlJbZ2JHJ6wtRn5-JOWuiuZThdJSi0G0Jb9C5TxLV6NTMc5-JOWuiuZThdJSiTm_1bJH_smY3l2cIPduQszYQVfKVer0RoA0IbG_eVwK1CwNWChhpVRqispBFJyf36yf3YS74s2tR2roVDI5Muf6AUZjW_0SJu04JnN-_O2sUbY7VoBLVCThpUZjW_0SJu04JnN-_O2XMmpG3D-F19LCWsQjW_0SJu04JnN-_O9yQ6WS194ZATwBFoAd88Jt3VRu1UwW0KzvrqW6rsc5FvpaQOS_wXyThbrf3nNPebZXRCS_wKvf8nyG3KWj3BRBhbw7HkaSvuq0JuVdHAtLJkEiWu3uJFg4WkqSJq06jkquWuqnHkDxTWPq5BS2bpdlh5dROQWfyrtqhwZza4eGdGDwqq3qqyZDEh_oZ4
+
+== GFEX trade params HTTP 404 text/html;charset=UTF-8 len=1608
+
+
+
+
+<!DOCTYPE HTML>
+<html style="overflow-y:hidden;">
+<head>
+<meta charset="utf-8">
+<meta name="renderer" content="webkit|ie-comp|ie-stand">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" />
 <meta http-equiv="Cache-Control" content="no-siteapp" />
-<title>期货手续费一览表（2026年每月更新）-期货手续费网</title>
-<meta name="keywords" content="期货手续费,期权手续费,股指期货手续费,商品期货手续费,交易所手续费" />
-<meta name="description" content="期货手续费网www.qhsxf.com提供最新的期货交易所手续费、交易所保证金、期货交易时间等信息，与交易所同步更新。期货总手续费=交易所手续费+期货公司手续费，交易所手续费一般固定不变（偶尔会根据行情
-
-== sina AU HTTP 200 application/javascript; charset=GB18030 len=237
-var hq_str_nf_AU0="뼝쏜젯崎,232731,864.580,867.960,863.600,0.000,864.500,864.540,864.520,0.000,869.540,6,1,185462.000,87031,빴,뼝쏜,2026-10-29,1,,,,,,,,,865.516,864.480,3,864.460,5,864.440,8,864.420,16,864.560,1,864.580,2,864.600,2,864.620,1";
-
-
-== sina AU kline HTTP 200 application/javascript; charset=gbk len=522477
-/*<script>location.href='//sina.com';</script>*/
-var _x=([{"d":"2008-01-09","o":"230.950","h":"230.990","l":"221.880","c":"223.300","v":"103364","p":"16342","s":"0.000"},{"d":"2008-01-10","o":"222.500","h":"222.850","l":"213.700","c":"215.120","v":"87984","p":"23494","s":"0.000"},{"d":"2008-01-11","
-
-== yahoo GC HTTP 200 application/json;charset=utf-8 len=1558
-{"chart":{"result":[{"meta":{"currency":"USD","symbol":"GC=F","exchangeName":"CMX","fullExchangeName":"COMEX","instrumentType":"FUTURE","firstTradeDate":967608000,"regularMarketTime":1793287042,"hasPrePostMarketData":false,"gmtoffset":-14400,"timezone":"EDT","exchangeTimezoneName":"America/New_York"
+<!--[if lt IE 9]>
+<script type="text/javascript" src="/res/ui/js/html5.js"></script>
+<script type="text/javascript" src="/res/ui/js/respond.min.js"></script>
+<script type="text/javascript" src="/res/ui/js/PIE_IE678.js"></script>
+<![endif]-->
+<link href="/res/ui/css/H-ui.css" rel="stylesheet" type="text/css" />
+<link href="/res/ui/css/H-ui.admin.css" rel="stylesheet" type="text/css" />
+<link type="text/css" rel="stylesheet" href="/res/ui/font/font-awesome.min.css"/>
+<!--[if IE 7]>
+<link href="/res/ui/font/font-awesome-ie7.min.css" rel="stylesheet" type="text/css" />
+<![endif]-->
+<!--[if IE 6]>
+<script type="text/javascript" src="/res/ui/js/DD_belatedPNG_0.0.8a-min.js" ></script>
+<script>DD_belatedPNG.fix('*');</script>
+<![endif]-->
+<style>
+.display{
+	display: none;
+}
+.page-404{color:#afb5bf;padding-top:60px;padding-bottom:90px}.page-404 .error-title{font-size:80px}.page-404 .error-title .iconfont{font-size:80px}.page-404 .error-description{font-size:24px}.page-404 .error-info{font-size:14px}
+</style>
+<title>错误页面</title>
+</head>
+<body style="overflow:hidden">
+<article class=
 
