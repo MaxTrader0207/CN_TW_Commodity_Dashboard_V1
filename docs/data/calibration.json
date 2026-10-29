@@ -1,0 +1,2185 @@
+{
+ "generated_at": "2026-10-29T18:48+08:00",
+ "period": {
+  "start": "2024-10-30",
+  "end": "2026-10-29",
+  "tw_days": 484
+ },
+ "method": {
+  "target": "類股指數漲跌 − 加權指數漲跌（超額報酬）",
+  "signal": "陸期主力 收盤 ÷ 前一日結算價",
+  "min_n": 120,
+  "t_valid": 2.0,
+  "t_lag1": 2.5,
+  "t_discover": 4.0,
+  "rho_full": 0.3,
+  "train_frac": 0.6
+ },
+ "counts": {
+  "有效": 18,
+  "不顯著": 51,
+  "方向相反": 1,
+  "數據新增": 20
+ },
+ "pairs": [
+  {
+   "ex": "上期所",
+   "code": "CU",
+   "name": "銅",
+   "sector": "電器電纜",
+   "manual_w": 1.0,
+   "why": "銅為電線電纜主原料，銅價走揚帶動報價與庫存利益",
+   "n": 464,
+   "rho0": 0.196,
+   "t0": 4.3,
+   "rho1": 0.169,
+   "t1": 3.73,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.7,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "CU",
+   "name": "銅",
+   "sector": "電子零組件",
+   "manual_w": 0.4,
+   "why": "銅箔、銅箔基板(CCL)報價隨銅價調整",
+   "n": 464,
+   "rho0": 0.133,
+   "t0": 2.89,
+   "rho1": 0.088,
+   "t1": 1.93,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "AL",
+   "name": "鋁",
+   "sector": "鋼鐵",
+   "manual_w": 0.4,
+   "why": "鋁材、鋁擠型業者報價連動",
+   "n": 464,
+   "rho0": -0.013,
+   "t0": -0.29,
+   "rho1": 0.028,
+   "t1": 0.61,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "AL",
+   "name": "鋁",
+   "sector": "電器電纜",
+   "manual_w": 0.3,
+   "why": "鋁導線與金屬族群情緒",
+   "n": 464,
+   "rho0": 0.146,
+   "t0": 3.17,
+   "rho1": 0.202,
+   "t1": 4.5,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.5,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "ZN",
+   "name": "鋅",
+   "sector": "鋼鐵",
+   "manual_w": 0.3,
+   "why": "鍍鋅鋼品報價參考",
+   "n": 465,
+   "rho0": -0.086,
+   "t0": -1.85,
+   "rho1": 0.038,
+   "t1": 0.82,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "NI",
+   "name": "鎳",
+   "sector": "鋼鐵",
+   "manual_w": 0.8,
+   "why": "鎳為不鏽鋼主要成本，鎳漲帶動不鏽鋼盤價上調",
+   "n": 464,
+   "rho0": 0.01,
+   "t0": 0.22,
+   "rho1": -0.085,
+   "t1": -1.86,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "SS",
+   "name": "不鏽鋼",
+   "sector": "鋼鐵",
+   "manual_w": 1.0,
+   "why": "不鏽鋼價格直接連動燁輝、大成鋼、唐榮等",
+   "n": 465,
+   "rho0": -0.031,
+   "t0": -0.66,
+   "rho1": -0.107,
+   "t1": -2.34,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "RB",
+   "name": "螺紋鋼",
+   "sector": "鋼鐵",
+   "manual_w": 1.0,
+   "why": "建築鋼筋價格指標，連動豐興、東和鋼鐵、中鋼",
+   "n": 465,
+   "rho0": 0.049,
+   "t0": 1.06,
+   "rho1": -0.012,
+   "t1": -0.26,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "RB",
+   "name": "螺紋鋼",
+   "sector": "水泥",
+   "manual_w": 0.4,
+   "why": "營建需求熱度同步反映",
+   "n": 465,
+   "rho0": -0.004,
+   "t0": -0.09,
+   "rho1": -0.003,
+   "t1": -0.07,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "RB",
+   "name": "螺紋鋼",
+   "sector": "建材營造",
+   "manual_w": 0.2,
+   "why": "營建景氣情緒",
+   "n": 465,
+   "rho0": -0.025,
+   "t0": -0.54,
+   "rho1": -0.01,
+   "t1": -0.22,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "HC",
+   "name": "熱卷",
+   "sector": "鋼鐵",
+   "manual_w": 1.0,
+   "why": "熱軋鋼捲價格直接影響中鋼、中鴻盤價",
+   "n": 465,
+   "rho0": 0.061,
+   "t0": 1.32,
+   "rho1": -0.016,
+   "t1": -0.34,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "HC",
+   "name": "熱卷",
+   "sector": "汽車",
+   "manual_w": -0.2,
+   "why": "車用鋼材成本",
+   "n": 465,
+   "rho0": -0.03,
+   "t0": -0.64,
+   "rho1": 0.003,
+   "t1": 0.07,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "AG",
+   "name": "白銀",
+   "sector": "光電",
+   "manual_w": -0.3,
+   "why": "太陽能電池銀漿成本",
+   "n": 459,
+   "rho0": 0.049,
+   "t0": 1.05,
+   "rho1": 0.104,
+   "t1": 2.27,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "FU",
+   "name": "燃料油",
+   "sector": "航運",
+   "manual_w": -0.6,
+   "why": "船用燃油成本上升",
+   "n": 457,
+   "rho0": 0.156,
+   "t0": 3.38,
+   "rho1": 0.006,
+   "t1": 0.13,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "FU",
+   "name": "燃料油",
+   "sector": "油電燃氣",
+   "manual_w": 0.5,
+   "why": "油品報價走揚",
+   "n": 457,
+   "rho0": 0.295,
+   "t0": 6.58,
+   "rho1": 0.08,
+   "t1": 1.74,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 1.0,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "BU",
+   "name": "瀝青",
+   "sector": "油電燃氣",
+   "manual_w": 0.3,
+   "why": "油品報價",
+   "n": 460,
+   "rho0": 0.217,
+   "t0": 4.75,
+   "rho1": 0.056,
+   "t1": 1.22,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.7,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "BU",
+   "name": "瀝青",
+   "sector": "建材營造",
+   "manual_w": -0.2,
+   "why": "鋪路材料成本",
+   "n": 460,
+   "rho0": 0.071,
+   "t0": 1.52,
+   "rho1": 0.01,
+   "t1": 0.22,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "RU",
+   "name": "天然橡膠",
+   "sector": "橡膠",
+   "manual_w": -0.6,
+   "why": "輪胎廠(正新、建大)原料成本上升",
+   "n": 465,
+   "rho0": -0.121,
+   "t0": -2.62,
+   "rho1": -0.044,
+   "t1": -0.96,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "BR",
+   "name": "丁二烯橡膠",
+   "sector": "橡膠",
+   "manual_w": 0.5,
+   "why": "合成橡膠廠(台橡、南帝、申豐)產品報價走揚",
+   "n": 463,
+   "rho0": -0.047,
+   "t0": -1.01,
+   "rho1": -0.027,
+   "t1": -0.59,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "SP",
+   "name": "紙漿",
+   "sector": "造紙",
+   "manual_w": 0.5,
+   "why": "紙漿漲帶動紙價上調，華紙具紙漿自給",
+   "n": 465,
+   "rho0": 0.03,
+   "t0": 0.66,
+   "rho1": 0.036,
+   "t1": 0.79,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "AO",
+   "name": "氧化鋁",
+   "sector": "鋼鐵",
+   "manual_w": 0.2,
+   "why": "鋁業上游情緒",
+   "n": 464,
+   "rho0": -0.012,
+   "t0": -0.26,
+   "rho1": -0.047,
+   "t1": -1.03,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "SC",
+   "name": "原油",
+   "sector": "油電燃氣",
+   "manual_w": 1.0,
+   "why": "台塑化、全國等油品報價與庫存利益",
+   "n": 455,
+   "rho0": 0.221,
+   "t0": 4.82,
+   "rho1": 0.06,
+   "t1": 1.3,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.7,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "SC",
+   "name": "原油",
+   "sector": "塑膠",
+   "manual_w": 0.5,
+   "why": "原油推升石化原料報價",
+   "n": 455,
+   "rho0": 0.082,
+   "t0": 1.75,
+   "rho1": -0.052,
+   "t1": -1.12,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "SC",
+   "name": "原油",
+   "sector": "化學工業",
+   "manual_w": 0.3,
+   "why": "石化下游報價",
+   "n": 455,
+   "rho0": 0.034,
+   "t0": 0.72,
+   "rho1": -0.043,
+   "t1": -0.94,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "SC",
+   "name": "原油",
+   "sector": "航運",
+   "manual_w": -0.5,
+   "why": "燃油成本上升",
+   "n": 455,
+   "rho0": 0.079,
+   "t0": 1.69,
+   "rho1": 0.027,
+   "t1": 0.59,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "LU",
+   "name": "低硫燃料油",
+   "sector": "航運",
+   "manual_w": -0.5,
+   "why": "船舶低硫燃油成本",
+   "n": 458,
+   "rho0": 0.157,
+   "t0": 3.4,
+   "rho1": 0.023,
+   "t1": 0.5,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "上期所",
+   "code": "NR",
+   "name": "20號膠",
+   "sector": "橡膠",
+   "manual_w": -0.5,
+   "why": "輪胎原料成本",
+   "n": 465,
+   "rho0": -0.116,
+   "t0": -2.52,
+   "rho1": -0.065,
+   "t1": -1.43,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "上期所",
+   "code": "EC",
+   "name": "集運指數(歐線)",
+   "sector": "航運",
+   "manual_w": 1.0,
+   "why": "歐線運價預期，直接連動長榮、陽明、萬海",
+   "n": 454,
+   "rho0": 0.143,
+   "t0": 3.08,
+   "rho1": 0.129,
+   "t1": 2.79,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.5,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "EG",
+   "name": "乙二醇",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "南亞、台化 EG 產品報價直接受惠",
+   "n": 459,
+   "rho0": 0.117,
+   "t0": 2.52,
+   "rho1": -0.022,
+   "t1": -0.48,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "EG",
+   "name": "乙二醇",
+   "sector": "化學工業",
+   "manual_w": 0.6,
+   "why": "東聯為 EG 主要生產商",
+   "n": 459,
+   "rho0": 0.088,
+   "t0": 1.89,
+   "rho1": -0.053,
+   "t1": -1.15,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "PP",
+   "name": "聚丙烯",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "台塑、台化、台聚 PP 報價連動",
+   "n": 461,
+   "rho0": 0.092,
+   "t0": 1.97,
+   "rho1": -0.018,
+   "t1": -0.39,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "L",
+   "name": "線型低密度聚乙烯",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "台塑、台聚、亞聚 PE 報價連動",
+   "n": 462,
+   "rho0": 0.101,
+   "t0": 2.18,
+   "rho1": 0.033,
+   "t1": 0.72,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.3,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "V",
+   "name": "PVC",
+   "sector": "塑膠",
+   "manual_w": 1.0,
+   "why": "台塑、華夏 PVC 報價連動",
+   "n": 463,
+   "rho0": 0.11,
+   "t0": 2.37,
+   "rho1": 0.011,
+   "t1": 0.24,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "EB",
+   "name": "苯乙烯",
+   "sector": "塑膠",
+   "manual_w": 0.8,
+   "why": "台苯、國喬 SM 報價連動",
+   "n": 462,
+   "rho0": 0.155,
+   "t0": 3.37,
+   "rho1": 0.0,
+   "t1": 0.0,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.5,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "EB",
+   "name": "苯乙烯",
+   "sector": "化學工業",
+   "manual_w": 0.3,
+   "why": "ABS/PS 下游",
+   "n": 462,
+   "rho0": 0.039,
+   "t0": 0.84,
+   "rho1": -0.074,
+   "t1": -1.61,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "PG",
+   "name": "液化石油氣",
+   "sector": "油電燃氣",
+   "manual_w": 0.5,
+   "why": "瓦斯、LPG 售價",
+   "n": 457,
+   "rho0": 0.277,
+   "t0": 6.14,
+   "rho1": 0.037,
+   "t1": 0.8,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.9,
+   "status": "有效"
+  },
+  {
+   "ex": "大商所",
+   "code": "I",
+   "name": "鐵礦石",
+   "sector": "鋼鐵",
+   "manual_w": 0.6,
+   "why": "原料上漲推升鋼價預期",
+   "n": 465,
+   "rho0": 0.033,
+   "t0": 0.7,
+   "rho1": 0.028,
+   "t1": 0.62,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "J",
+   "name": "焦炭",
+   "sector": "鋼鐵",
+   "manual_w": 0.4,
+   "why": "煉鋼成本推升鋼價預期",
+   "n": 464,
+   "rho0": 0.105,
+   "t0": 2.27,
+   "rho1": -0.029,
+   "t1": -0.63,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "JM",
+   "name": "焦煤",
+   "sector": "鋼鐵",
+   "manual_w": 0.4,
+   "why": "煉鋼成本推升鋼價預期",
+   "n": 458,
+   "rho0": 0.088,
+   "t0": 1.89,
+   "rho1": -0.044,
+   "t1": -0.96,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "M",
+   "name": "豆粕",
+   "sector": "食品",
+   "manual_w": -0.4,
+   "why": "飼料成本(卜蜂、大成、福壽)",
+   "n": 464,
+   "rho0": 0.08,
+   "t0": 1.73,
+   "rho1": 0.017,
+   "t1": 0.38,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "A",
+   "name": "黃大豆1號",
+   "sector": "食品",
+   "manual_w": -0.3,
+   "why": "黃豆、油脂原料成本",
+   "n": 465,
+   "rho0": 0.031,
+   "t0": 0.66,
+   "rho1": -0.035,
+   "t1": -0.77,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "B",
+   "name": "黃大豆2號",
+   "sector": "食品",
+   "manual_w": -0.3,
+   "why": "黃豆、油脂原料成本",
+   "n": 463,
+   "rho0": 0.049,
+   "t0": 1.05,
+   "rho1": -0.03,
+   "t1": -0.65,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "Y",
+   "name": "豆油",
+   "sector": "食品",
+   "manual_w": -0.3,
+   "why": "食用油原料成本",
+   "n": 465,
+   "rho0": 0.015,
+   "t0": 0.32,
+   "rho1": -0.056,
+   "t1": -1.23,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "P",
+   "name": "棕櫚油",
+   "sector": "食品",
+   "manual_w": -0.3,
+   "why": "食品加工油脂成本",
+   "n": 465,
+   "rho0": 0.048,
+   "t0": 1.03,
+   "rho1": -0.039,
+   "t1": -0.85,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "C",
+   "name": "玉米",
+   "sector": "食品",
+   "manual_w": -0.4,
+   "why": "飼料、澱粉原料成本",
+   "n": 465,
+   "rho0": 0.043,
+   "t0": 0.93,
+   "rho1": 0.004,
+   "t1": 0.08,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "CS",
+   "name": "玉米澱粉",
+   "sector": "食品",
+   "manual_w": -0.2,
+   "why": "澱粉原料成本",
+   "n": 465,
+   "rho0": 0.042,
+   "t0": 0.91,
+   "rho1": -0.005,
+   "t1": -0.11,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "JD",
+   "name": "雞蛋",
+   "sector": "食品",
+   "manual_w": 0.3,
+   "why": "畜產品售價(卜蜂、大成)",
+   "n": 463,
+   "rho0": 0.007,
+   "t0": 0.16,
+   "rho1": -0.018,
+   "t1": -0.39,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "大商所",
+   "code": "LH",
+   "name": "生豬",
+   "sector": "食品",
+   "manual_w": 0.3,
+   "why": "肉品售價",
+   "n": 462,
+   "rho0": -0.027,
+   "t0": -0.58,
+   "rho1": -0.035,
+   "t1": -0.77,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "TA",
+   "name": "PTA",
+   "sector": "塑膠",
+   "manual_w": 0.6,
+   "why": "台化 PTA 報價",
+   "n": 461,
+   "rho0": 0.069,
+   "t0": 1.48,
+   "rho1": 0.015,
+   "t1": 0.33,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "TA",
+   "name": "PTA",
+   "sector": "紡織纖維",
+   "manual_w": 0.5,
+   "why": "聚酯鏈報價(遠東新、新纖)",
+   "n": 461,
+   "rho0": 0.053,
+   "t0": 1.13,
+   "rho1": -0.04,
+   "t1": -0.86,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "PX",
+   "name": "對二甲苯",
+   "sector": "塑膠",
+   "manual_w": 0.6,
+   "why": "台化 PX 報價",
+   "n": 462,
+   "rho0": 0.062,
+   "t0": 1.34,
+   "rho1": -0.015,
+   "t1": -0.33,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "PX",
+   "name": "對二甲苯",
+   "sector": "化學工業",
+   "manual_w": 0.3,
+   "why": "芳香烴鏈",
+   "n": 462,
+   "rho0": -0.004,
+   "t0": -0.09,
+   "rho1": -0.047,
+   "t1": -1.02,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "PF",
+   "name": "短纖",
+   "sector": "紡織纖維",
+   "manual_w": 0.8,
+   "why": "聚酯短纖報價(遠東新、新纖、力麗)",
+   "n": 464,
+   "rho0": 0.069,
+   "t0": 1.49,
+   "rho1": -0.062,
+   "t1": -1.36,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "PR",
+   "name": "瓶片",
+   "sector": "塑膠",
+   "manual_w": 0.4,
+   "why": "PET 粒報價",
+   "n": 463,
+   "rho0": 0.097,
+   "t0": 2.1,
+   "rho1": -0.004,
+   "t1": -0.1,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.3,
+   "status": "有效"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "PR",
+   "name": "瓶片",
+   "sector": "紡織纖維",
+   "manual_w": 0.4,
+   "why": "遠東新 PET 瓶片",
+   "n": 463,
+   "rho0": 0.081,
+   "t0": 1.74,
+   "rho1": -0.053,
+   "t1": -1.16,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "MA",
+   "name": "甲醇",
+   "sector": "化學工業",
+   "manual_w": 0.4,
+   "why": "甲醇下游(長春系)",
+   "n": 456,
+   "rho0": 0.104,
+   "t0": 2.23,
+   "rho1": -0.021,
+   "t1": -0.45,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.3,
+   "status": "有效"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "MA",
+   "name": "甲醇",
+   "sector": "塑膠",
+   "manual_w": 0.2,
+   "why": "化工原料情緒",
+   "n": 456,
+   "rho0": 0.082,
+   "t0": 1.76,
+   "rho1": -0.011,
+   "t1": -0.23,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SH",
+   "name": "燒鹼",
+   "sector": "塑膠",
+   "manual_w": 0.5,
+   "why": "台塑燒鹼產品報價",
+   "n": 465,
+   "rho0": 0.005,
+   "t0": 0.1,
+   "rho1": 0.019,
+   "t1": 0.41,
+   "stable": false,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SH",
+   "name": "燒鹼",
+   "sector": "化學工業",
+   "manual_w": 0.4,
+   "why": "氯鹼業者",
+   "n": 465,
+   "rho0": 0.094,
+   "t0": 2.02,
+   "rho1": 0.05,
+   "t1": 1.08,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.3,
+   "status": "有效"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "UR",
+   "name": "尿素",
+   "sector": "化學工業",
+   "manual_w": 0.4,
+   "why": "台肥等肥料報價",
+   "n": 465,
+   "rho0": -0.02,
+   "t0": -0.43,
+   "rho1": 0.01,
+   "t1": 0.22,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SA",
+   "name": "純鹼",
+   "sector": "玻璃陶瓷",
+   "manual_w": -0.4,
+   "why": "玻璃原料成本",
+   "n": 464,
+   "rho0": 0.028,
+   "t0": 0.61,
+   "rho1": 0.057,
+   "t1": 1.24,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SA",
+   "name": "純鹼",
+   "sector": "化學工業",
+   "manual_w": 0.2,
+   "why": "鹼業報價",
+   "n": 464,
+   "rho0": -0.025,
+   "t0": -0.55,
+   "rho1": 0.001,
+   "t1": 0.03,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "FG",
+   "name": "玻璃",
+   "sector": "玻璃陶瓷",
+   "manual_w": 0.8,
+   "why": "台玻、凱撒衛等玻璃報價",
+   "n": 459,
+   "rho0": 0.077,
+   "t0": 1.66,
+   "rho1": 0.018,
+   "t1": 0.39,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SF",
+   "name": "矽鐵",
+   "sector": "鋼鐵",
+   "manual_w": 0.3,
+   "why": "合金成本推升鋼價預期",
+   "n": 465,
+   "rho0": 0.111,
+   "t0": 2.39,
+   "rho1": 0.021,
+   "t1": 0.45,
+   "stable": true,
+   "stable1": false,
+   "cal_w": 0.4,
+   "status": "有效"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SM",
+   "name": "錳矽",
+   "sector": "鋼鐵",
+   "manual_w": 0.3,
+   "why": "合金成本推升鋼價預期",
+   "n": 465,
+   "rho0": 0.089,
+   "t0": 1.93,
+   "rho1": -0.011,
+   "t1": -0.25,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CF",
+   "name": "棉花",
+   "sector": "紡織纖維",
+   "manual_w": 0.3,
+   "why": "棉紗、棉布報價跟漲",
+   "n": 465,
+   "rho0": -0.126,
+   "t0": -2.73,
+   "rho1": 0.034,
+   "t1": 0.75,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.4,
+   "status": "方向相反"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CY",
+   "name": "棉紗",
+   "sector": "紡織纖維",
+   "manual_w": 0.5,
+   "why": "紡紗廠報價",
+   "n": 465,
+   "rho0": -0.073,
+   "t0": -1.57,
+   "rho1": 0.019,
+   "t1": 0.41,
+   "stable": false,
+   "stable1": false,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "SR",
+   "name": "白糖",
+   "sector": "食品",
+   "manual_w": -0.3,
+   "why": "糖為食品飲料成本",
+   "n": 465,
+   "rho0": -0.065,
+   "t0": -1.4,
+   "rho1": 0.04,
+   "t1": 0.88,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "RM",
+   "name": "菜粕",
+   "sector": "食品",
+   "manual_w": -0.2,
+   "why": "飼料成本",
+   "n": 463,
+   "rho0": 0.079,
+   "t0": 1.71,
+   "rho1": -0.014,
+   "t1": -0.3,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "OI",
+   "name": "菜籽油",
+   "sector": "食品",
+   "manual_w": -0.2,
+   "why": "油脂成本",
+   "n": 465,
+   "rho0": 0.085,
+   "t0": 1.84,
+   "rho1": -0.018,
+   "t1": -0.38,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.0,
+   "status": "不顯著"
+  }
+ ],
+ "discovered": [
+  {
+   "ex": "上期所",
+   "code": "CU",
+   "name": "銅",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.30（數據發現，待確認產業邏輯）",
+   "n": 464,
+   "rho0": -0.297,
+   "t0": -6.7,
+   "rho1": -0.105,
+   "t1": -2.3,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -1.0,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "CU",
+   "name": "銅",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.29（數據發現，待確認產業邏輯）",
+   "n": 464,
+   "rho0": -0.291,
+   "t0": -6.55,
+   "rho1": -0.026,
+   "t1": -0.56,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -1.0,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "CU",
+   "name": "銅",
+   "sector": "食品",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.29（數據發現，待確認產業邏輯）",
+   "n": 464,
+   "rho0": -0.286,
+   "t0": -6.42,
+   "rho1": -0.119,
+   "t1": -2.62,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -1.0,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "ZN",
+   "name": "鋅",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.239,
+   "t0": -5.29,
+   "rho1": 0.006,
+   "t1": 0.12,
+   "stable": true,
+   "stable1": false,
+   "cal_w": -0.8,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "ZN",
+   "name": "鋅",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.23（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.23,
+   "t0": -5.08,
+   "rho1": -0.037,
+   "t1": -0.81,
+   "stable": true,
+   "stable1": false,
+   "cal_w": -0.8,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "ZN",
+   "name": "鋅",
+   "sector": "食品",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.213,
+   "t0": -4.69,
+   "rho1": -0.049,
+   "t1": -1.08,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "NI",
+   "name": "鎳",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+   "n": 464,
+   "rho0": -0.196,
+   "t0": -4.29,
+   "rho1": -0.065,
+   "t1": -1.41,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "SS",
+   "name": "不鏽鋼",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.19（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.189,
+   "t0": -4.13,
+   "rho1": -0.078,
+   "t1": -1.71,
+   "stable": true,
+   "stable1": false,
+   "cal_w": -0.6,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "RU",
+   "name": "天然橡膠",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.206,
+   "t0": -4.54,
+   "rho1": -0.071,
+   "t1": -1.56,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "RU",
+   "name": "天然橡膠",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.2,
+   "t0": -4.38,
+   "rho1": -0.056,
+   "t1": -1.23,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "LU",
+   "name": "低硫燃料油",
+   "sector": "油電燃氣",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=+0.27（數據發現，待確認產業邏輯）",
+   "n": 458,
+   "rho0": 0.266,
+   "t0": 5.9,
+   "rho1": 0.119,
+   "t1": 2.6,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.9,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "NR",
+   "name": "20號膠",
+   "sector": "通信網路",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.22（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.219,
+   "t0": -4.82,
+   "rho1": -0.033,
+   "t1": -0.73,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "NR",
+   "name": "20號膠",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.208,
+   "t0": -4.58,
+   "rho1": -0.067,
+   "t1": -1.46,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "上期所",
+   "code": "NR",
+   "name": "20號膠",
+   "sector": "食品",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.198,
+   "t0": -4.34,
+   "rho1": -0.098,
+   "t1": -2.15,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CF",
+   "name": "棉花",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.25（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.249,
+   "t0": -5.53,
+   "rho1": -0.06,
+   "t1": -1.32,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.8,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CF",
+   "name": "棉花",
+   "sector": "金融保險",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.244,
+   "t0": -5.41,
+   "rho1": -0.076,
+   "t1": -1.67,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.8,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CF",
+   "name": "棉花",
+   "sector": "食品",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.243,
+   "t0": -5.39,
+   "rho1": -0.081,
+   "t1": -1.78,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.8,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CY",
+   "name": "棉紗",
+   "sector": "觀光餐旅",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.207,
+   "t0": -4.55,
+   "rho1": -0.051,
+   "t1": -1.12,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.7,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CY",
+   "name": "棉紗",
+   "sector": "食品",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=-0.19（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": -0.194,
+   "t0": -4.26,
+   "rho1": -0.054,
+   "t1": -1.19,
+   "stable": true,
+   "stable1": true,
+   "cal_w": -0.6,
+   "status": "數據新增"
+  },
+  {
+   "ex": "鄭商所",
+   "code": "CY",
+   "name": "棉紗",
+   "sector": "其他電子",
+   "manual_w": null,
+   "why": "歷史同日相關 ρ=+0.19（數據發現，待確認產業邏輯）",
+   "n": 465,
+   "rho0": 0.191,
+   "t0": 4.18,
+   "rho1": 0.061,
+   "t1": 1.34,
+   "stable": true,
+   "stable1": true,
+   "cal_w": 0.6,
+   "status": "數據新增"
+  }
+ ],
+ "live_links": {
+  "CU": [
+   {
+    "sector": "電器電纜",
+    "w": 0.7,
+    "why": "銅為電線電纜主原料，銅價走揚帶動報價與庫存利益",
+    "src": "實測"
+   },
+   {
+    "sector": "電子零組件",
+    "w": 0.4,
+    "why": "銅箔、銅箔基板(CCL)報價隨銅價調整",
+    "src": "實測"
+   },
+   {
+    "sector": "觀光餐旅",
+    "w": -1.0,
+    "why": "歷史同日相關 ρ=-0.30（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "通信網路",
+    "w": -1.0,
+    "why": "歷史同日相關 ρ=-0.29（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "食品",
+    "w": -1.0,
+    "why": "歷史同日相關 ρ=-0.29（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "AL": [
+   {
+    "sector": "電器電纜",
+    "w": 0.5,
+    "why": "鋁導線與金屬族群情緒",
+    "src": "實測"
+   }
+  ],
+  "ZN": [
+   {
+    "sector": "通信網路",
+    "w": -0.8,
+    "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "觀光餐旅",
+    "w": -0.8,
+    "why": "歷史同日相關 ρ=-0.23（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "食品",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "NI": [
+   {
+    "sector": "通信網路",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "SS": [
+   {
+    "sector": "通信網路",
+    "w": -0.6,
+    "why": "歷史同日相關 ρ=-0.19（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "RB": [],
+  "HC": [],
+  "AG": [],
+  "FU": [
+   {
+    "sector": "油電燃氣",
+    "w": 1.0,
+    "why": "油品報價走揚",
+    "src": "實測"
+   }
+  ],
+  "BU": [
+   {
+    "sector": "油電燃氣",
+    "w": 0.7,
+    "why": "油品報價",
+    "src": "實測"
+   }
+  ],
+  "RU": [
+   {
+    "sector": "橡膠",
+    "w": -0.4,
+    "why": "輪胎廠(正新、建大)原料成本上升",
+    "src": "實測"
+   },
+   {
+    "sector": "觀光餐旅",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "通信網路",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "BR": [],
+  "SP": [],
+  "AO": [],
+  "SC": [
+   {
+    "sector": "油電燃氣",
+    "w": 0.7,
+    "why": "台塑化、全國等油品報價與庫存利益",
+    "src": "實測"
+   }
+  ],
+  "LU": [
+   {
+    "sector": "油電燃氣",
+    "w": 0.9,
+    "why": "歷史同日相關 ρ=+0.27（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "NR": [
+   {
+    "sector": "橡膠",
+    "w": -0.4,
+    "why": "輪胎原料成本",
+    "src": "實測"
+   },
+   {
+    "sector": "通信網路",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.22（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "觀光餐旅",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "食品",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.20（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "EC": [
+   {
+    "sector": "航運",
+    "w": 0.5,
+    "why": "歐線運價預期，直接連動長榮、陽明、萬海",
+    "src": "實測"
+   }
+  ],
+  "EG": [
+   {
+    "sector": "塑膠",
+    "w": 0.4,
+    "why": "南亞、台化 EG 產品報價直接受惠",
+    "src": "實測"
+   }
+  ],
+  "PP": [],
+  "L": [
+   {
+    "sector": "塑膠",
+    "w": 0.3,
+    "why": "台塑、台聚、亞聚 PE 報價連動",
+    "src": "實測"
+   }
+  ],
+  "V": [
+   {
+    "sector": "塑膠",
+    "w": 0.4,
+    "why": "台塑、華夏 PVC 報價連動",
+    "src": "實測"
+   }
+  ],
+  "EB": [
+   {
+    "sector": "塑膠",
+    "w": 0.5,
+    "why": "台苯、國喬 SM 報價連動",
+    "src": "實測"
+   }
+  ],
+  "PG": [
+   {
+    "sector": "油電燃氣",
+    "w": 0.9,
+    "why": "瓦斯、LPG 售價",
+    "src": "實測"
+   }
+  ],
+  "I": [],
+  "J": [],
+  "JM": [],
+  "M": [],
+  "A": [],
+  "B": [],
+  "Y": [],
+  "P": [],
+  "C": [],
+  "CS": [],
+  "JD": [],
+  "LH": [],
+  "TA": [],
+  "PX": [],
+  "PF": [],
+  "PR": [
+   {
+    "sector": "塑膠",
+    "w": 0.3,
+    "why": "PET 粒報價",
+    "src": "實測"
+   }
+  ],
+  "MA": [
+   {
+    "sector": "化學工業",
+    "w": 0.3,
+    "why": "甲醇下游(長春系)",
+    "src": "實測"
+   }
+  ],
+  "SH": [
+   {
+    "sector": "化學工業",
+    "w": 0.3,
+    "why": "氯鹼業者",
+    "src": "實測"
+   }
+  ],
+  "UR": [],
+  "SA": [],
+  "FG": [],
+  "SF": [
+   {
+    "sector": "鋼鐵",
+    "w": 0.4,
+    "why": "合金成本推升鋼價預期",
+    "src": "實測"
+   }
+  ],
+  "SM": [],
+  "CF": [
+   {
+    "sector": "紡織纖維",
+    "w": -0.4,
+    "why": "棉紗、棉布報價跟漲",
+    "src": "實測"
+   },
+   {
+    "sector": "觀光餐旅",
+    "w": -0.8,
+    "why": "歷史同日相關 ρ=-0.25（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "金融保險",
+    "w": -0.8,
+    "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "食品",
+    "w": -0.8,
+    "why": "歷史同日相關 ρ=-0.24（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "CY": [
+   {
+    "sector": "觀光餐旅",
+    "w": -0.7,
+    "why": "歷史同日相關 ρ=-0.21（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "食品",
+    "w": -0.6,
+    "why": "歷史同日相關 ρ=-0.19（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   },
+   {
+    "sector": "其他電子",
+    "w": 0.6,
+    "why": "歷史同日相關 ρ=+0.19（數據發現，待確認產業邏輯）",
+    "src": "新增"
+   }
+  ],
+  "SR": [],
+  "RM": [],
+  "OI": []
+ },
+ "backtest": {
+  "train": [
+   "2024-10-30",
+   "2026-01-07"
+  ],
+  "test": [
+   "2026-01-07",
+   "2026-10-29"
+  ],
+  "manual": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.202,
+    "bull_win": 0.496,
+    "bear_avg": -0.144,
+    "bear_win": 0.527,
+    "spread_avg": 0.341,
+    "spread_win": 0.581,
+    "spread_t": 2.36
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": -0.013,
+    "bull_win": 0.457,
+    "bear_avg": -0.076,
+    "bear_win": 0.51,
+    "spread_avg": 0.06,
+    "spread_win": 0.524,
+    "spread_t": 0.43
+   }
+  },
+  "calibrated": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.219,
+    "bull_win": 0.529,
+    "bear_avg": -0.445,
+    "bear_win": 0.592,
+    "spread_avg": 0.672,
+    "spread_win": 0.667,
+    "spread_t": 5.81
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": 0.052,
+    "bull_win": 0.491,
+    "bear_avg": -0.163,
+    "bear_win": 0.538,
+    "spread_avg": 0.235,
+    "spread_win": 0.571,
+    "spread_t": 2.17
+   }
+  }
+ },
+ "kline": {
+  "CU": {
+   "days": 485,
+   "dropped_roll": 3,
+   "first": "2005-01-04"
+  },
+  "AL": {
+   "days": 485,
+   "dropped_roll": 1,
+   "first": "2005-01-04"
+  },
+  "ZN": {
+   "days": 486,
+   "dropped_roll": 0,
+   "first": "2007-03-26"
+  },
+  "NI": {
+   "days": 485,
+   "dropped_roll": 10,
+   "first": "2015-03-27"
+  },
+  "SS": {
+   "days": 486,
+   "dropped_roll": 3,
+   "first": "2019-09-25"
+  },
+  "RB": {
+   "days": 486,
+   "dropped_roll": 14,
+   "first": "2009-03-27"
+  },
+  "HC": {
+   "days": 486,
+   "dropped_roll": 5,
+   "first": "2014-03-21"
+  },
+  "AG": {
+   "days": 480,
+   "dropped_roll": 6,
+   "first": "2012-05-10"
+  },
+  "FU": {
+   "days": 478,
+   "dropped_roll": 44,
+   "first": "2005-01-04"
+  },
+  "BU": {
+   "days": 481,
+   "dropped_roll": 19,
+   "first": "2013-10-09"
+  },
+  "RU": {
+   "days": 486,
+   "dropped_roll": 19,
+   "first": "2005-01-04"
+  },
+  "BR": {
+   "days": 484,
+   "dropped_roll": 3,
+   "first": "2023-07-28"
+  },
+  "SP": {
+   "days": 486,
+   "dropped_roll": 1,
+   "first": "2018-11-27"
+  },
+  "AO": {
+   "days": 485,
+   "dropped_roll": 1,
+   "first": "2023-06-19"
+  },
+  "SC": {
+   "days": 476,
+   "dropped_roll": 20,
+   "first": "2018-03-26"
+  },
+  "LU": {
+   "days": 479,
+   "dropped_roll": 11,
+   "first": "2020-06-22"
+  },
+  "NR": {
+   "days": 486,
+   "dropped_roll": 1,
+   "first": "2019-08-12"
+  },
+  "EC": {
+   "days": 473,
+   "dropped_roll": 26,
+   "first": "2023-08-18"
+  },
+  "EG": {
+   "days": 480,
+   "dropped_roll": 15,
+   "first": "2018-12-10"
+  },
+  "PP": {
+   "days": 482,
+   "dropped_roll": 9,
+   "first": "2014-02-28"
+  },
+  "L": {
+   "days": 483,
+   "dropped_roll": 7,
+   "first": "2007-07-31"
+  },
+  "V": {
+   "days": 484,
+   "dropped_roll": 4,
+   "first": "2009-05-25"
+  },
+  "EB": {
+   "days": 483,
+   "dropped_roll": 6,
+   "first": "2019-09-26"
+  },
+  "PG": {
+   "days": 478,
+   "dropped_roll": 15,
+   "first": "2020-03-30"
+  },
+  "I": {
+   "days": 486,
+   "dropped_roll": 9,
+   "first": "2013-10-18"
+  },
+  "J": {
+   "days": 485,
+   "dropped_roll": 8,
+   "first": "2011-04-15"
+  },
+  "JM": {
+   "days": 479,
+   "dropped_roll": 26,
+   "first": "2013-03-22"
+  },
+  "M": {
+   "days": 485,
+   "dropped_roll": 20,
+   "first": "2005-01-04"
+  },
+  "A": {
+   "days": 486,
+   "dropped_roll": 1,
+   "first": "2005-01-04"
+  },
+  "B": {
+   "days": 484,
+   "dropped_roll": 27,
+   "first": "2007-08-27"
+  },
+  "Y": {
+   "days": 486,
+   "dropped_roll": 2,
+   "first": "2006-01-09"
+  },
+  "P": {
+   "days": 486,
+   "dropped_roll": 5,
+   "first": "2007-10-29"
+  },
+  "C": {
+   "days": 486,
+   "dropped_roll": 14,
+   "first": "2005-01-04"
+  },
+  "CS": {
+   "days": 486,
+   "dropped_roll": 8,
+   "first": "2014-12-22"
+  },
+  "JD": {
+   "days": 484,
+   "dropped_roll": 29,
+   "first": "2013-11-08"
+  },
+  "LH": {
+   "days": 483,
+   "dropped_roll": 7,
+   "first": "2021-01-08"
+  },
+  "TA": {
+   "days": 482,
+   "dropped_roll": 4,
+   "first": "2006-12-19"
+  },
+  "PX": {
+   "days": 483,
+   "dropped_roll": 3,
+   "first": "2023-09-15"
+  },
+  "PF": {
+   "days": 485,
+   "dropped_roll": 2,
+   "first": "2020-10-12"
+  },
+  "PR": {
+   "days": 484,
+   "dropped_roll": 2,
+   "first": "2024-08-30"
+  },
+  "MA": {
+   "days": 477,
+   "dropped_roll": 14,
+   "first": "2014-12-24"
+  },
+  "SH": {
+   "days": 485,
+   "dropped_roll": 2,
+   "first": "2023-09-15"
+  },
+  "UR": {
+   "days": 486,
+   "dropped_roll": 7,
+   "first": "2019-08-09"
+  },
+  "SA": {
+   "days": 485,
+   "dropped_roll": 22,
+   "first": "2019-12-06"
+  },
+  "FG": {
+   "days": 480,
+   "dropped_roll": 16,
+   "first": "2012-12-03"
+  },
+  "SF": {
+   "days": 486,
+   "dropped_roll": 13,
+   "first": "2014-08-12"
+  },
+  "SM": {
+   "days": 486,
+   "dropped_roll": 21,
+   "first": "2014-08-12"
+  },
+  "CF": {
+   "days": 486,
+   "dropped_roll": 12,
+   "first": "2005-01-04"
+  },
+  "CY": {
+   "days": 486,
+   "dropped_roll": 6,
+   "first": "2017-08-23"
+  },
+  "SR": {
+   "days": 486,
+   "dropped_roll": 2,
+   "first": "2006-01-12"
+  },
+  "RM": {
+   "days": 484,
+   "dropped_roll": 9,
+   "first": "2012-12-28"
+  },
+  "OI": {
+   "days": 486,
+   "dropped_roll": 0,
+   "first": "2007-06-08"
+  }
+ }
+}
