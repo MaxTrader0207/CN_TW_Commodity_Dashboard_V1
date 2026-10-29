@@ -1,2 +1,7 @@
 __pycache__/
 .datawt/
+
+# 資料存在 data 分支（pipeline/datastore.py）
+docs/data/
+pipeline/cache/
+pipeline/industry_cache.json

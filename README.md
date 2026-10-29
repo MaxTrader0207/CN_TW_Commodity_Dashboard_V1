@@ -7,7 +7,7 @@
 ## 部署（約 3 分鐘）
 
 1. 在 GitHub 建立新 repo（例：`MaxTrader0207/cn-tw-commodity-dashboard`），把本資料夾內容推上 `main`。
-2. Settings → Pages → Source 選 **Deploy from a branch**，Branch `main`、資料夾 `/docs`。
+2. Settings → Pages → Source 選 **GitHub Actions**（`deploy.yml` 第一次執行時也會自動切換）。
 3. Actions 頁籤 → **Daily update** → Run workflow，跑第一次資料。
 4. 開啟 `https://<帳號>.github.io/<repo>/`。
 
@@ -118,3 +118,17 @@
   失敗且快取超過 7 天時，資料來源狀態標紅並在頁面上方警示。
 - **分數熱力圖**：`docs/data/score_history.json`。校準時以全期實測權重回填最近 120 個台股交易日（樣本內），
   之後每天日盤版把實際分數記為「即時」，並用類股指數補上當天 β 調整超額報酬；可切換分數／實際報酬／方向是否一致。
+
+## 資料分支、失敗通知、CI
+
+- **資料分支**：每日更新與校準產生的資料（`docs/data`、`pipeline/cache`、`pipeline/industry_cache.json`）存在 `data` 分支，
+  `main` 只放程式碼，不再每天被自動 commit 洗版。流程開始時 `python pipeline/datastore.py restore` 取回資料，
+  結束時 `save` 推回 `data` 分支；校準中途的存檔點也推到 `data` 分支。
+  網站由 `deploy.yml` 把 `main` 的 `docs/` 與 `data` 分支的 `docs/data` 組合後部署到 GitHub Pages
+  （改程式 push main、每日更新、每週校準後都會自動部署）。本機要看真實資料：`python pipeline/datastore.py restore`。
+- **失敗通知**（`notify.yml` + `.github/scripts/alert.py`）：每日更新／校準／部署／CI 失敗時自動開 GitHub Issue
+  （標籤 `pipeline-failure`，附失敗步驟與錯誤訊息），GitHub 會寄 Email 與手機 App 推播；同一流程再失敗只加留言，下次成功自動關閉。
+  每日更新雖成功、但核心來源（新浪陸期、證交所／櫃買收盤、產業別）抓取失敗時，另開「資料來源異常」Issue。
+- **CI**（`ci.yml`）：每次 push／PR 執行 workflow 語法檢查（actionlint）、單元測試（`tests/test_pipeline.py`：解析器、
+  標準化、無偷看、對照表完整性、離線完整 build），並用無頭瀏覽器開頁面（`tests/page_check.py`）檢查 JS 錯誤與
+  桌機 1280／手機 390 是否橫向破版——分別用 `data` 分支的真實資料與離線假資料各跑一次。

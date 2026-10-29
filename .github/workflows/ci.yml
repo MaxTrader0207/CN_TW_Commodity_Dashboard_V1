@@ -25,7 +25,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt pytest playwright
+      - run: pip install -r requirements.txt pytest playwright actionlint-py
+      - name: Lint workflows
+        run: actionlint -shellcheck= .github/workflows/*.yml
       - name: Unit tests
         run: python -m pytest -q tests
       - name: Install Chromium
