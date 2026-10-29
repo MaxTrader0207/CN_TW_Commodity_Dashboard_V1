@@ -331,16 +331,18 @@ def load_industry(src):
     except Exception as e:  # noqa: BLE001
         record("isin_otc", "證交所 ISIN 上櫃產業別", ISIN_OTC, "上櫃個股 → 類股", "fail", note=str(e)[:160])
 
-    if len(mapping) > 500:
-        CACHE_FILE.write_text(json.dumps(mapping, ensure_ascii=False, indent=0), encoding="utf-8")
-        return mapping
-    if CACHE_FILE.exists():
-        cached = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-        cached.update(mapping)
-        record("industry_cache", "產業別快取（上次成功資料）", "pipeline/industry_cache.json",
-               "即時來源失敗時補位", "warn", len(cached), note="即時產業別不足，改用快取")
-        return cached
-    raise RuntimeError("無產業別資料且無快取")
+    # 一律與快取合併：新抓到的覆蓋舊的，某一來源失敗時該部分沿用快取（避免單一來源失敗就讓整個市場的股票失去類股）
+    cached = json.loads(CACHE_FILE.read_text(encoding="utf-8")) if CACHE_FILE.exists() else {}
+    merged = {**cached, **mapping}
+    if len(merged) < 500:
+        raise RuntimeError(f"產業別資料不足（{len(merged)} 檔）")
+    if any(x["id"] in ("twse_info", "isin_otc") and x["status"] == "fail" for x in SOURCES):
+        n_cache = len(set(merged) - set(mapping))
+        record("industry_cache", "產業別快取（補位）", "pipeline/industry_cache.json",
+               "即時來源失敗的部分改用上次成功資料", "warn", n_cache, note=f"{n_cache} 檔沿用快取")
+    if len(mapping) >= 500 or not cached:
+        CACHE_FILE.write_text(json.dumps(merged, ensure_ascii=False, indent=0), encoding="utf-8")
+    return merged
 
 
 def roc_to_iso(s):
