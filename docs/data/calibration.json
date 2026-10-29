@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-29T19:08+08:00",
+ "generated_at": "2026-10-29T19:10+08:00",
  "period": {
   "start": "2024-10-30",
   "end": "2026-10-29",
@@ -1276,7 +1276,7 @@
    "t0": -0.31,
    "rho1": -0.015,
    "t1": -0.33,
-   "stable": true,
+   "stable": false,
    "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1293,7 +1293,7 @@
    "t0": -0.32,
    "rho1": 0.083,
    "t1": 1.82,
-   "stable": true,
+   "stable": false,
    "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1310,8 +1310,8 @@
    "t0": 0.94,
    "rho1": -0.02,
    "t1": -0.43,
-   "stable": true,
-   "stable1": false,
+   "stable": false,
+   "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
   },
@@ -1328,7 +1328,7 @@
    "rho1": 0.038,
    "t1": 0.81,
    "stable": false,
-   "stable1": false,
+   "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
   },
@@ -1361,8 +1361,8 @@
    "t0": -0.65,
    "rho1": -0.011,
    "t1": -0.24,
-   "stable": true,
-   "stable1": true,
+   "stable": false,
+   "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
   },
@@ -1395,7 +1395,7 @@
    "t0": 0.11,
    "rho1": 0.034,
    "t1": 0.74,
-   "stable": false,
+   "stable": true,
    "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1412,7 +1412,7 @@
    "t0": 0.03,
    "rho1": 0.098,
    "t1": 2.11,
-   "stable": false,
+   "stable": true,
    "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1429,7 +1429,7 @@
    "t0": 0.89,
    "rho1": 0.068,
    "t1": 1.47,
-   "stable": false,
+   "stable": true,
    "stable1": true,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1446,7 +1446,7 @@
    "t0": 0.08,
    "rho1": -0.004,
    "t1": -0.08,
-   "stable": false,
+   "stable": true,
    "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1480,7 +1480,7 @@
    "t0": -0.59,
    "rho1": 0.017,
    "t1": 0.37,
-   "stable": false,
+   "stable": true,
    "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -1497,7 +1497,7 @@
    "t0": -0.37,
    "rho1": 0.012,
    "t1": 0.27,
-   "stable": false,
+   "stable": true,
    "stable1": false,
    "cal_w": 0.0,
    "status": "不顯著"
@@ -3364,8 +3364,8 @@
     "t0": -0.7,
     "rho1": -0.042,
     "t1": -0.92,
-    "stable": true,
-    "stable1": true,
+    "stable": false,
+    "stable1": false,
     "verdict": "不顯著"
    },
    {
@@ -3377,7 +3377,7 @@
     "t0": -1.51,
     "rho1": -0.052,
     "t1": -1.13,
-    "stable": false,
+    "stable": true,
     "stable1": true,
     "verdict": "不顯著"
    }
@@ -3392,8 +3392,8 @@
     "t0": -0.5,
     "rho1": 0.009,
     "t1": 0.2,
-    "stable": true,
-    "stable1": true,
+    "stable": false,
+    "stable1": false,
     "verdict": "不顯著"
    },
    {
@@ -3405,8 +3405,8 @@
     "t0": -0.61,
     "rho1": -0.014,
     "t1": -0.31,
-    "stable": false,
-    "stable1": false,
+    "stable": true,
+    "stable1": true,
     "verdict": "不顯著"
    }
   ],
@@ -3420,7 +3420,7 @@
     "t0": -1.74,
     "rho1": 0.059,
     "t1": 1.29,
-    "stable": true,
+    "stable": false,
     "stable1": true,
     "verdict": "不顯著"
    }
@@ -3436,7 +3436,7 @@
     "rho1": 0.036,
     "t1": 0.78,
     "stable": false,
-    "stable1": false,
+    "stable1": true,
     "verdict": "不顯著"
    }
   ],
@@ -3451,7 +3451,7 @@
     "rho1": 0.007,
     "t1": 0.15,
     "stable": true,
-    "stable1": true,
+    "stable1": false,
     "verdict": "不顯著"
    },
    {
@@ -3463,7 +3463,7 @@
     "t0": -0.49,
     "rho1": -0.064,
     "t1": -1.39,
-    "stable": false,
+    "stable": true,
     "stable1": true,
     "verdict": "不顯著"
    },
@@ -3477,7 +3477,7 @@
     "rho1": -0.024,
     "t1": -0.51,
     "stable": false,
-    "stable1": false,
+    "stable1": true,
     "verdict": "不顯著"
    }
   ],
@@ -3545,7 +3545,7 @@
     "t0": -0.86,
     "rho1": -0.008,
     "t1": -0.17,
-    "stable": false,
+    "stable": true,
     "stable1": false,
     "verdict": "不顯著"
    }
@@ -3561,7 +3561,7 @@
     "rho1": 0.059,
     "t1": 1.27,
     "stable": false,
-    "stable1": true,
+    "stable1": false,
     "verdict": "不顯著"
    },
    {
@@ -3574,7 +3574,7 @@
     "rho1": 0.064,
     "t1": 1.37,
     "stable": false,
-    "stable1": true,
+    "stable1": false,
     "verdict": "不顯著"
    },
    {
@@ -3586,8 +3586,8 @@
     "t0": -0.75,
     "rho1": 0.048,
     "t1": 1.03,
-    "stable": false,
-    "stable1": true,
+    "stable": true,
+    "stable1": false,
     "verdict": "不顯著"
    }
   ],
@@ -3601,7 +3601,7 @@
     "t0": 0.97,
     "rho1": 0.072,
     "t1": 1.56,
-    "stable": false,
+    "stable": true,
     "stable1": true,
     "verdict": "不顯著"
    }
@@ -3616,7 +3616,7 @@
     "t0": 0.14,
     "rho1": 0.003,
     "t1": 0.07,
-    "stable": false,
+    "stable": true,
     "stable1": false,
     "verdict": "不顯著"
    }
@@ -3661,8 +3661,8 @@
     "t0": 0.5,
     "rho1": 0.015,
     "t1": 0.32,
-    "stable": true,
-    "stable1": false,
+    "stable": false,
+    "stable1": true,
     "verdict": "不顯著"
    },
    {
