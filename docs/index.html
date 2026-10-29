@@ -51,7 +51,8 @@ section{margin-top:22px}
 section>h2{font-size:15px;margin:0 0 10px;color:var(--fg)}
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
 .tile{border-radius:8px;padding:7px 8px;border:1px solid var(--line);background:var(--panel)}
-.tile .t1{font-size:12px;display:flex;justify-content:space-between;gap:4px}
+.tile{min-width:0}
+.tile .t1{font-size:12px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 4px}
 .tile .t1 span{color:var(--muted);font-family:var(--mono)}
 .tile .t2{font-family:var(--mono);font-size:15px;font-weight:700}
 .tile .t3{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -115,7 +116,7 @@ summary{cursor:pointer;font-weight:600}
 .xb{font-size:10.5px;margin-left:4px;padding:0 4px;border-radius:3px;border:1px solid currentColor}
 .xb.ag{color:var(--muted)} .xb.dv{color:var(--accent)}
 .tile.intl .t3{white-space:normal}
-.tile .t4{font-size:10.5px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.tile .t4{font-size:10.5px;color:var(--muted);letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .heat-wrap{overflow-x:auto;padding-bottom:4px}
 .heat{display:grid;gap:1px;font-size:11.5px;align-items:center}
 .heat .hn{position:sticky;left:0;background:var(--panel);padding-right:6px;white-space:nowrap;z-index:1}
@@ -434,7 +435,8 @@ function render(d) {
       t.append(t1, t2,
         el('div', 't3', c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ') || '實測不顯著，不計分'));
       const sg = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + 'σ';
-      if (c.m5 != null || c.m20 != null) t.append(el('div', 't4', `5日 ${sg(c.m5)}　20日 ${sg(c.m20)}`));
+      const sg1 = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1);
+      if (c.m5 != null || c.m20 != null) t.append(el('div', 't4', `5/20日 ${sg1(c.m5)}/${sg1(c.m20)}σ`));
       hoverTip(t, (c.sigma ? `近 20 日波動度 ${c.sigma}%／日，今日 ${c.z > 0 ? '+' : ''}${c.z}σ（2σ 為訊號滿格）\n` : '') +
         (c.m5 != null ? `多日動能：5 日累計 ${sg(c.m5)}、20 日累計 ${sg(c.m20)}（累計漲跌 ÷ (σ×√天數)）${d.momentum?.adopt ? '，5 日動能已計入分數' : '，僅顯示、不計分'}\n` : '') +
         (c.limit ? `漲跌停 ±${+c.limit.toFixed(2)}%（${c.limit_src === '預設' || !c.limit_src ? '預設值' : c.limit_src + ' 公告'}${limChanged ? `；一般 ±${c.limit_default}%` : ''}）\n` : '') +
