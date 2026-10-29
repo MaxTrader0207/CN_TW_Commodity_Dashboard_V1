@@ -19,6 +19,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -31,6 +33,17 @@ jobs:
           set -o pipefail
           mkdir -p docs/data
           python pipeline/calibrate.py 2>&1 | tee docs/data/calibrate_log.txt
+      - name: Backup results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibration-${{ github.run_id }}
+          path: |
+            docs/data/calibration.json
+            docs/data/calibrate_log.txt
+            pipeline/cache
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Commit
         if: always()
         run: |
@@ -38,5 +51,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A docs/data pipeline/cache
           git diff --cached --quiet || git commit -m "calibrate: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
-          git pull --rebase -X ours origin main || true
-          git push
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            echo "push 失敗，第 $i 次重試"; sleep $((i * 5))
+          done
+          exit 1
