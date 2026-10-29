@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mapping import COMMODITIES, INDUSTRY_CODE  # noqa: E402
+from mapping import BENEFICIARIES, COMMODITIES, INDUSTRY_CODE, SPREADS  # noqa: E402
 import history  # noqa: E402
 import track  # noqa: E402
 
@@ -153,21 +153,24 @@ CALIBRATION = ROOT / "docs" / "data" / "calibration.json"
 
 
 def load_links():
-    """每日計分用的「商品 → 類股」權重：有校準結果用實測權重，否則用 mapping.py 的手動權重。"""
+    """每日計分用的「商品／價差 → 類股」權重：有校準結果用實測權重，否則用 mapping.py 的手動權重。
+    回傳 (links_by_code, 模式, 校準摘要, 完整校準檔)"""
     manual = {code: [{"sector": s, "w": w, "why": why, "src": "手動"} for s, w, why in links]
               for _, code, _, _, links in COMMODITIES}
+    manual.update({code: [{"sector": s, "w": w, "why": why, "src": "手動"} for s, w, why in links]
+                   for code, _, _, links in SPREADS})
     if os.environ.get("WEIGHTS") == "manual" or not CALIBRATION.exists():
-        return manual, "手動", None
+        return manual, "手動", None, {}
     try:
         cal = json.loads(CALIBRATION.read_text(encoding="utf-8"))
         live = cal["live_links"]
         links = {code: live.get(code, manual[code]) for code in manual}
         meta = {"generated_at": cal.get("generated_at"), "period": cal.get("period"),
                 "counts": cal.get("counts")}
-        return links, "實測", meta
+        return links, "實測", meta, cal
     except Exception as e:  # noqa: BLE001
         print("⚠ 校準檔讀取失敗，改用手動權重：", e)
-        return manual, "手動", None
+        return manual, "手動", None, {}
 
 
 def commodity_board(src, links_by_code):
@@ -197,10 +200,54 @@ def commodity_board(src, links_by_code):
             sig = max(-1.0, min(1.0, chg / limit))
             if at_limit:
                 sig *= LIMIT_BONUS
-            item.update(status="ok", last=q["last"], chg=chg, signal=round(sig, 4),
+            item.update(status="ok", last=q["last"], base=q["base"], chg=chg, signal=round(sig, 4),
                         at_limit=at_limit, quote_date=q["date"])
         board.append(item)
     return board
+
+
+def spread_board(board, links_by_code, cal):
+    """價差（加工利潤）：Δ價差 ÷ 產品前一日結算價 × 100；訊號以歷史 2σ 為滿格（σ 來自校準檔）"""
+    q = {c["code"]: c for c in board if c["status"] == "ok"}
+    sig_tab = (cal.get("spreads") or {})
+    out = []
+    for code, name, legs, links in SPREADS:
+        item = {"ex": "價差", "code": code, "name": name, "kind": "spread",
+                "legs": [{"code": c, "coef": k} for c, k in legs],
+                "links": links_by_code.get(code, []),
+                "manual": [{"sector": s, "w": w} for s, w, _ in links]}
+        sd = (sig_tab.get(code) or {}).get("sigma")
+        if not all(c in q for c, _ in legs) or not sd:
+            item.update(status="missing", chg=None, signal=0, at_limit=None, limit=None)
+            out.append(item)
+            continue
+        prod_base = q[legs[0][0]]["base"]
+        delta = sum(k * (q[c]["last"] - q[c]["base"]) for c, k in legs)
+        level = sum(k * q[c]["last"] for c, k in legs)
+        chg = round(delta / prod_base * 100, 2)
+        item.update(status="ok", chg=chg, level=round(level, 1), sigma=sd, limit=round(2 * sd, 3),
+                    signal=round(max(-1.0, min(1.0, chg / (2 * sd))), 4), at_limit=None,
+                    z=round(chg / sd, 2))
+        out.append(item)
+    ok = sum(i["status"] == "ok" for i in out)
+    print(f"價差：{ok}/{len(out)} 個可計算" + ("" if sig_tab else "（尚無校準 σ，暫不計分）"))
+    return out
+
+
+def attach_beneficiaries(board, stocks, cal):
+    """每個商品／價差附上受惠（產品）／受壓（成本）個股的今日表現與歷史實測結果"""
+    verdicts = {item: {r["code"]: r for r in rows} for item, rows in (cal.get("stocks") or {}).items()}
+    for c in board:
+        lst = []
+        for code, role, why in BENEFICIARIES.get(c["code"], []):
+            st = stocks.get(code)
+            v = verdicts.get(c["code"], {}).get(code, {})
+            lst.append({"code": code, "role": role, "why": why,
+                        "name": st["name"] if st else None,
+                        "chg_pct": st["chg_pct"] if st else None,
+                        "lots": st["lots"] if st else None,
+                        "verdict": v.get("verdict"), "rho0": v.get("rho0"), "rho1": v.get("rho1")})
+        c["stocks"] = lst
 
 
 # ───────────────────────── 台股 ─────────────────────────
@@ -411,7 +458,7 @@ def score_sectors(board, industry, stocks):
             contrib = l["w"] * c["signal"]
             sec["num"] += contrib
             sec["drivers"].append({"code": c["code"], "name": c["name"], "ex": c["ex"], "chg": c["chg"],
-                                   "at_limit": c["at_limit"], "w": l["w"], "why": l["why"], "src": l.get("src", "手動"),
+                                   "at_limit": c["at_limit"], "w": l["w"], "why": l["why"], "src": l.get("src", "手動"), "kind": c.get("kind", "commodity"),
                                    "_raw": contrib})
     by_sector = {}
     for code, sec_name in industry.items():
@@ -487,7 +534,7 @@ def run(now):
     session = a.session or ("night" if now.hour < 12 else "day")
     src = FixtureSource(a.fixtures) if a.fixtures else Source()
 
-    links_by_code, weights_mode, cal_meta = load_links()
+    links_by_code, weights_mode, cal_meta, cal = load_links()
     print(f"計分權重：{weights_mode}")
     board = commodity_board(src, links_by_code)
     ok = sum(c["status"] == "ok" for c in board)
@@ -499,6 +546,8 @@ def run(now):
     stocks, tw_date = load_quotes(src, now)
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
+    board = board + spread_board(board, links_by_code, cal)
+    attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
     payload = {
         "generated_at": now.isoformat(timespec="minutes"),

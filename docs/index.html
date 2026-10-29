@@ -100,7 +100,14 @@ summary{cursor:pointer;font-weight:600}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px}
 .filters button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font:inherit;font-size:12px;cursor:pointer}
 .filters button.on{border-color:var(--accent);color:var(--accent)}
-#tip{position:fixed;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
+.ben{margin:0 0 10px;border-top:1px dashed var(--line);padding-top:8px}
+.ben h4{margin:0 0 4px;font-size:12px;color:var(--muted);font-weight:600}
+.ben table td{padding:2px 2px}
+.ben .via{color:var(--muted);font-size:11.5px}
+.mk{font-size:10.5px;padding:0 4px;border-radius:3px;margin-left:4px;border:1px solid currentColor;vertical-align:1px}
+.mk.p{color:var(--up)} .mk.c{color:var(--dn)}
+.tile.spr .t2 small{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px}
+#tip{position:fixed;white-space:pre-line;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
 <body>
@@ -158,6 +165,11 @@ summary{cursor:pointer;font-weight:600}
       <div class="filters" id="cal-filters"></div>
       <div style="overflow-x:auto"><table class="vt" id="cal"></table></div>
     </details>
+    <details style="margin-top:12px">
+      <summary id="stk-summary">受惠／受壓個股實測</summary>
+      <p class="note" id="stk-note"></p>
+      <div style="overflow-x:auto"><table class="vt" id="stk"></table></div>
+    </details>
   </section>
 
   <section>
@@ -202,13 +214,29 @@ function hoverTip(node, text) {
   node.addEventListener('mouseleave', () => tip.style.display = 'none');
 }
 
-function stockTable(rows) {
+let BOARD = {};   // code → 商品／價差（含受惠股）
+
+function benMap(sector) {
+  // 這個類股的主要驅動商品 → 受惠／受壓個股（股票代號 → 角色與來源）
+  const m = {};
+  sector.drivers.filter(d => d.contrib !== 0).forEach(d => {
+    (BOARD[d.code]?.stocks || []).forEach(x => { if (!m[x.code]) m[x.code] = { ...x, via: d.name }; });
+  });
+  return m;
+}
+
+function stockTable(rows, ben) {
   const t = el('table');
   if (!rows.length) { const tr = t.insertRow(); const td = tr.insertCell(); td.className = 'flat'; td.textContent = '無資料'; return t; }
   rows.forEach(s => {
     const tr = t.insertRow();
     tr.insertCell().textContent = s.code;
     const nm = tr.insertCell(); nm.className = 'nm'; nm.textContent = s.name;
+    const b = ben && ben[s.code];
+    if (b) {
+      const mk = el('span', 'mk ' + (b.role === '產品' ? 'p' : 'c'), b.role === '產品' ? '受惠' : '受壓');
+      nm.append(mk); hoverTip(nm, `${b.via}：${b.why}`);
+    }
     const c = tr.insertCell(); c.className = 'n'; c.textContent = s.close;
     const p = tr.insertCell(); p.className = 'n ' + cls(s.chg_pct); p.textContent = pct(s.chg_pct);
   });
@@ -230,7 +258,7 @@ function sectorCard(s, i, side) {
   s.drivers.filter(d => d.contrib !== 0).slice(0, 6).forEach(d => {
     const c = el('span', 'chip' + (d.at_limit ? ' lim' : ''));
     const lim = d.at_limit === 'up' ? ' 漲停' : d.at_limit === 'down' ? ' 跌停' : '';
-    c.append(document.createTextNode(d.name + ' '));
+    c.append(document.createTextNode((d.kind === 'spread' ? '〔價差〕' : '') + d.name + ' '));
     const b = el('b', cls(d.chg), pct(d.chg) + lim); c.append(b);
     c.append(document.createTextNode(' → '));
     c.append(el('b', cls(d.contrib), sc(d.contrib)));
@@ -240,9 +268,30 @@ function sectorCard(s, i, side) {
   });
   card.append(chips);
 
+  const ben = benMap(s);
+  const benRows = Object.values(ben).filter(x => x.name);
+  if (benRows.length) {
+    const box = el('div', 'ben');
+    box.append(el('h4', null, '直接受惠／受壓個股'));
+    const t = el('table');
+    benRows.slice(0, 8).forEach(x => {
+      const tr = t.insertRow();
+      tr.insertCell().textContent = x.code;
+      const nm = tr.insertCell(); nm.className = 'nm'; nm.textContent = x.name;
+      nm.append(el('span', 'mk ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
+      tr.insertCell().append(el('span', 'via', x.via));
+      const v = tr.insertCell();
+      if (x.verdict) v.append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[x.verdict] || 'no'), '實測' + x.verdict));
+      const p = tr.insertCell(); p.className = 'n ' + cls(x.chg_pct); p.textContent = pct(x.chg_pct);
+      hoverTip(tr, `${x.why}${x.rho0 != null ? `\n歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}` : ''}`);
+    });
+    box.append(t);
+    card.append(box);
+  }
+
   const lists = el('div', 'lists');
-  const a = el('div'); a.append(el('h4', null, '前5強'), stockTable(s.strong));
-  const b = el('div'); b.append(el('h4', null, '前5弱'), stockTable(s.weak));
+  const a = el('div'); a.append(el('h4', null, '前5強'), stockTable(s.strong, ben));
+  const b = el('div'); b.append(el('h4', null, '前5弱'), stockTable(s.weak, ben));
   if (side === 'bear') lists.append(b, a); else lists.append(a, b);
   card.append(lists);
   return card;
@@ -257,6 +306,7 @@ function render(d) {
   $('#m-weights').textContent = '權重 ' + (d.weights_mode || '手動') +
     (d.calibration?.generated_at ? `（校準 ${d.calibration.generated_at.slice(0, 10)}）` : '');
   const byName = Object.fromEntries(d.sectors.map(s => [s.name, s]));
+  BOARD = Object.fromEntries(d.commodities.map(c => [c.code, c]));
 
   for (const side of ['bull', 'bear']) {
     const box = $('#' + side); box.replaceChildren();
@@ -280,10 +330,13 @@ function render(d) {
   });
 
   const board = $('#board'); board.replaceChildren();
-  for (const ex of ['上期所', '大商所', '鄭商所']) {
-    board.append(el('div', 'ex-h', ex + (ex === '上期所' ? '（含上海國際能源中心）' : '')));
+  for (const ex of ['價差', '上期所', '大商所', '鄭商所']) {
+    if (!d.commodities.some(c => c.ex === ex)) continue;
+    board.append(el('div', 'ex-h', ex === '價差' ? '價差（加工利潤）：今日變化佔產品價格 %，括號為幾個標準差'
+      : ex + (ex === '上期所' ? '（含上海國際能源中心）' : '')));
     const g = el('div', 'board');
     d.commodities.filter(c => c.ex === ex).sort((a, b) => (b.chg ?? -99) - (a.chg ?? -99)).forEach(c => {
+      if (c.kind === 'spread') return g.append(spreadTile(c));
       const t = el('div', 'tile');
       const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / c.limit);
       if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
@@ -325,6 +378,20 @@ function kpiBox(k, v, s, vcls) {
   const b = el('div', 'kpi'); b.append(el('div', 'k', k), el('div', 'v ' + (vcls || ''), v));
   if (s) b.append(el('div', 's', s));
   return b;
+}
+
+function spreadTile(c) {
+  const t = el('div', 'tile spr');
+  const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.z || 0) / 3);
+  if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
+  const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
+  const t2 = el('div', 't2 ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg));
+  if (c.z != null) t2.append(el('small', null, `(${c.z > 0 ? '+' : ''}${c.z}σ)`));
+  t.append(t1, t2, el('div', 't3', c.links.length ? c.links.map(l => l.sector + (l.w > 0 ? '+' : '−')).join(' ') : '實測不顯著，不計分'));
+  const legs = (c.legs || []).map(l => `${l.coef > 0 ? '+' : '−'}${Math.abs(l.coef) === 1 ? '' : Math.abs(l.coef)} ${BOARD[l.code]?.name || l.code}`).join(' ');
+  hoverTip(t, `${c.name} = ${legs.replace(/^\+/, '')}${c.level != null ? `\n目前水準 ${c.level}` : ''}\n` +
+    (c.manual || []).map(m => `${m.sector}：${m.w > 0 ? '利潤擴大有利' : '利潤擴大不利'}`).join('\n'));
+  return t;
 }
 
 function renderTrack(t) {
@@ -382,8 +449,10 @@ function renderCalibration(c) {
   const sec = (txt) => { const r = t.insertRow(); const c0 = r.insertCell(); c0.colSpan = 8; c0.append(el('b', null, txt)); };
   sec('隔日（預測力）');
   btRow(t, '手動權重', bt.manual.lag1); btRow(t, '實測權重', bt.calibrated.lag1);
+  if (bt.calibrated_spreads) btRow(t, '實測＋價差', bt.calibrated_spreads.lag1);
   sec('同日（關聯是否存在）');
   btRow(t, '手動權重', bt.manual.lag0); btRow(t, '實測權重', bt.calibrated.lag0);
+  if (bt.calibrated_spreads) btRow(t, '實測＋價差', bt.calibrated_spreads.lag0);
   $('#bt-note').textContent = '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 
@@ -419,6 +488,33 @@ function renderCalibration(c) {
   });
 }
 
+function renderStocks(c) {
+  if (!c.stocks) return;
+  const names = Object.fromEntries(c.pairs.map(p => [p.code, p.name]));
+  Object.entries(c.spreads || {}).forEach(([k, v]) => names[k] = v.name);
+  const rows = [];
+  Object.entries(c.stocks).forEach(([item, lst]) => lst.forEach(r => rows.push({ item, ...r })));
+  const cnt = {}; rows.forEach(r => cnt[r.verdict] = (cnt[r.verdict] || 0) + 1);
+  $('#stk-summary').textContent = `受惠／受壓個股實測（${rows.length} 組）`;
+  $('#stk-note').textContent = '名單依產業公開資訊整理（產品＝商品漲有利，成本＝商品漲不利），再用 2 年日線檢驗：個股漲跌扣掉 β × 加權指數後，' +
+    '與陸期（或價差）的相關是否符合角色。' + Object.entries(cnt).map(([k, v]) => `${k} ${v}`).join('、') + '。「相反」代表市場實際反應與產業直覺不同，值得留意。';
+  const t = $('#stk'); t.replaceChildren();
+  const h = t.insertRow(); ['商品／價差', '個股', '角色', '同日 ρ0 (t)', '隔日 ρ1 (t)', 'n', '判定'].forEach(x => h.append(el('th', null, x)));
+  const order = { '一致': 0, '隔日一致': 1, '相反': 2, '不顯著': 3, '樣本不足': 4, '無資料': 5 };
+  const rt = (r, tv) => r == null ? '—' : `${r > 0 ? '+' : ''}${r.toFixed(2)} (${tv.toFixed(1)})`;
+  rows.sort((a, b) => (order[a.verdict] ?? 9) - (order[b.verdict] ?? 9) || Math.abs(b.t0 || 0) - Math.abs(a.t0 || 0)).forEach(r => {
+    const tr = t.insertRow();
+    tr.insertCell().textContent = names[r.item] || r.item;
+    tr.insertCell().textContent = `${r.code} ${(r.why || '').split(/\s/)[0]}`;
+    tr.insertCell().append(el('span', 'mk ' + (r.role === '產品' ? 'p' : 'c'), r.role));
+    const a = tr.insertCell(); a.className = 'n ' + (Math.abs(r.t0 || 0) >= 2 ? cls(r.rho0) : 'flat'); a.textContent = rt(r.rho0, r.t0);
+    const b = tr.insertCell(); b.className = 'n ' + (Math.abs(r.t1 || 0) >= 2 ? cls(r.rho1) : 'flat'); b.textContent = rt(r.rho1, r.t1);
+    const n = tr.insertCell(); n.className = 'n'; n.textContent = r.n ?? '—';
+    tr.insertCell().append(el('span', 'tag ' + ({ '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' }[r.verdict] || 'no'), r.verdict));
+    hoverTip(tr, r.why);
+  });
+}
+
 async function loadVerify() {
   try {
     const t = await (await fetch('data/track.json?t=' + Date.now())).json();
@@ -427,6 +523,7 @@ async function loadVerify() {
   try {
     const c = await (await fetch('data/calibration.json?t=' + Date.now())).json();
     renderCalibration(c);
+    renderStocks(c);
   } catch (e) {
     $('#bt-hint').textContent = '尚未完成第一次校準（每週六自動執行）。';
     $('#cal-summary').textContent = '關聯實測表（尚未校準）';

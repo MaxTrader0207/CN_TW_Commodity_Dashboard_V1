@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import history as H  # noqa: E402
 from build import LIMIT_BONUS, TPE, UA, norm  # noqa: E402
-from mapping import COMMODITIES  # noqa: E402
+from mapping import BENEFICIARIES, COMMODITIES, SPREADS  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "data" / "calibration.json"
 
@@ -126,12 +126,17 @@ def discover_ok(st):
             and ta is not None and tb is not None and abs(ta) >= T_VALID and abs(tb) >= T_VALID)
 
 
-def build_links(cmd_ret, excess, tw_dates, d0=None, d1=None):
+def commodity_items():
+    """(交易所, 代碼, 名稱, 訊號滿格幅度, 對照, 漲跌停加成)；價差的滿格幅度由 2σ 決定，見 spread_items()"""
+    return [(ex, code, name, limit, links, True) for ex, code, name, limit, links in COMMODITIES]
+
+
+def build_links(items, cmd_ret, excess, tw_dates, d0=None, d1=None):
     """依指定期間校準，回傳 (pairs, discovered, live_links)"""
     sectors = sorted({s for row in excess.values() for s in row})
     sret_by = {s: {d: row[s] for d, row in excess.items() if s in row} for s in sectors}
     pairs, discovered, live = [], [], {}
-    for ex, code, name, limit, links in COMMODITIES:
+    for ex, code, name, limit, links, _ in items:
         cret = cmd_ret.get(code, {})
         mapped = set()
         live[code] = []
@@ -169,10 +174,10 @@ def rnd(st):
 
 
 # ───────────── 回測 ─────────────
-def daily_scores(cmd_ret, links_by_code, d):
+def daily_scores(items, cmd_ret, links_by_code, d):
     """仿 build.score_sectors：回傳 {sector: score}"""
     num, den = {}, {}
-    for ex, code, name, limit, _ in COMMODITIES:
+    for ex, code, name, limit, _, bonus in items:
         for l in links_by_code.get(code, []):
             s = l["sector"]
             den[s] = den.get(s, 0) + abs(l["w"])
@@ -180,13 +185,13 @@ def daily_scores(cmd_ret, links_by_code, d):
             if r is None:
                 continue
             sig = max(-1.0, min(1.0, r / limit))
-            if abs(r) >= limit - 0.1:
+            if bonus and abs(r) >= limit - 0.1:
                 sig *= LIMIT_BONUS
             num[s] = num.get(s, 0) + l["w"] * sig
     return {s: num.get(s, 0) / norm(den[s]) * 100 for s in den if den[s]}
 
 
-def backtest(cmd_ret, excess, tw_dates, links_by_code, d0, d1):
+def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1):
     days = sorted({d for c in cmd_ret.values() for d in c if d0 <= d <= d1})
     res = {}
     for lag in (0, 1):
@@ -204,7 +209,7 @@ def backtest(cmd_ret, excess, tw_dates, links_by_code, d0, d1):
             row = excess.get(t)
             if not row:
                 continue
-            sc = {s: v for s, v in daily_scores(cmd_ret, links_by_code, d).items() if s in row}
+            sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d).items() if s in row}
             b = [s for s, v in sorted(sc.items(), key=lambda kv: -kv[1]) if v > 0][:TOP]
             e = [s for s, v in sorted(sc.items(), key=lambda kv: kv[1]) if v < 0][:TOP]
             if not b and not e:
@@ -233,9 +238,115 @@ def tstat(xs):
     return m / (sd / math.sqrt(n)) if sd else 0.0
 
 
-def manual_links():
+def manual_links(items):
     return {code: [{"sector": s, "w": w, "why": why, "src": "手動"} for s, w, why in links]
-            for _, code, _, _, links in COMMODITIES}
+            for _, code, _, _, links, _ in items}
+
+
+# ───────────── 價差 ─────────────
+def spread_returns(klines, legs, limits):
+    """價差每日變化（佔產品前一日結算價的 %）。任一腿換月跳空（超過漲跌停 +1.5%）的日子剔除。"""
+    by = {}
+    for code, _ in legs:
+        rows = klines.get(code)
+        if not rows:
+            return {}
+        m = {}
+        for prev, cur in zip(rows, rows[1:]):
+            try:
+                base = float(prev.get("s") or prev["c"])
+                c = float(cur["c"])
+            except (KeyError, ValueError):
+                continue
+            if base <= 0 or abs((c / base - 1) * 100) > limits[code] + 1.5:
+                continue
+            m[cur["d"]] = (c, base)
+        by[code] = m
+    prod = legs[0][0]
+    out = {}
+    for d in set.intersection(*(set(m) for m in by.values())):
+        delta = sum(coef * (by[c][d][0] - by[c][d][1]) for c, coef in legs)
+        out[d] = delta / by[prod][d][1] * 100
+    return out
+
+
+def sigma(xs):
+    xs = list(xs)
+    if len(xs) < 30:
+        return None
+    m = sum(xs) / len(xs)
+    return math.sqrt(sum((x - m) ** 2 for x in xs) / (len(xs) - 1))
+
+
+def spread_items(spr_ret, d_end=None):
+    """價差訊號的滿格幅度 = 2σ（d_end 以前資料估計，回測不偷看）；不適用漲跌停加成"""
+    items, sig = [], {}
+    for code, name, legs, links in SPREADS:
+        sd = sigma(v for d, v in spr_ret.get(code, {}).items() if not d_end or d <= d_end)
+        if not sd:
+            continue
+        sig[code] = round(sd, 4)
+        items.append(("價差", code, name, 2 * sd, links, False))
+    return items, sig
+
+
+# ───────────── 個股 ─────────────
+YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{}?range={}&interval=1d"
+
+
+def fetch_stock(session, code, rng="2y"):
+    """Yahoo 日線（還原權息收盤）：{date: close}；先試上市 .TW 再試上櫃 .TWO"""
+    import time as _t
+    last_err = None
+    for suf in (".TW", ".TWO"):
+        try:
+            r = session.get(YAHOO.format(code + suf, rng), timeout=25)
+            res = (r.json().get("chart") or {}).get("result") or []
+            if not res:
+                last_err = f"{suf} 無資料（HTTP {r.status_code}）"
+                continue
+            res = res[0]
+            ts = res.get("timestamp") or []
+            adj = ((res.get("indicators") or {}).get("adjclose") or [{}])[0].get("adjclose") \
+                or res["indicators"]["quote"][0]["close"]
+            out = {}
+            for t, c in zip(ts, adj):
+                if c:
+                    out[(datetime.fromtimestamp(t, TPE)).date().isoformat()] = float(c)
+            if len(out) > 50:
+                return out, suf
+            last_err = f"{suf} 筆數過少"
+        except Exception as e:  # noqa: BLE001
+            last_err = str(e)[:100]
+        _t.sleep(0.5)
+    raise ValueError(last_err)
+
+
+def stock_residuals(closes, idx_ret):
+    """{date: 個股漲跌 − β × 加權指數漲跌}，β 用全期估計"""
+    ds = sorted(closes)
+    r = {cur: (closes[cur] / closes[prev] - 1) * 100 for prev, cur in zip(ds, ds[1:])
+         if closes[prev] and cur in idx_ret and H.TAIEX in idx_ret[cur]}
+    r = {d: v for d, v in r.items() if abs(v) < 11}          # 剔除除權息未還原等異常
+    xs = [idx_ret[d][H.TAIEX] for d in r]
+    ys = list(r.values())
+    if len(xs) < 60:
+        return {}, None
+    mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+    vx = sum((a - mx) ** 2 for a in xs)
+    beta = sum((a - mx) * (b - my) for a, b in zip(xs, ys)) / vx if vx else 1.0
+    return {d: v - beta * idx_ret[d][H.TAIEX] for d, v in r.items()}, round(beta, 3)
+
+
+def stock_verdict(st, role):
+    if st["n"] < MIN_N or st["rho0"] is None:
+        return "樣本不足"
+    want = 1 if role == "產品" else -1
+    if abs(st["t0"]) >= T_VALID:
+        return "一致" if math.copysign(1, st["rho0"]) == want else "相反"
+    if st["t1"] is not None and abs(st["t1"]) >= T_LAG1:
+        return "隔日一致" if math.copysign(1, st["rho1"]) == want else "相反"
+    return "不顯著"
 
 
 # ───────────── 主程式 ─────────────
@@ -296,10 +407,12 @@ def main():
         return
     print(f"台股類股超額報酬：{len(tw_dates)} 天（{tw_dates[0]} ~ {tw_dates[-1]}）")
 
-    cmd_ret, kline_info = {}, {}
+    cmd_ret, kline_info, klines = {}, {}, {}
+    limits = {code: limit for _, code, _, limit, _ in COMMODITIES}
     for ex, code, name, limit, _ in COMMODITIES:
         try:
             rows = H.fetch_kline(s, code)
+            klines[code] = [r for r in rows if r["d"] >= (start - timedelta(days=10)).isoformat()]
             r, dropped = H.kline_returns(rows, limit)
             cmd_ret[code] = {d: v for d, v in r.items() if d >= start.isoformat()}
             kline_info[code] = {"days": len(cmd_ret[code]), "dropped_roll": dropped,
@@ -309,14 +422,58 @@ def main():
             print(f"  ⚠ {code} 日K失敗：{e}")
     print(f"陸期日K：{sum(1 for v in kline_info.values() if 'days' in v)}/{len(COMMODITIES)} 個商品")
 
-    # 全期校準 → 每日計分使用
-    pairs, discovered, live = build_links(cmd_ret, excess, tw_dates)
+    # 價差序列
+    spr_ret = {code: {d: v for d, v in spread_returns(klines, legs, limits).items() if d >= start.isoformat()}
+               for code, _, legs, _ in SPREADS}
+    for code, name, *_ in SPREADS:
+        print(f"  價差 {name}：{len(spr_ret[code])} 天")
+    series = {**cmd_ret, **spr_ret}
 
-    # 樣本外回測：前 60% 校準、後 40% 測試
+    # 全期校準 → 每日計分使用
+    sp_items, sp_sigma = spread_items(spr_ret)
+    items = commodity_items() + sp_items
+    pairs, discovered, live = build_links(items, series, excess, tw_dates)
+
+    # 樣本外回測：前 60% 期間估 β、σ 與權重、後 40% 期間測試（測試期資料完全不參與）
     split = tw_dates[int(len(tw_dates) * TRAIN_FRAC)]
-    _, _, live_train = build_links(cmd_ret, excess, tw_dates, d1=split)
-    test = {"manual": backtest(cmd_ret, excess, tw_dates, manual_links(), split, tw_dates[-1]),
-            "calibrated": backtest(cmd_ret, excess, tw_dates, live_train, split, tw_dates[-1])}
+    betas_tr = H.estimate_betas(idx_ret, d_end=split)
+    excess_bt = H.excess_returns(idx_ret, betas_tr)
+    sp_items_tr, _ = spread_items(spr_ret, d_end=split)
+    items_c = commodity_items()
+    items_all = items_c + sp_items_tr
+    _, _, live_c = build_links(items_c, series, excess_bt, tw_dates, d1=split)
+    _, _, live_all = build_links(items_all, series, excess_bt, tw_dates, d1=split)
+    test = {"manual": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1]),
+            "calibrated": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1]),
+            "calibrated_spreads": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1])}
+
+    # 個股層級：受惠／受壓名單實測
+    stocks, stock_meta = {}, {}
+    closes_cache = {}
+    for code in sorted({c for v in BENEFICIARIES.values() for c, *_ in v}):
+        try:
+            closes, suf = fetch_stock(s, code)
+            res, beta = stock_residuals(closes, idx_ret)
+            closes_cache[code] = res
+            stock_meta[code] = {"beta": beta, "days": len(res), "suffix": suf}
+        except Exception as e:  # noqa: BLE001
+            stock_meta[code] = {"error": str(e)[:120]}
+            print(f"  ⚠ 個股 {code} 日線失敗：{e}")
+        import time as _t
+        _t.sleep(0.4)
+    tw_stock_dates = sorted({d for v in closes_cache.values() for d in v})
+    for item_code, lst in BENEFICIARIES.items():
+        rows = []
+        for code, role, why in lst:
+            res = closes_cache.get(code)
+            if not res:
+                rows.append({"code": code, "role": role, "why": why, "verdict": "無資料"})
+                continue
+            st = pair_stats(series.get(item_code, {}), res, tw_stock_dates)
+            rows.append({"code": code, "role": role, "why": why, **rnd(st), "verdict": stock_verdict(st, role)})
+        stocks[item_code] = rows
+    ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
+    print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
     counts = {}
     for p in pairs + discovered:
@@ -327,10 +484,14 @@ def main():
         "betas": betas,
         "method": {"target": "類股指數漲跌 − β × 加權指數漲跌（β 調整超額報酬）",
                    "discover_in_score": DISCOVER_IN_SCORE,
-                   "signal": "陸期主力 收盤 ÷ 前一日結算價", "min_n": MIN_N, "t_valid": T_VALID,
+                   "signal": "陸期主力 收盤 ÷ 前一日結算價；價差 = Δ價差 ÷ 產品前一日結算價，以 2σ 為滿格",
+                   "min_n": MIN_N, "t_valid": T_VALID,
                    "t_lag1": T_LAG1, "t_discover": T_DISCOVER, "rho_full": RHO_FULL, "train_frac": TRAIN_FRAC},
         "counts": counts,
         "pairs": pairs, "discovered": discovered, "live_links": live,
+        "spreads": {code: {"name": name, "legs": legs, "sigma": sp_sigma.get(code), "days": len(spr_ret[code])}
+                    for code, name, legs, _ in SPREADS},
+        "stocks": stocks, "stock_meta": stock_meta,
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "kline": kline_info,
     }
@@ -338,6 +499,14 @@ def main():
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
 
     print("組合狀態：", counts)
+    for p in [p for p in pairs if p["ex"] == "價差"]:
+        print(f"  [價差] {p['name']:<8}→{p['sector']:<6} 手動{p['manual_w']:+.1f} ρ0={p['rho0']} t0={p['t0']} "
+              f"ρ1={p['rho1']} t1={p['t1']} 實測{p['cal_w']:+.1f} {p['status']}")
+    for item_code, rows in stocks.items():
+        for r in rows:
+            if r.get("verdict") not in ("不顯著",):
+                print(f"  [個股] {item_code}→{r['code']} {r['role']} ρ0={r.get('rho0')} t0={r.get('t0')} "
+                      f"ρ1={r.get('rho1')} {r['verdict']}")
     for p in sorted(pairs, key=lambda p: -(abs(p["t0"] or 0)))[:12]:
         print(f"  {p['name']:<8}→{p['sector']:<6} 手動{p['manual_w']:+.1f} ρ0={p['rho0']} t0={p['t0']} "
               f"ρ1={p['rho1']} 實測{p['cal_w']:+.1f} {p['status']}")
