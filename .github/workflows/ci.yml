@@ -1,0 +1,42 @@
+name: CI
+
+# 每次 push／PR：單元測試 → 用 data 分支的真實資料檢查頁面 → 用離線假資料完整跑一次 build 再檢查頁面
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["README.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt pytest playwright
+      - name: Unit tests
+        run: python -m pytest -q tests
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Page check (real data)
+        run: |
+          python pipeline/datastore.py restore
+          if [ -f docs/data/latest.json ]; then python tests/page_check.py docs "實際資料・"; else echo "data 分支沒有資料，略過"; fi
+      - name: Page check (offline fixtures)
+        run: |
+          rm -rf /tmp/site && cp -r docs /tmp/site && mkdir -p /tmp/repo && cp -r pipeline /tmp/repo/ && cp -r /tmp/site /tmp/repo/docs
+          python tests/make_fixtures.py /tmp/fx
+          python /tmp/repo/pipeline/build.py --fixtures /tmp/fx --session day
+          python tests/page_check.py /tmp/repo/docs "假資料・"

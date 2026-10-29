@@ -1,0 +1,57 @@
+name: Deploy pages
+
+# 網站 = main 的 docs/（程式）＋ data 分支的 docs/data（資料），由 Actions 組合後部署到 GitHub Pages。
+# 改程式（push main）、每日更新、每週校準完成後都會觸發。
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore data branch
+        run: python pipeline/datastore.py restore
+      - name: Pages source → GitHub Actions
+        # 第一次執行時把 Pages 來源從「main 分支 /docs」改成「GitHub Actions」（之後只會檢查，不再改動）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bt=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null || echo none)
+          echo "目前 Pages 來源：$bt"
+          if [ "$bt" != "workflow" ]; then
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/pages" -f build_type=workflow \
+              || echo "::warning title=Pages 來源::無法自動切換，請到 Settings → Pages → Source 選 GitHub Actions"
+          fi
+      - uses: actions/configure-pages@v5
+      - name: Check site
+        run: |
+          test -f docs/index.html
+          test -f docs/data/latest.json || echo "::warning title=資料::docs/data/latest.json 不存在（data 分支尚無資料）"
+          touch docs/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

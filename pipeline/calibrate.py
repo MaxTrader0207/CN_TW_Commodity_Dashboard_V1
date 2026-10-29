@@ -368,39 +368,14 @@ def stock_verdict(st, role):
 
 # ───────────── 主程式 ─────────────
 def git_checkpoint(msg):
-    """CI 中途把快取推回 repo：長時間補抓不怕最後一步失敗而全部白費；失敗時寫成 annotation 方便除錯。"""
+    """CI 中途把快取推到 data 分支：長時間補抓不怕最後一步失敗而全部白費；失敗時寫成 annotation 方便除錯。"""
     import os
-    import subprocess
     if not os.environ.get("CI"):
         return True
-
-    def sh(*cmd):
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        return r.returncode, (r.stdout + r.stderr).strip()
-
-    sh("git", "add", "-A", "pipeline/cache")
-    code, out = sh("git", "diff", "--cached", "--quiet")
-    if code == 0:
-        return True
-    code, out = sh("git", "commit", "-m", msg)
-    if code:
-        print(f"::error title=checkpoint commit::{out[-300:]}")
-        return False
-    for i in range(4):
-        c1, o1 = sh("git", "pull", "--rebase", "--autostash", "-X", "theirs", "origin", "main")
-        c2, o2 = sh("git", "push") if c1 == 0 else (1, "")
-        if c1 == 0 and c2 == 0:
-            print(f"  ✓ 已推回：{msg}")
-            return True
-        sh("git", "rebase", "--abort")
-        detail = (o1 if c1 else o2).replace("\n", " ")[-400:]
-        print(f"  ⚠ 推回失敗（{i + 1}）：{detail}")
-        if i == 3:
-            print(f"::error title=checkpoint push::{detail}")
-        import time
-        time.sleep(5 * (i + 1))
-    return False
-
+    import datastore
+    ok = datastore.save(msg)
+    datastore.cleanup()
+    return ok
 
 
 HEAT_DAYS = 120

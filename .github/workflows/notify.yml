@@ -1,0 +1,30 @@
+name: Failure alert
+
+# 每日更新／校準／部署／CI 結束後檢查：
+#   失敗 → 開一張 GitHub Issue（標籤 pipeline-failure），同一個流程已有未關閉的就加留言；GitHub 會寄 Email／手機推播
+#   成功 → 自動關閉該流程未關閉的 Issue
+#   每日更新雖然成功，但核心資料來源（陸期報價、台股收盤、產業別）失敗 → 另開「資料來源異常」Issue
+on:
+  workflow_run:
+    workflows: ["Daily update", "Calibrate weights", "Deploy pages", "CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  checks: read
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check run and update issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: python .github/scripts/alert.py
