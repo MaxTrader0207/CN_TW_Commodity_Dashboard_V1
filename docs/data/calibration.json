@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-29T22:28+08:00",
+ "generated_at": "2026-10-29T23:07+08:00",
  "period": {
   "start": "2024-10-30",
   "end": "2026-10-29",
@@ -6096,6 +6096,80 @@
     ]
    }
   },
+  "live_links": {
+   "BZ": [
+    {
+     "sector": "油電燃氣",
+     "w": 0.7,
+     "why": "國際油價 → 台塑化煉油",
+     "src": "實測"
+    }
+   ],
+   "CL": [
+    {
+     "sector": "油電燃氣",
+     "w": 0.8,
+     "why": "國際油價 → 台塑化煉油",
+     "src": "實測"
+    }
+   ],
+   "HO": [
+    {
+     "sector": "油電燃氣",
+     "w": 0.6,
+     "why": "柴油價格 → 煉油利潤",
+     "src": "實測"
+    }
+   ],
+   "RBOB": [
+    {
+     "sector": "油電燃氣",
+     "w": 0.5,
+     "why": "汽油價格 → 煉油利潤",
+     "src": "實測"
+    }
+   ],
+   "HG": [
+    {
+     "sector": "電器電纜",
+     "w": 0.5,
+     "why": "國際銅價 → 電線電纜報價",
+     "src": "實測"
+    }
+   ],
+   "ALI": [
+    {
+     "sector": "電器電纜",
+     "w": 0.5,
+     "why": "鋁導線",
+     "src": "實測"
+    }
+   ],
+   "ZS": [
+    {
+     "sector": "食品",
+     "w": 0.5,
+     "why": "黃豆原料成本",
+     "src": "實測"
+    }
+   ],
+   "ZM": [
+    {
+     "sector": "食品",
+     "w": 0.4,
+     "why": "飼料成本",
+     "src": "實測"
+    }
+   ],
+   "ZL": [
+    {
+     "sector": "食品",
+     "w": -0.4,
+     "why": "食用油成本",
+     "src": "實測"
+    }
+   ]
+  },
   "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"
  },
  "backtest": {
@@ -6116,7 +6190,11 @@
     "bear_win": 0.543,
     "spread_avg": 0.421,
     "spread_win": 0.608,
-    "spread_t": 2.71
+    "spread_t": 2.71,
+    "dir_n": 3253,
+    "dir_avg": 0.16,
+    "dir_win": 0.533,
+    "dir_t": 4.53
    },
    "lag1": {
     "days": 191,
@@ -6126,7 +6204,11 @@
     "bear_win": 0.527,
     "spread_avg": 0.062,
     "spread_win": 0.503,
-    "spread_t": 0.45
+    "spread_t": 0.45,
+    "dir_n": 3338,
+    "dir_avg": 0.03,
+    "dir_win": 0.503,
+    "dir_t": 0.88
    }
   },
   "calibrated": {
@@ -6138,7 +6220,11 @@
     "bear_win": 0.561,
     "spread_avg": 0.322,
     "spread_win": 0.593,
-    "spread_t": 2.15
+    "spread_t": 2.15,
+    "dir_n": 1589,
+    "dir_avg": 0.224,
+    "dir_win": 0.532,
+    "dir_t": 4.08
    },
    "lag1": {
     "days": 191,
@@ -6148,7 +6234,11 @@
     "bear_win": 0.522,
     "spread_avg": 0.103,
     "spread_win": 0.519,
-    "spread_t": 0.86
+    "spread_t": 0.86,
+    "dir_n": 1632,
+    "dir_avg": 0.077,
+    "dir_win": 0.501,
+    "dir_t": 1.48
    }
   },
   "calibrated_spreads": {
@@ -6160,7 +6250,11 @@
     "bear_win": 0.569,
     "spread_avg": 0.384,
     "spread_win": 0.593,
-    "spread_t": 2.6
+    "spread_t": 2.6,
+    "dir_n": 1587,
+    "dir_avg": 0.245,
+    "dir_win": 0.539,
+    "dir_t": 4.46
    },
    "lag1": {
     "days": 191,
@@ -6170,7 +6264,11 @@
     "bear_win": 0.52,
     "spread_avg": 0.068,
     "spread_win": 0.513,
-    "spread_t": 0.56
+    "spread_t": 0.56,
+    "dir_n": 1630,
+    "dir_avg": 0.048,
+    "dir_win": 0.502,
+    "dir_t": 0.93
    }
   },
   "manual_z": {
@@ -6182,7 +6280,11 @@
     "bear_win": 0.557,
     "spread_avg": 0.487,
     "spread_win": 0.613,
-    "spread_t": 3.21
+    "spread_t": 3.21,
+    "dir_n": 3445,
+    "dir_avg": 0.15,
+    "dir_win": 0.527,
+    "dir_t": 4.42
    },
    "lag1": {
     "days": 191,
@@ -6192,7 +6294,11 @@
     "bear_win": 0.549,
     "spread_avg": 0.144,
     "spread_win": 0.55,
-    "spread_t": 1.14
+    "spread_t": 1.14,
+    "dir_n": 3536,
+    "dir_avg": 0.027,
+    "dir_win": 0.505,
+    "dir_t": 0.82
    }
   },
   "calibrated_z": {
@@ -6204,7 +6310,11 @@
     "bear_win": 0.573,
     "spread_avg": 0.461,
     "spread_win": 0.628,
-    "spread_t": 3.38
+    "spread_t": 3.38,
+    "dir_n": 1634,
+    "dir_avg": 0.239,
+    "dir_win": 0.536,
+    "dir_t": 4.48
    },
    "lag1": {
     "days": 191,
@@ -6214,7 +6324,11 @@
     "bear_win": 0.539,
     "spread_avg": 0.205,
     "spread_win": 0.568,
-    "spread_t": 1.76
+    "spread_t": 1.76,
+    "dir_n": 1678,
+    "dir_avg": 0.083,
+    "dir_win": 0.504,
+    "dir_t": 1.62
    }
   },
   "calibrated_spreads_z": {
@@ -6226,7 +6340,11 @@
     "bear_win": 0.575,
     "spread_avg": 0.395,
     "spread_win": 0.591,
-    "spread_t": 2.76
+    "spread_t": 2.76,
+    "dir_n": 1632,
+    "dir_avg": 0.236,
+    "dir_win": 0.537,
+    "dir_t": 4.44
    },
    "lag1": {
     "days": 191,
@@ -6236,7 +6354,101 @@
     "bear_win": 0.538,
     "spread_avg": 0.161,
     "spread_win": 0.538,
-    "spread_t": 1.38
+    "spread_t": 1.38,
+    "dir_n": 1676,
+    "dir_avg": 0.068,
+    "dir_win": 0.502,
+    "dir_t": 1.34
+   }
+  },
+  "pre_intl": {
+   "lag0": {
+    "days": 190,
+    "bull_avg": 0.188,
+    "bull_win": 0.505,
+    "bear_avg": -0.04,
+    "bear_win": 0.532,
+    "spread_avg": 0.308,
+    "spread_win": 0.471,
+    "spread_t": 1.84,
+    "dir_n": 924,
+    "dir_avg": 0.058,
+    "dir_win": 0.504,
+    "dir_t": 0.78
+   },
+   "lag1": {
+    "days": 188,
+    "bull_avg": 0.034,
+    "bull_win": 0.474,
+    "bear_avg": -0.016,
+    "bear_win": 0.524,
+    "spread_avg": 0.068,
+    "spread_win": 0.514,
+    "spread_t": 0.36,
+    "dir_n": 914,
+    "dir_avg": 0.026,
+    "dir_win": 0.5,
+    "dir_t": 0.36
+   }
+  },
+  "pre_cn": {
+   "lag0": {
+    "days": 185,
+    "bull_avg": 0.086,
+    "bull_win": 0.453,
+    "bear_avg": -0.121,
+    "bear_win": 0.541,
+    "spread_avg": 0.216,
+    "spread_win": 0.547,
+    "spread_t": 1.64,
+    "dir_n": 1623,
+    "dir_avg": 0.1,
+    "dir_win": 0.508,
+    "dir_t": 1.86
+   },
+   "lag1": {
+    "days": 183,
+    "bull_avg": -0.034,
+    "bull_win": 0.463,
+    "bear_avg": -0.074,
+    "bear_win": 0.546,
+    "spread_avg": 0.009,
+    "spread_win": 0.548,
+    "spread_t": 0.08,
+    "dir_n": 1607,
+    "dir_avg": -0.03,
+    "dir_win": 0.493,
+    "dir_t": -0.57
+   }
+  },
+  "pre_combo": {
+   "lag0": {
+    "days": 194,
+    "bull_avg": 0.148,
+    "bull_win": 0.478,
+    "bear_avg": -0.139,
+    "bear_win": 0.522,
+    "spread_avg": 0.297,
+    "spread_win": 0.554,
+    "spread_t": 2.64,
+    "dir_n": 2199,
+    "dir_avg": 0.077,
+    "dir_win": 0.505,
+    "dir_t": 1.79
+   },
+   "lag1": {
+    "days": 192,
+    "bull_avg": 0.01,
+    "bull_win": 0.47,
+    "bear_avg": -0.044,
+    "bear_win": 0.55,
+    "spread_avg": 0.054,
+    "spread_win": 0.529,
+    "spread_t": 0.46,
+    "dir_n": 2177,
+    "dir_avg": -0.018,
+    "dir_win": 0.497,
+    "dir_t": -0.43
    }
   }
  },

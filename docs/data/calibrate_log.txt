@@ -68,6 +68,9 @@
   [陸期跟隨] ZC→C ρ=0.079 t=1.68 n=450
   [陸期跟隨] CT→CF ρ=0.338 t=7.61 n=451
   [陸期跟隨] SB→SR ρ=0.361 t=8.21 n=451
+盤前回測 pre_intl：方向命中 0.058（勝率 0.504, t=0.78, n=924）｜多頭 0.188 空頭 -0.04 價差 0.308 t=1.84
+盤前回測 pre_cn：方向命中 0.1（勝率 0.508, t=1.86, n=1623）｜多頭 0.086 空頭 -0.121 價差 0.216 t=1.64
+盤前回測 pre_combo：方向命中 0.077（勝率 0.505, t=1.79, n=2199）｜多頭 0.148 空頭 -0.139 價差 0.297 t=2.64
 個股日線：56/56 檔
 換月修正後判定改變的組合：5
   燃料油→航運：修正前 ρ0=0.082 t=1.78 不顯著 → 修正後 ρ0=0.114 t=2.47 方向相反
@@ -174,15 +177,21 @@
   [新增候選] 瓶片→其他 ρ0=0.185 t0=4.06 w=0.6
   [新增候選] 甲醇→油電燃氣 ρ0=0.33 t0=7.52 w=1.0
 β： {'食品': 0.162, '貿易百貨': 0.185, '橡膠': 0.281, '水泥': 0.305, '觀光餐旅': 0.319, '造紙': 0.346, '油電燃氣': 0.362, '建材營造': 0.373, '紡織纖維': 0.405, '數位雲端': 0.408, '鋼鐵': 0.411, '其他': 0.413, '金融保險': 0.416, '居家生活': 0.423, '運動休閒': 0.463, '汽車': 0.476, '航運': 0.484, '資訊服務': 0.538, '通信網路': 0.544, '生技醫療': 0.588, '綠能環保': 0.684, '化學工業': 0.69, '電子通路': 0.712, '電器電纜': 0.916, '電機機械': 0.964, '光電': 0.986, '電腦週邊': 1.002, '塑膠': 1.021, '其他電子': 1.113, '玻璃陶瓷': 1.148, '半導體': 1.179, '電子零組件': 1.365}
-回測（樣本外 2026-01-07~）manual：當日 {'days': 186, 'bull_avg': 0.32, 'bull_win': 0.511, 'bear_avg': -0.101, 'bear_win': 0.543, 'spread_avg': 0.421, 'spread_win': 0.608, 'spread_t': 2.71}
-                     manual：隔日 {'days': 191, 'bull_avg': 0.094, 'bull_win': 0.461, 'bear_avg': 0.032, 'bear_win': 0.527, 'spread_avg': 0.062, 'spread_win': 0.503, 'spread_t': 0.45}
-回測（樣本外 2026-01-07~）calibrated：當日 {'days': 186, 'bull_avg': 0.223, 'bull_win': 0.493, 'bear_avg': -0.224, 'bear_win': 0.561, 'spread_avg': 0.322, 'spread_win': 0.593, 'spread_t': 2.15}
-                     calibrated：隔日 {'days': 191, 'bull_avg': -0.02, 'bull_win': 0.446, 'bear_avg': -0.087, 'bear_win': 0.522, 'spread_avg': 0.103, 'spread_win': 0.519, 'spread_t': 0.86}
-回測（樣本外 2026-01-07~）calibrated_spreads：當日 {'days': 186, 'bull_avg': 0.306, 'bull_win': 0.504, 'bear_avg': -0.213, 'bear_win': 0.569, 'spread_avg': 0.384, 'spread_win': 0.593, 'spread_t': 2.6}
-                     calibrated_spreads：隔日 {'days': 191, 'bull_avg': -0.012, 'bull_win': 0.444, 'bear_avg': -0.032, 'bear_win': 0.52, 'spread_avg': 0.068, 'spread_win': 0.513, 'spread_t': 0.56}
-回測（樣本外 2026-01-07~）manual_z：當日 {'days': 186, 'bull_avg': 0.327, 'bull_win': 0.505, 'bear_avg': -0.163, 'bear_win': 0.557, 'spread_avg': 0.487, 'spread_win': 0.613, 'spread_t': 3.21}
-                     manual_z：隔日 {'days': 191, 'bull_avg': 0.118, 'bull_win': 0.476, 'bear_avg': -0.026, 'bear_win': 0.549, 'spread_avg': 0.144, 'spread_win': 0.55, 'spread_t': 1.14}
-回測（樣本外 2026-01-07~）calibrated_z：當日 {'days': 186, 'bull_avg': 0.238, 'bull_win': 0.488, 'bear_avg': -0.316, 'bear_win': 0.573, 'spread_avg': 0.461, 'spread_win': 0.628, 'spread_t': 3.38}
-                     calibrated_z：隔日 {'days': 191, 'bull_avg': -0.0, 'bull_win': 0.444, 'bear_avg': -0.181, 'bear_win': 0.539, 'spread_avg': 0.205, 'spread_win': 0.568, 'spread_t': 1.76}
-回測（樣本外 2026-01-07~）calibrated_spreads_z：當日 {'days': 186, 'bull_avg': 0.227, 'bull_win': 0.493, 'bear_avg': -0.284, 'bear_win': 0.575, 'spread_avg': 0.395, 'spread_win': 0.591, 'spread_t': 2.76}
-                     calibrated_spreads_z：隔日 {'days': 191, 'bull_avg': -0.004, 'bull_win': 0.441, 'bear_avg': -0.138, 'bear_win': 0.538, 'spread_avg': 0.161, 'spread_win': 0.538, 'spread_t': 1.38}
+回測（樣本外 2026-01-07~）manual：當日 {'days': 186, 'bull_avg': 0.32, 'bull_win': 0.511, 'bear_avg': -0.101, 'bear_win': 0.543, 'spread_avg': 0.421, 'spread_win': 0.608, 'spread_t': 2.71, 'dir_n': 3253, 'dir_avg': 0.16, 'dir_win': 0.533, 'dir_t': 4.53}
+                     manual：隔日 {'days': 191, 'bull_avg': 0.094, 'bull_win': 0.461, 'bear_avg': 0.032, 'bear_win': 0.527, 'spread_avg': 0.062, 'spread_win': 0.503, 'spread_t': 0.45, 'dir_n': 3338, 'dir_avg': 0.03, 'dir_win': 0.503, 'dir_t': 0.88}
+回測（樣本外 2026-01-07~）calibrated：當日 {'days': 186, 'bull_avg': 0.223, 'bull_win': 0.493, 'bear_avg': -0.224, 'bear_win': 0.561, 'spread_avg': 0.322, 'spread_win': 0.593, 'spread_t': 2.15, 'dir_n': 1589, 'dir_avg': 0.224, 'dir_win': 0.532, 'dir_t': 4.08}
+                     calibrated：隔日 {'days': 191, 'bull_avg': -0.02, 'bull_win': 0.446, 'bear_avg': -0.087, 'bear_win': 0.522, 'spread_avg': 0.103, 'spread_win': 0.519, 'spread_t': 0.86, 'dir_n': 1632, 'dir_avg': 0.077, 'dir_win': 0.501, 'dir_t': 1.48}
+回測（樣本外 2026-01-07~）calibrated_spreads：當日 {'days': 186, 'bull_avg': 0.306, 'bull_win': 0.504, 'bear_avg': -0.213, 'bear_win': 0.569, 'spread_avg': 0.384, 'spread_win': 0.593, 'spread_t': 2.6, 'dir_n': 1587, 'dir_avg': 0.245, 'dir_win': 0.539, 'dir_t': 4.46}
+                     calibrated_spreads：隔日 {'days': 191, 'bull_avg': -0.012, 'bull_win': 0.444, 'bear_avg': -0.032, 'bear_win': 0.52, 'spread_avg': 0.068, 'spread_win': 0.513, 'spread_t': 0.56, 'dir_n': 1630, 'dir_avg': 0.048, 'dir_win': 0.502, 'dir_t': 0.93}
+回測（樣本外 2026-01-07~）manual_z：當日 {'days': 186, 'bull_avg': 0.327, 'bull_win': 0.505, 'bear_avg': -0.163, 'bear_win': 0.557, 'spread_avg': 0.487, 'spread_win': 0.613, 'spread_t': 3.21, 'dir_n': 3445, 'dir_avg': 0.15, 'dir_win': 0.527, 'dir_t': 4.42}
+                     manual_z：隔日 {'days': 191, 'bull_avg': 0.118, 'bull_win': 0.476, 'bear_avg': -0.026, 'bear_win': 0.549, 'spread_avg': 0.144, 'spread_win': 0.55, 'spread_t': 1.14, 'dir_n': 3536, 'dir_avg': 0.027, 'dir_win': 0.505, 'dir_t': 0.82}
+回測（樣本外 2026-01-07~）calibrated_z：當日 {'days': 186, 'bull_avg': 0.238, 'bull_win': 0.488, 'bear_avg': -0.316, 'bear_win': 0.573, 'spread_avg': 0.461, 'spread_win': 0.628, 'spread_t': 3.38, 'dir_n': 1634, 'dir_avg': 0.239, 'dir_win': 0.536, 'dir_t': 4.48}
+                     calibrated_z：隔日 {'days': 191, 'bull_avg': -0.0, 'bull_win': 0.444, 'bear_avg': -0.181, 'bear_win': 0.539, 'spread_avg': 0.205, 'spread_win': 0.568, 'spread_t': 1.76, 'dir_n': 1678, 'dir_avg': 0.083, 'dir_win': 0.504, 'dir_t': 1.62}
+回測（樣本外 2026-01-07~）calibrated_spreads_z：當日 {'days': 186, 'bull_avg': 0.227, 'bull_win': 0.493, 'bear_avg': -0.284, 'bear_win': 0.575, 'spread_avg': 0.395, 'spread_win': 0.591, 'spread_t': 2.76, 'dir_n': 1632, 'dir_avg': 0.236, 'dir_win': 0.537, 'dir_t': 4.44}
+                     calibrated_spreads_z：隔日 {'days': 191, 'bull_avg': -0.004, 'bull_win': 0.441, 'bear_avg': -0.138, 'bear_win': 0.538, 'spread_avg': 0.161, 'spread_win': 0.538, 'spread_t': 1.38, 'dir_n': 1676, 'dir_avg': 0.068, 'dir_win': 0.502, 'dir_t': 1.34}
+回測（樣本外 2026-01-07~）pre_intl：當日 {'days': 190, 'bull_avg': 0.188, 'bull_win': 0.505, 'bear_avg': -0.04, 'bear_win': 0.532, 'spread_avg': 0.308, 'spread_win': 0.471, 'spread_t': 1.84, 'dir_n': 924, 'dir_avg': 0.058, 'dir_win': 0.504, 'dir_t': 0.78}
+                     pre_intl：隔日 {'days': 188, 'bull_avg': 0.034, 'bull_win': 0.474, 'bear_avg': -0.016, 'bear_win': 0.524, 'spread_avg': 0.068, 'spread_win': 0.514, 'spread_t': 0.36, 'dir_n': 914, 'dir_avg': 0.026, 'dir_win': 0.5, 'dir_t': 0.36}
+回測（樣本外 2026-01-07~）pre_cn：當日 {'days': 185, 'bull_avg': 0.086, 'bull_win': 0.453, 'bear_avg': -0.121, 'bear_win': 0.541, 'spread_avg': 0.216, 'spread_win': 0.547, 'spread_t': 1.64, 'dir_n': 1623, 'dir_avg': 0.1, 'dir_win': 0.508, 'dir_t': 1.86}
+                     pre_cn：隔日 {'days': 183, 'bull_avg': -0.034, 'bull_win': 0.463, 'bear_avg': -0.074, 'bear_win': 0.546, 'spread_avg': 0.009, 'spread_win': 0.548, 'spread_t': 0.08, 'dir_n': 1607, 'dir_avg': -0.03, 'dir_win': 0.493, 'dir_t': -0.57}
+回測（樣本外 2026-01-07~）pre_combo：當日 {'days': 194, 'bull_avg': 0.148, 'bull_win': 0.478, 'bear_avg': -0.139, 'bear_win': 0.522, 'spread_avg': 0.297, 'spread_win': 0.554, 'spread_t': 2.64, 'dir_n': 2199, 'dir_avg': 0.077, 'dir_win': 0.505, 'dir_t': 1.79}
+                     pre_combo：隔日 {'days': 192, 'bull_avg': 0.01, 'bull_win': 0.47, 'bear_avg': -0.044, 'bear_win': 0.55, 'spread_avg': 0.054, 'spread_win': 0.529, 'spread_t': 0.46, 'dir_n': 2177, 'dir_avg': -0.018, 'dir_win': 0.497, 'dir_t': -0.43}
