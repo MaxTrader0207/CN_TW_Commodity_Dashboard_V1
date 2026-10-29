@@ -236,6 +236,42 @@ def manual_links():
 
 
 # ───────────── 主程式 ─────────────
+def git_checkpoint(msg):
+    """CI 中途把快取推回 repo：長時間補抓不怕最後一步失敗而全部白費；失敗時寫成 annotation 方便除錯。"""
+    import os
+    import subprocess
+    if not os.environ.get("CI"):
+        return True
+
+    def sh(*cmd):
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        return r.returncode, (r.stdout + r.stderr).strip()
+
+    sh("git", "add", "-A", "pipeline/cache")
+    code, out = sh("git", "diff", "--cached", "--quiet")
+    if code == 0:
+        return True
+    code, out = sh("git", "commit", "-m", msg)
+    if code:
+        print(f"::error title=checkpoint commit::{out[-300:]}")
+        return False
+    for i in range(4):
+        c1, o1 = sh("git", "pull", "--rebase", "-X", "theirs", "origin", "main")
+        c2, o2 = sh("git", "push") if c1 == 0 else (1, "")
+        if c1 == 0 and c2 == 0:
+            print(f"  ✓ 已推回：{msg}")
+            return True
+        sh("git", "rebase", "--abort")
+        detail = (o1 if c1 else o2).replace("\n", " ")[-400:]
+        print(f"  ⚠ 推回失敗（{i + 1}）：{detail}")
+        if i == 3:
+            print(f"::error title=checkpoint push::{detail}")
+        import time
+        time.sleep(5 * (i + 1))
+    return False
+
+
+
 def main():
     import requests
     ap = argparse.ArgumentParser()
@@ -246,7 +282,8 @@ def main():
     today = datetime.now(TPE).date()
     start = today - timedelta(days=int(365 * a.years))
 
-    data, empty = H.update_index(s, start, today)
+    data, empty = H.update_index(s, start, today, checkpoint=git_checkpoint)
+    git_checkpoint(f"cache: 類股指數 {len(data)} 天")
     excess = {d: v for d, v in H.excess_returns(H.index_returns(data, empty)).items() if d >= start.isoformat()}
     tw_dates = sorted(excess)
     if len(tw_dates) < 200:

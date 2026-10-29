@@ -77,7 +77,8 @@ def save_index(data, empty):
     EMPTY_TXT.write_text("\n".join(sorted(empty)))
 
 
-def update_index(session, start: date, end: date, sleep=2.5, max_fail=6, log=print):
+def update_index(session, start: date, end: date, sleep=2.5, max_fail=6, log=print,
+                 checkpoint=None, checkpoint_every=100):
     """補齊 start~end 之間缺少的平日；證交所連續失敗 max_fail 次就停（下次再續抓）。"""
     data, empty = load_index(), load_empty()
     todo = []
@@ -112,6 +113,8 @@ def update_index(session, start: date, end: date, sleep=2.5, max_fail=6, log=pri
         if (i + 1) % 25 == 0:
             log(f"  進度 {i + 1}/{len(todo)}")
             save_index(data, empty)
+        if checkpoint and (i + 1) % checkpoint_every == 0:
+            checkpoint(f"cache: 類股指數 {len(data)} 天")
         time.sleep(sleep)
     save_index(data, empty)
     log(f"類股指數快取：新增 {got} 個交易日，共 {len(data)} 個")
