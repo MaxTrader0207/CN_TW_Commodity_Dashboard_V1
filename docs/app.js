@@ -96,7 +96,7 @@ function sectorCard(s, i, side) {
     const box = el('div', 'ben');
     box.append(el('h4', null, '直接受惠／受壓個股'));
     const t = el('table');
-    benRows.slice(0, 8).forEach(x => {
+    benRows.forEach(x => {
       const tr = t.insertRow();
       tr.insertCell().textContent = x.code;
       const nm = tr.insertCell(); nm.className = 'nm'; nm.textContent = x.name;

@@ -100,6 +100,34 @@ function drawHome() {
     bars.append(r);
   });
 }
+// 受惠／受壓個股列：名稱一行、關聯說明（自動換行，不截斷）、實測結果用小標籤；點一下展開完整說明
+const VERDICT_TAG = { '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' };
+function stockRow(x, sub, extra, whyShown) {
+  const r = el('div', 'row stk'), l = el('div', 'l');
+  const t = el('div', 't', x.name || x.code);
+  t.append(el('span', 'cd', x.code), el('span', 'tag ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
+  l.append(t);
+  if (sub) l.append(el('div', 's', sub));
+  const tags = el('div', 'vt');
+  if (x.verdict) tags.append(el('span', 'tag ' + (VERDICT_TAG[x.verdict] || 'no'), '實測' + x.verdict));
+  if (x.oos_same) tags.append(el('span', 'tag ok', '樣本外確認'));
+  if (x.oos_next) tags.append(el('span', 'tag lag', '隔日仍成立'));
+  if (tags.childElementCount) l.append(tags);
+  const more = [];
+  if (!whyShown && x.why) more.push(x.why);
+  if (x.rho0 != null) more.push(`歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}`);
+  if (x.oos_same) more.push('樣本外確認：前 60% 與後 40% 期間都顯著、方向一致');
+  if (x.oos_next) more.push('隔日仍成立：隔日關聯在測試期仍顯著');
+  if (more.length) {
+    const w = el('div', 'why hidden', more.join('\n'));
+    l.append(w); r.classList.add('tap');
+    r.onclick = () => { w.classList.toggle('hidden'); r.classList.toggle('open'); };
+  } else r.classList.add('static');
+  const rr = el('div', 'r'); rr.append(el('b', cls(x.chg_pct), pct(x.chg_pct)));
+  if (extra) rr.append(el('small', null, extra));
+  r.append(l, rr);
+  return r;
+}
 function benMap(sector) {
   const m = {};
   sector.drivers.filter(d => d.contrib !== 0).forEach(d => (BOARD[d.code]?.stocks || []).forEach(x => { if (!m[x.code]) m[x.code] = { ...x, via: d.name }; }));
@@ -129,14 +157,9 @@ function drawSectors() {
     if (ben.length) {
       const det = el('details', 'more'); det.append(el('summary', null, `直接受惠／受壓個股（${ben.length}）`));
       const rows = el('div', 'rows');
-      ben.slice(0, 10).forEach(x => {
-        const r = el('div', 'row static'); const l = el('div', 'l');
-        const t = el('div', 't', x.name); t.append(el('span', 'cd', x.code), el('span', 'tag ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
-        const sub = `經由 ${x.via}` + (x.verdict ? `・實測${x.verdict}` : '') + (x.oos_same ? '・樣本外確認' : '');
-        l.append(t, el('div', 's', sub));
-        const rr = el('div', 'r'); rr.append(el('b', cls(x.chg_pct), pct(x.chg_pct)));
-        const ch = CHIPS[x.code]; if (ch) rr.append(el('small', null, `法人 ${lots(ch.inst)}`));
-        r.append(l, rr); rows.append(r);
+      ben.forEach(x => {
+        const ch = CHIPS[x.code];
+        rows.append(stockRow(x, `經由 ${x.via}`, ch ? `法人 ${lots(ch.inst)}` : null));
       });
       det.append(rows); c.append(det);
     }
@@ -423,13 +446,7 @@ async function openDetail(code, push = true) {
   if (c.stocks?.length) {
     body.append(el('h2', null, '受惠／受壓個股'));
     const card = el('div', 'card'), rows = el('div', 'rows'); card.append(rows);
-    c.stocks.forEach(x => {
-      const r = el('div', 'row static'), l = el('div', 'l');
-      const t = el('div', 't', x.name || x.code); t.append(el('span', 'cd', x.code), el('span', 'tag ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
-      l.append(t, el('div', 's', (x.why || '') + (x.verdict ? `・實測${x.verdict}` : '')));
-      const rr = el('div', 'r'); rr.append(el('b', cls(x.chg_pct), pct(x.chg_pct)));
-      r.append(l, rr); rows.append(r);
-    });
+    c.stocks.forEach(x => rows.append(stockRow(x, x.why || '', null, true)));
     body.append(card);
   }
   // 開啟

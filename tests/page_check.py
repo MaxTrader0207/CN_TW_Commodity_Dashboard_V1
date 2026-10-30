@@ -103,7 +103,19 @@ def main():
         page.go_back()
         page.wait_for_timeout(400)
         closed = page.evaluate("!document.querySelector('#sheet').classList.contains('on')")
-        print(f"[{LABEL}手機版 iPhone] 各分頁超出寬度 {res}，詳細頁開 {opened} 關 {closed}")
+        # 文字不可被「…」截斷（標題列除外）：展開所有區塊、逐一打開每個項目的詳細頁檢查
+        page.click('#nav button[data-v="home"]')
+        page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")
+        cut_js = """(sel) => [...document.querySelectorAll(sel + ' *')].filter(e => e.offsetParent &&
+            getComputedStyle(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1).map(e => e.textContent.slice(0, 30))"""
+        cut = set(page.evaluate(cut_js, "main"))
+        for code in page.evaluate("Object.keys(BOARD)"):
+            page.evaluate("c => openDetail(c)", code)
+            page.wait_for_timeout(60)
+            cut |= set(page.evaluate(cut_js, "#sheet"))
+        print(f"[{LABEL}手機版 iPhone] 各分頁超出寬度 {res}，詳細頁開 {opened} 關 {closed}，文字截斷 {len(cut)}")
+        if cut:
+            problems.append(f"手機版：文字被截斷 {sorted(cut)[:5]}")
         if any(x > 1 for x in res.values()):
             problems.append(f"手機版：分頁超出畫面 {res}")
         if not (opened and closed):
