@@ -818,7 +818,7 @@ function priceChart(rows, c) {
   rows.forEach((r, i) => {
     if (r[3] == null) return;
     const h = Math.min(1, Math.abs(r[3]) / 3) * ZH / 2;
-    const lim = r[2] != null && c.limit && Math.abs(r[2]) >= c.limit - 0.1;
+    const lim = (c.kind || 'commodity') === 'commodity' && r[2] != null && c.limit && Math.abs(r[2]) >= c.limit - 0.1;
     svg.append(sv('rect', { x: xs(i) - bw / 2, y: r[3] > 0 ? z0 - h : z0, width: bw, height: Math.max(h, 0.5),
       fill: r[3] > 0 ? 'var(--up)' : 'var(--dn)', opacity: Math.abs(r[3]) >= 2 ? 1 : 0.55, stroke: lim ? 'var(--accent)' : 'none' }));
   });
@@ -887,18 +887,22 @@ async function openDetail(code) {
   if (kind === 'spread' && c.legs?.length)
     body.append(el('p', 'note', '組成：' + c.legs.map(l => `${l.coef > 0 ? '+' : '−'}${Math.abs(l.coef) === 1 ? '' : Math.abs(l.coef) + '×'}${BOARD[l.code]?.name || l.code}`).join(' ').replace(/^\+/, '')));
 
-  // 走勢圖
-  if (kind === 'commodity') {
-    body.append(el('h3', null, '近 120 個交易日：收盤（上）與每日 z 分數（下，金框 = 觸及漲跌停）'));
+  // 走勢圖（陸期、價差、國際都有）
+  {
+    body.append(el('h3', null, kind === 'spread' ? '近 120 個交易日：價差水準（上，Σ 係數 × 各腿收盤）與每日變化 z 分數（下）'
+      : kind === 'intl' ? '近 120 個美國交易日：收盤（上，最後一根可能仍在交易中）與每日 z 分數（下）'
+      : '近 120 個交易日：收盤（上）與每日 z 分數（下，金框 = 觸及漲跌停）'));
     const slot = el('div', 'empty', '載入中…'); body.append(slot);
     try {
       KL ??= await (await fetch('data/klines.json?t=' + Date.now())).json();
       const rows = (KL.data[code] || []).slice();
-      if (c.quote_date && c.last != null && (!rows.length || rows.at(-1)[0] < c.quote_date)) rows.push([c.quote_date, c.last, c.chg, c.z]);
-      slot.replaceWith(rows.length > 1 ? priceChart(rows, c) : el('div', 'empty', '沒有日K資料'));
+      if (kind === 'commodity' && c.quote_date && c.last != null && (!rows.length || rows.at(-1)[0] < c.quote_date)) rows.push([c.quote_date, c.last, c.chg, c.z]);
+      const qd = kind === 'spread' ? BOARD[c.legs?.[0]?.code]?.quote_date : null;
+      if (qd && c.level != null && (!rows.length || rows.at(-1)[0] < qd)) rows.push([qd, c.level, c.chg, c.z]);
+      slot.replaceWith(rows.length > 1 ? priceChart(rows, c) : el('div', 'empty', '這個項目還沒有歷史資料（下次每日更新後出現）'));
       if (rows.length) {
         body.append(el('h3', null, '最近 10 天'));
-        body.append(vtable(['日期', '收盤', '漲跌', 'z'], rows.slice(-10).reverse().map(r =>
+        body.append(vtable(['日期', kind === 'spread' ? '價差' : '收盤', kind === 'spread' ? '變化' : '漲跌', 'z'], rows.slice(-10).reverse().map(r =>
           [r[0], r[1] ?? '—', { t: pct(r[2]), c: 'n ' + cls(r[2]) }, { t: sg2(r[3]), c: 'n ' + (Math.abs(r[3] ?? 0) >= 2 ? cls(r[3]) : 'flat') }])));
       }
     } catch (e) { slot.textContent = '日K資料尚未產生（下次每日更新後出現）'; }

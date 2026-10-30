@@ -57,6 +57,18 @@ def main():
             if r["detail"]["sw"] > r["cw"] + 1:
                 problems.append(f"{name}：詳細面板超出畫面 {r['detail']['sw']}px")
             page.keyboard.press("Escape")
+            # 每個項目的詳細面板都要畫得出走勢圖（有 klines.json 時）
+            if w == 1280 and (DOCS / "data" / "klines.json").exists():
+                miss = page.evaluate("""async () => { const out = [];
+                  for (const code of Object.keys(BOARD)) {
+                    if (BOARD[code].status !== 'ok') continue;
+                    await openDetail(code);
+                    if (!document.querySelector('#d-body svg.chart')) out.push(code);
+                  }
+                  closeDetail(); return out; }""")
+                r["no_chart"] = miss
+                if miss:
+                    problems.append(f"詳細面板沒有走勢圖：{miss}")
             print(f"[{LABEL}{name} {w}px] {r}")
             if errs:
                 problems.append(f"{name}：JS 錯誤 {errs[:3]}")

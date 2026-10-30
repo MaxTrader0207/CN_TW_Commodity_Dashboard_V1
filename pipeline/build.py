@@ -285,6 +285,14 @@ def spread_board(board, links_by_code, cal, pairs_by=None):
         if pairs_by:
             hist = history.spread_returns(pairs_by, legs, limits)
             sd = history.robust_sigma([hist[d] for d in sorted(hist)[-history.Z_WINDOW:]])
+            # 詳細面板：價差水準（Σ 係數 × 各腿收盤）與每日變化、z
+            if all(pairs_by.get(c) for c, _ in legs):
+                common = sorted(set.intersection(*(set(pairs_by[c]) for c, _ in legs)))
+                rs = history.rolling_sigma(hist)
+                KLINE_DUMP[code] = [[d, round(sum(k * pairs_by[c][d][0] for c, k in legs), 1),
+                                     round(hist[d], 2) if d in hist else None,
+                                     round(hist[d] / rs[d], 2) if d in hist and rs.get(d) else None]
+                                    for d in common[-120:]]
         sd = sd or (sig_tab.get(code) or {}).get("sigma")
         if not all(c in q for c, _ in legs) or not sd:
             item.update(status="missing", chg=None, signal=0, at_limit=None, limit=None)
@@ -320,8 +328,13 @@ def intl_board(session, board, cal, premarket=False):
                                          "rho": (status.get((code, sct)) or {}).get("rho0"),
                                          "t": (status.get((code, sct)) or {}).get("t0")} for sct, w, why in links]}
         try:
-            closes, meta = history.fetch_yahoo(session, sym, "3mo")
+            closes, meta = history.fetch_yahoo(session, sym, "6mo")
             ds = sorted(closes)
+            # 詳細面板：最近 120 根日線（最後一根可能仍在交易中）
+            r_all = history.intl_returns(closes)
+            rs = history.rolling_sigma(r_all)
+            KLINE_DUMP[code] = [[d, round(closes[d], 4), round(r_all[d], 2) if d in r_all else None,
+                                 round(r_all[d] / rs[d], 2) if d in r_all and rs.get(d) else None] for d in ds[-120:]]
             if len(ds) < 3:
                 raise ValueError("資料不足")
             off = int(meta.get("gmtoffset") or -14400)
@@ -359,7 +372,7 @@ def intl_board(session, board, cal, premarket=False):
         out.append(item)
         time.sleep(0.2)
     record("yahoo_intl", "Yahoo 國際期貨" + ("（盤前計分＋交叉確認）" if premarket else "（交叉確認）"),
-           history.YAHOO.format("XX=F", "3mo"), "隔夜美盤 → 台股" if premarket else "國際價格 vs 陸期方向",
+           history.YAHOO.format("XX=F", "6mo"), "隔夜美盤 → 台股" if premarket else "國際價格 vs 陸期方向",
            "ok" if ok == len(INTL) else "warn" if ok else "fail", ok, None,
            (err if ok < len(INTL) else "") + (f"｜{scored} 項計入盤前分數" if premarket else ""))
     print(f"國際：{ok}/{len(INTL)}" + (f"，盤前計分 {scored} 項" if premarket else ""))
@@ -1007,6 +1020,11 @@ def run(now):
         except Exception as e:  # noqa: BLE001
             print("⚠ 分數歷史更新失敗：", e)
     if KLINE_DUMP:
+        want = [c["code"] for c in board]
+        short = [c["name"] for c in board if len(KLINE_DUMP.get(c["code"]) or []) < 100]
+        record("klines", "詳細面板歷史走勢（陸期／價差／國際）", "docs/data/klines.json", "點商品看 120 日走勢",
+               "ok" if not short else "warn", len(want) - len(short), None,
+               ("不足 100 天：" + "、".join(short[:12])) if short else "")
         (DATA_DIR / "klines.json").write_text(json.dumps(
             {"generated_at": payload["generated_at"], "fields": ["日期", "收盤", "漲跌%", "z"], "data": KLINE_DUMP},
             ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
