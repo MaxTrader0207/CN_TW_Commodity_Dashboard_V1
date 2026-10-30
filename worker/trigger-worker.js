@@ -12,13 +12,47 @@
  * 路由：
  *   POST /trigger  觸發一次更新（全域 3 分鐘冷卻：以 GitHub 上最近一次執行為準，進行中也不重複觸發）
  *   GET  /status   回傳最近一次執行的狀態
+ *
+ * 定時觸發（Cloudflare Cron Triggers，取代不準時的 GitHub 排程；GitHub 排程保留當備援）：
+ *   Worker → Settings → Triggers → Cron Triggers 加入下面 SCHEDULES 的 4 個 cron（UTC）
  */
 const WORKFLOW = "daily.yml";
 const COOLDOWN_MS = 3 * 60 * 1000;
+const SCHEDULES = {
+  "17 22 * * 1-5": { workflow: "daily.yml", inputs: { session: "night-once" } },  // 台北 06:17 盤前版
+  "7 23 * * 1-5":  { workflow: "daily.yml", inputs: { session: "night-once" } },  // 台北 07:07 盤前版（備援，已完成則略過）
+  "10 9 * * 1-5":  { workflow: "daily.yml", inputs: { session: "day" } },         // 台北 17:10 日盤版
+  "20 2 * * 6":    { workflow: "calibrate.yml", inputs: {} },                      // 台北 週六 10:20 校準
+};
+
+function ghFetch(env, path, init = {}) {
+  const repo = env.REPO || "MaxTrader0207/CN_TW_Commodity_Dashboard_V1";
+  return fetch(`https://api.github.com/repos/${repo}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${env.GH_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "cn-tw-dashboard-trigger",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(init.headers || {}),
+    },
+  });
+}
 
 export default {
+  async scheduled(event, env, ctx) {
+    const job = SCHEDULES[event.cron];
+    if (!job || !env.GH_TOKEN) return;
+    const body = JSON.stringify({ ref: "main", inputs: job.inputs });
+    for (let i = 0; i < 3; i++) {   // GitHub 偶發錯誤時重試
+      const r = await ghFetch(env, `/actions/workflows/${job.workflow}/dispatches`, { method: "POST", body });
+      if (r.status === 204) return;
+      console.log(`dispatch ${job.workflow} 失敗 ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      await new Promise(res => setTimeout(res, 5000 * (i + 1)));
+    }
+  },
+
   async fetch(req, env) {
-    const repo = env.REPO || "MaxTrader0207/CN_TW_Commodity_Dashboard_V1";
     const origin = env.ALLOW_ORIGIN || "https://maxtrader0207.github.io";
     const cors = {
       "Access-Control-Allow-Origin": origin,
@@ -33,17 +67,7 @@ export default {
     if (reqOrigin && reqOrigin !== origin) return reply({ ok: false, error: "來源網域不允許" }, 403);
     if (!env.GH_TOKEN) return reply({ ok: false, error: "Worker 尚未設定 GH_TOKEN" }, 500);
 
-    const gh = (path, init = {}) =>
-      fetch(`https://api.github.com/repos/${repo}${path}`, {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${env.GH_TOKEN}`,
-          Accept: "application/vnd.github+json",
-          "User-Agent": "cn-tw-dashboard-trigger",
-          "X-GitHub-Api-Version": "2022-11-28",
-          ...(init.headers || {}),
-        },
-      });
+    const gh = (path, init) => ghFetch(env, path, init);
 
     const path = new URL(req.url).pathname;
 

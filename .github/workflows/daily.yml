@@ -14,9 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       session:
-        description: "auto = 依時間判斷, day = 日盤收盤版, night = 夜盤盤前版"
+        description: "auto = 依時間判斷, day = 日盤收盤版, night = 夜盤盤前版, night-once = 盤前版（今天已完成或已過 09:00 則略過；Cloudflare 定時觸發用）"
         type: choice
-        options: [auto, day, night]
+        options: [auto, day, night, night-once]
         default: auto
 
 permissions:
@@ -60,6 +60,9 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             case "$IN_SESSION" in
               day|night) python pipeline/build.py --session "$IN_SESSION" ;;
+              night-once)
+                if [ "$(TZ=Asia/Taipei date +%-H)" -ge 9 ]; then echo "已過台股開盤（09:00），盤前版略過"
+                else python pipeline/build.py --session night --skip-if-done; fi ;;
               *) python pipeline/build.py ;;
             esac
           elif [ "$SCHEDULE" != "10 9 * * 1-5" ]; then
