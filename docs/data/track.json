@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-29T23:56+08:00",
+ "updated": "2026-10-30T09:29+08:00",
  "since": "2026-10-28",
  "index_last": "2026-10-29",
  "summary": {
@@ -54,9 +54,31 @@
     "spread_win": 0.0
    }
   },
-  "excluded": 1
+  "excluded": 2
  },
  "rows": [
+  {
+   "key": "2026-10-30_night",
+   "run_at": "2026-10-30T09:29+08:00",
+   "session": "night",
+   "valid": false,
+   "invalid_reason": "09:29 才產生，已過台股開盤",
+   "weights": "實測",
+   "bull": [
+    "塑膠",
+    "造紙",
+    "化學工業"
+   ],
+   "bear": [
+    "電器電纜",
+    "鋼鐵",
+    "水泥"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-10-29_night",
    "run_at": "2026-10-29T23:08+08:00",
