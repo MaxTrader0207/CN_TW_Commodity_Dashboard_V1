@@ -173,6 +173,25 @@ summary{cursor:pointer;font-weight:600}
 .sheet .vt td:first-child,.sheet .vt td .mk,.sheet .vt td .tag{white-space:nowrap}
 .chart text{fill:var(--muted);font-size:10px;font-family:var(--mono)}
 .chart-tip{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;margin-top:2px}
+.codes-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.codes-bar input{flex:1 1 220px;min-width:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit}
+.codes-bar .cnt{color:var(--muted);font-size:12px}
+.mkt-h{font-size:14px;font-weight:700;margin:14px 0 8px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.mkt-h small{color:var(--muted);font-weight:400;font-size:12px}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+@media(max-width:400px){.ex-grid{grid-template-columns:1fr}}
+.ex-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0;box-shadow:var(--shadow)}
+.ex-card h4{margin:0 0 6px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.ex-card h4 span{color:var(--muted);font-weight:400;font-size:11.5px}
+.ex-card table td{padding:3px 3px;white-space:nowrap}
+.ex-card tr.row{cursor:pointer}
+.ex-card tr.row:hover td{background:var(--panel2)}
+.ex-card td.cd{font-family:var(--mono);font-weight:700;width:1%}
+.ex-card td.cd a{color:var(--accent);text-decoration:none}
+.ex-card td.sec{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.ex-card td.sym{color:var(--muted);font-family:var(--mono);font-size:11px}
+.ex-card{overflow-x:auto}
+@media(max-width:480px){.ex-card td.sym{display:none}.ex-card td.sec{max-width:110px}}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:var(--tip-bg);color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.18);border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -186,6 +205,7 @@ summary{cursor:pointer;font-weight:600}
       <span class="pill" id="m-tw">—</span>
       <span class="pill" id="m-weights">—</span>
       <select id="hist" aria-label="歷史資料"></select>
+      <a class="theme-btn" href="#codes" style="text-decoration:none">代碼清單</a>
       <button class="theme-btn" id="theme" type="button" aria-label="切換明暗模式"></button>
       <button class="btn" id="refresh">⟳ 立即更新</button>
       <span class="upd" id="upd"></span>
@@ -271,6 +291,16 @@ summary{cursor:pointer;font-weight:600}
   <section>
     <h2>陸期商品看板（對昨結算）</h2>
     <div id="board"></div>
+  </section>
+
+  <section id="codes">
+    <h2>商品代碼清單</h2>
+    <div class="codes-bar">
+      <input id="code-q" type="search" placeholder="搜尋代碼、名稱或類股（例：EG、乙二醇、塑膠）" aria-label="搜尋商品代碼">
+      <span class="cnt" id="code-cnt"></span>
+    </div>
+    <div id="code-list"></div>
+    <p class="note">點任一列打開該商品的詳細面板；網址加 <code>#代碼</code>（例如 <code>#EG</code>）可直接打開。「行情代號」是資料來源的代號：陸期為新浪連續主力（代碼後加 0），國際為 Yahoo 期貨代號。</p>
   </section>
 
   <section>
@@ -501,6 +531,8 @@ function render(d) {
     });
     board.append(g);
   }
+
+  renderCodes(d);
 
   const map = $('#map'); map.replaceChildren();
   const hr = map.insertRow(); ['交易所', '商品', '目前採用（權重）', '邏輯'].forEach(x => { const th = el('th', null, x); hr.append(th); });
@@ -1003,6 +1035,70 @@ function closeDetail() {
 $('#d-close').onclick = closeDetail;
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeDetail(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal').classList.contains('on')) closeDetail(); });
+
+// ── 商品代碼清單：依交易市場 → 交易所分組 ──
+const INE_CODES = new Set(['SC', 'LU', 'NR', 'BC', 'EC']);
+const US_EX = { 'BZ=F': 'NYMEX', 'CL=F': 'NYMEX', 'HO=F': 'NYMEX', 'RB=F': 'NYMEX', 'HG=F': 'COMEX', 'ALI=F': 'COMEX',
+  'GC=F': 'COMEX', 'SI=F': 'COMEX', 'ZS=F': 'CBOT', 'ZM=F': 'CBOT', 'ZL=F': 'CBOT', 'ZC=F': 'CBOT', 'CT=F': 'ICE US', 'SB=F': 'ICE US' };
+const CODE_GROUPS = [
+  { mkt: '中國大陸期貨', note: '人民幣計價，日盤＋夜盤；漲跌以昨結算為基準', ex: [
+    ['上期所', '上海期貨交易所（SHFE）'], ['能源中心', '上海國際能源交易中心（INE）'], ['大商所', '大連商品交易所（DCE）'],
+    ['鄭商所', '鄭州商品交易所（ZCE）'], ['廣期所', '廣州期貨交易所（GFEX）']] },
+  { mkt: '美國期貨（國際對照）', note: '美元計價；台股開盤前已收盤，盤前版計分用', ex: [
+    ['NYMEX', '紐約商業交易所（能源）'], ['COMEX', '紐約商品交易所（金屬）'], ['CBOT', '芝加哥期貨交易所（農產品）'], ['ICE US', '洲際交易所（軟性商品）']] },
+  { mkt: '價差（陸期組合）', note: '由多個陸期商品組成的加工利潤，非交易所掛牌商品', ex: [['價差', '加工利潤／裂解價差']] },
+];
+function codeExchange(c) {
+  if (c.kind === 'intl') return US_EX[c.symbol] || 'NYMEX';
+  if (c.kind === 'spread') return '價差';
+  return c.ex === '上期所' && INE_CODES.has(c.code) ? '能源中心' : c.ex;
+}
+function renderCodes(d) {
+  const q = ($('#code-q').value || '').trim().toLowerCase();
+  const box = $('#code-list'); box.replaceChildren();
+  let shown = 0;
+  for (const g of CODE_GROUPS) {
+    const grid = el('div', 'ex-grid'); let n = 0;
+    for (const [ex, full] of g.ex) {
+      const items = d.commodities.filter(c => codeExchange(c) === ex).filter(c => {
+        if (!q) return true;
+        const secs = [...(c.links || []), ...(c.manual || []), ...(c.ref_links || [])].map(l => l.sector).join(' ');
+        return `${c.code} ${c.name} ${c.symbol || ''} ${secs} ${ex} ${full}`.toLowerCase().includes(q);
+      }).sort((a, b) => a.code.localeCompare(b.code));
+      if (!items.length) continue;
+      n += items.length;
+      const card = el('div', 'ex-card');
+      const h = el('h4', null, ex); h.append(el('span', null, `${full}・${items.length} 項`));
+      card.append(h);
+      const t = el('table');
+      items.forEach(c => {
+        const tr = t.insertRow(); tr.className = 'row';
+        const cd = tr.insertCell(); cd.className = 'cd';
+        const a = el('a', null, c.code); a.href = '#' + c.code; a.onclick = e => { e.preventDefault(); openDetail(c.code); }; cd.append(a);
+        tr.insertCell().textContent = c.name;
+        const sym = tr.insertCell(); sym.className = 'sym';
+        sym.textContent = c.kind === 'intl' ? c.symbol : c.kind === 'spread' ? (c.legs || []).map(l => l.code).join('/') : `nf_${c.code}0`;
+        const secs = [...new Set([...(c.links || []), ...(c.manual || []), ...(c.ref_links || [])].map(l => l.sector))];
+        const sc_ = tr.insertCell(); sc_.className = 'sec'; sc_.textContent = secs.join('、') || '—';
+        const p = tr.insertCell(); p.className = 'n ' + cls(c.chg); p.textContent = pct(c.chg);
+        tr.onclick = () => openDetail(c.code);
+        hoverTip(tr, `${c.name}（${c.code}）\n${full}\n對應類股：${secs.join('、') || '—'}`);
+      });
+      card.append(t); grid.append(card);
+    }
+    if (!n) continue;
+    shown += n;
+    const mh = el('div', 'mkt-h', g.mkt); mh.append(el('small', null, `${n} 項・${g.note}`));
+    box.append(mh, grid);
+  }
+  if (!shown) box.append(el('div', 'empty', '找不到符合的商品'));
+  $('#code-cnt').textContent = q ? `找到 ${shown} 項` : `共 ${shown} 項`;
+}
+$('#code-q').addEventListener('input', () => LATEST && renderCodes(LATEST));
+window.addEventListener('hashchange', () => {
+  const hc = decodeURIComponent(location.hash.slice(1));
+  if (hc && BOARD[hc]) openDetail(hc);
+});
 
 async function loadVerify() {
   try {
