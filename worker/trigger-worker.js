@@ -14,16 +14,26 @@
  *   GET  /status   回傳最近一次執行的狀態
  *
  * 定時觸發（Cloudflare Cron Triggers，取代不準時的 GitHub 排程；GitHub 排程保留當備援）：
- *   Worker → Settings → Triggers → Cron Triggers 加入下面 SCHEDULES 的 4 個 cron（UTC）
+ *   Worker → Settings → Trigger events → Cron triggers 加入下面 SCHEDULES 的 4 個 cron（UTC）。
+ *   注意 Cloudflare 的星期 1 = 星期日（和 GitHub 不同），所以一律用英文星期名稱。
+ *   cron 字串對不上時，改用觸發時間（UTC 小時）判斷，避免後台格式差異造成漏跑。
  */
 const WORKFLOW = "daily.yml";
 const COOLDOWN_MS = 3 * 60 * 1000;
+const NIGHT = { workflow: "daily.yml", inputs: { session: "night-once" } };
+const DAY = { workflow: "daily.yml", inputs: { session: "day" } };
+const CALIB = { workflow: "calibrate.yml", inputs: {} };
 const SCHEDULES = {
-  "17 22 * * 1-5": { workflow: "daily.yml", inputs: { session: "night-once" } },  // 台北 06:17 盤前版
-  "7 23 * * 1-5":  { workflow: "daily.yml", inputs: { session: "night-once" } },  // 台北 07:07 盤前版（備援，已完成則略過）
-  "10 9 * * 1-5":  { workflow: "daily.yml", inputs: { session: "day" } },         // 台北 17:10 日盤版
-  "20 2 * * 6":    { workflow: "calibrate.yml", inputs: {} },                      // 台北 週六 10:20 校準
+  "17 22 * * SUN-THU": NIGHT,   // 台北 週一~五 06:17 盤前版
+  "7 23 * * SUN-THU": NIGHT,    // 台北 週一~五 07:07 盤前版（備援，已完成則略過）
+  "10 9 * * MON-FRI": DAY,      // 台北 週一~五 17:10 日盤版
+  "20 2 * * SAT": CALIB,        // 台北 週六 10:20 校準
 };
+function jobFor(event) {
+  if (SCHEDULES[event.cron]) return SCHEDULES[event.cron];
+  const h = new Date(event.scheduledTime).getUTCHours();
+  return h === 22 || h === 23 ? NIGHT : h === 9 ? DAY : h === 2 ? CALIB : null;
+}
 
 function ghFetch(env, path, init = {}) {
   const repo = env.REPO || "MaxTrader0207/CN_TW_Commodity_Dashboard_V1";
@@ -41,7 +51,7 @@ function ghFetch(env, path, init = {}) {
 
 export default {
   async scheduled(event, env, ctx) {
-    const job = SCHEDULES[event.cron];
+    const job = jobFor(event);
     if (!job || !env.GH_TOKEN) return;
     const body = JSON.stringify({ ref: "main", inputs: job.inputs });
     for (let i = 0; i < 3; i++) {   // GitHub 偶發錯誤時重試
