@@ -4,11 +4,36 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>陸期 × 台股 多空儀表板</title>
+<script>
+// 先套用主題，避免載入時閃一下（儲存失敗時就跟隨系統）
+try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <style>
 :root{
+  color-scheme:dark;
   --bg:#0b0f14;--panel:#121821;--panel2:#18202b;--line:#243041;--fg:#e6edf3;--muted:#8b98a8;
-  --up:#ff4d4f;--up-bg:rgba(255,77,79,.14);--dn:#22c55e;--dn-bg:rgba(34,197,94,.14);
-  --accent:#f5b544;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --up:#ff4d4f;--dn:#22c55e;--up-rgb:255,77,79;--dn-rgb:34,197,94;
+  --up-bg:rgba(var(--up-rgb),.14);--dn-bg:rgba(var(--dn-rgb),.14);
+  --accent:#f5b544;--on-accent:#1a1200;--lag:#60a5fa;--demo-bg:#3a2a05;--tip-bg:#1f2937;
+  --cell-off:#3b4656;--overlay:rgba(0,0,0,.6);--shadow:none;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+/* 亮色：跟隨系統（未手動選擇時），或手動選「亮」 */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --bg:#f4f6f9;--panel:#ffffff;--panel2:#eef1f5;--line:#d5dbe3;--fg:#17202b;--muted:#5d6b7c;
+    --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
+    --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--demo-bg:#fff4dc;--tip-bg:#ffffff;
+    --cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);--shadow:0 1px 2px rgba(15,23,42,.06);
+  }
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f6f9;--panel:#ffffff;--panel2:#eef1f5;--line:#d5dbe3;--fg:#17202b;--muted:#5d6b7c;
+  --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
+  --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--demo-bg:#fff4dc;--tip-bg:#ffffff;
+  --cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);--shadow:0 1px 2px rgba(15,23,42,.06);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
@@ -19,13 +44,13 @@ h1 small{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-
 .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-size:12px}
 .pill{border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--panel)}
 select{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
-.demo{background:#3a2a05;border:1px solid var(--accent);color:var(--accent);padding:8px 12px;border-radius:8px;margin-bottom:16px;display:none}
+.demo{background:var(--demo-bg);border:1px solid var(--accent);color:var(--accent);padding:8px 12px;border-radius:8px;margin-bottom:16px;display:none}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .col-h{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0 0 10px}
 .col-h .dot{width:10px;height:10px;border-radius:50%}
 .bull .dot{background:var(--up)} .bear .dot{background:var(--dn)}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.card{box-shadow:var(--shadow);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
 .bull .card{border-left:3px solid var(--up)} .bear .card{border-left:3px solid var(--dn)}
 .card-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .rank{font-family:var(--mono);color:var(--muted);font-size:12px}
@@ -67,7 +92,12 @@ summary{cursor:pointer;font-weight:600}
 .map td{white-space:normal;vertical-align:top;padding:5px 4px}
 .map th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px;border-bottom:1px solid var(--line)}
 .foot{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.7}
-.btn{background:var(--accent);color:#1a1200;border:0;border-radius:6px;padding:5px 12px;font:inherit;font-weight:700;cursor:pointer}
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:6px;padding:5px 12px;font:inherit;font-weight:700;cursor:pointer}
+.theme-btn{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.theme-btn:hover{border-color:var(--muted)}
+.theme-btn .ico{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid currentColor;margin-right:5px;vertical-align:-1px}
+.theme-btn .ico.auto{background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.theme-btn .ico.dark{background:currentColor}
 .btn:disabled{opacity:.55;cursor:wait}
 .upd{font-size:12px;color:var(--muted)}
 .src-list{list-style:none;margin:0;padding:0}
@@ -94,7 +124,7 @@ summary{cursor:pointer;font-weight:600}
 .vt td{padding:4px 3px;white-space:normal;vertical-align:top}
 .vt td.n{white-space:nowrap}
 .tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;border:1px solid var(--line);white-space:nowrap}
-.tag.ok{color:var(--dn);border-color:currentColor} .tag.lag{color:#60a5fa;border-color:currentColor}
+.tag.ok{color:var(--dn);border-color:currentColor} .tag.lag{color:var(--lag);border-color:currentColor}
 .tag.rev{color:var(--up);border-color:currentColor} .tag.no{color:var(--muted)} .tag.new{color:var(--accent);border-color:currentColor}
 .tag.few{color:var(--muted);border-style:dashed}
 .note{color:var(--muted);font-size:12px;line-height:1.6;margin:8px 0 0}
@@ -128,7 +158,7 @@ summary{cursor:pointer;font-weight:600}
 .cov td:first-child,.cov td:last-child{white-space:nowrap}
 .tile,.chip.click{cursor:pointer}
 .tile:hover{border-color:var(--muted)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;z-index:8;padding:4vh 12px;overflow-y:auto}
+.modal{position:fixed;inset:0;background:var(--overlay);display:none;align-items:flex-start;justify-content:center;z-index:8;padding:4vh 12px;overflow-y:auto}
 .modal.on{display:flex}
 .sheet{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:100%;max-width:760px;padding:14px 16px 18px;position:relative}
 @media(max-width:480px){.modal{padding:0}.sheet{border-radius:0;min-height:100vh;padding:12px}}
@@ -143,7 +173,7 @@ summary{cursor:pointer;font-weight:600}
 .sheet .vt td:first-child,.sheet .vt td .mk,.sheet .vt td .tag{white-space:nowrap}
 .chart text{fill:var(--muted);font-size:10px;font-family:var(--mono)}
 .chart-tip{font-family:var(--mono);font-size:12px;color:var(--muted);min-height:18px;margin-top:2px}
-#tip{position:fixed;white-space:pre-line;pointer-events:none;background:#1f2937;border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
+#tip{position:fixed;white-space:pre-line;pointer-events:none;background:var(--tip-bg);color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.18);border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
 <body>
@@ -156,6 +186,7 @@ summary{cursor:pointer;font-weight:600}
       <span class="pill" id="m-tw">—</span>
       <span class="pill" id="m-weights">—</span>
       <select id="hist" aria-label="歷史資料"></select>
+      <button class="theme-btn" id="theme" type="button" aria-label="切換明暗模式"></button>
       <button class="btn" id="refresh">⟳ 立即更新</button>
       <span class="upd" id="upd"></span>
     </div>
@@ -442,7 +473,7 @@ function render(d) {
       if (c.kind === 'intl') return g.append(intlTile(c));
       const t = el('div', 'tile');
       const strength = c.chg == null ? 0 : Math.min(1, c.z != null ? Math.abs(c.z) / 3 : Math.abs(c.chg) / c.limit);
-      if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
+      if (c.chg) t.style.background = `rgba(var(${c.chg > 0 ? '--up-rgb' : '--dn-rgb'}),${0.08 + strength * 0.4})`;
       if (c.at_limit) t.style.borderColor = 'var(--accent)';
       const t1 = el('div', 't1'); t1.append(el('b', null, c.name), el('span', null, c.code));
       const lim = c.at_limit === 'up' ? ' 漲停' : c.at_limit === 'down' ? ' 跌停' : '';
@@ -504,7 +535,7 @@ function intlTile(c) {
   const t = el('div', 'tile intl');
   t.onclick = () => openDetail(c.code);
   const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.chg) / 4);
-  if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
+  if (c.chg) t.style.background = `rgba(var(${c.chg > 0 ? '--up-rgb' : '--dn-rgb'}),${0.08 + strength * 0.4})`;
   const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
   const cn = (c.cn || []).map(x => BOARD[x]).filter(Boolean);
   if (c.links?.length) t1.append(el('span', 'tag ok', '盤前計分'));
@@ -523,7 +554,7 @@ function spreadTile(c) {
   const t = el('div', 'tile spr');
   t.onclick = () => openDetail(c.code);
   const strength = c.chg == null ? 0 : Math.min(1, Math.abs(c.z || 0) / 3);
-  if (c.chg) t.style.background = `rgba(${c.chg > 0 ? '255,77,79' : '34,197,94'},${0.08 + strength * 0.4})`;
+  if (c.chg) t.style.background = `rgba(var(${c.chg > 0 ? '--up-rgb' : '--dn-rgb'}),${0.08 + strength * 0.4})`;
   const t1 = el('div', 't1'); t1.append(el('b', null, c.name));
   const t2 = el('div', 't2 ' + cls(c.chg), c.chg == null ? '—' : pct(c.chg));
   if (c.z != null) t2.append(el('small', null, `(${c.z > 0 ? '+' : ''}${c.z}σ)`));
@@ -751,7 +782,7 @@ function renderHeat(h) {
   days.forEach(r => Object.entries(r.s).forEach(([k, v]) => { secs[k] = (secs[k] || 0) + Math.abs(v); }));
   const names = Object.keys(secs).filter(k => secs[k] / days.length >= 1).sort((a, b) => secs[b] - secs[a]);
   box.style.gridTemplateColumns = `max-content repeat(${days.length}, minmax(6px, 1fr))`;
-  const col = (v, full) => { const a = Math.min(1, Math.abs(v) / full); return v === 0 ? 'var(--panel2)' : `rgba(${v > 0 ? '255,77,79' : '34,197,94'},${(0.12 + a * 0.88).toFixed(2)})`; };
+  const col = (v, full) => { const a = Math.min(1, Math.abs(v) / full); return v === 0 ? 'var(--panel2)' : `rgba(var(${v > 0 ? '--up-rgb' : '--dn-rgb'}),${(0.12 + a * 0.88).toFixed(2)})`; };
   // 日期列：每月第一個交易日標記
   box.append(el('div', 'hn', ''));
   let prevM = '';
@@ -764,7 +795,7 @@ function renderHeat(h) {
       const cell = el('div', 'hc');
       if (heatMode === 's') cell.style.background = col(sv, 60);
       else if (heatMode === 'a') { if (av != null) cell.style.background = col(av, 2); }
-      else if (av != null && Math.abs(sv) >= 10) { cell.style.background = (sv > 0) === (av > 0) ? 'var(--accent)' : '#3b4656'; }
+      else if (av != null && Math.abs(sv) >= 10) { cell.style.background = (sv > 0) === (av > 0) ? 'var(--accent)' : 'var(--cell-off)'; }
       if (av != null && Math.abs(sv) >= 10) { tot++; if ((sv > 0) === (av > 0)) agree++; }
       cell.dataset.t = `${r.d}　${n}\n陸期分數 ${sc(sv)}${av != null ? `\n實際超額報酬 ${pp(av)}` : '\n實際：待類股指數更新'}\n${r.src === '即時' ? '當天日盤版實際分數' : '回填（全期實測權重重算）'}`;
       box.append(cell);
@@ -772,7 +803,7 @@ function renderHeat(h) {
   });
   const lg = $('#heat-legend'); lg.replaceChildren();
   const sw = c => { const e = el('span', 'sw'); e.style.background = c; return e; };
-  if (heatMode === 'x') lg.append(sw('var(--accent)'), document.createTextNode('同向'), sw('#3b4656'), document.createTextNode('反向'),
+  if (heatMode === 'x') lg.append(sw('var(--accent)'), document.createTextNode('同向'), sw('var(--cell-off)'), document.createTextNode('反向'),
     document.createTextNode('　（只標 |分數| ≥ 10 的格子）'));
   else lg.append(sw(col(-1, 1)), document.createTextNode(heatMode === 's' ? '空頭 −60' : '−2%'), sw(col(-0.3, 1)), sw('var(--panel2)'), sw(col(0.3, 1)),
     sw(col(1, 1)), document.createTextNode(heatMode === 's' ? '+60 多頭' : '+2%'));
@@ -1034,6 +1065,21 @@ async function loadStatus() {
     const st = await r.json(); renderSources(st); return st;
   } catch (e) { return null; }
 }
+
+// ── 明暗模式：自動（跟隨系統）→ 亮 → 暗 ──
+const THEMES = [['', '自動', 'auto'], ['light', '亮色', 'light'], ['dark', '暗色', 'dark']];
+function applyTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const cur = THEMES.find(x => x[0] === (t || '')) || THEMES[0];
+  $('#theme').replaceChildren(el('span', 'ico ' + cur[2]), document.createTextNode(cur[1]));
+  $('#theme').title = '明暗模式：' + cur[1] + (t ? '' : '（跟隨裝置設定）') + '，點一下切換';
+  try { if (t) localStorage.setItem('theme', t); else localStorage.removeItem('theme'); } catch (e) {}
+}
+applyTheme(document.documentElement.dataset.theme || '');
+$('#theme').onclick = () => {
+  const i = THEMES.findIndex(x => x[0] === (document.documentElement.dataset.theme || ''));
+  applyTheme(THEMES[(i + 1) % THEMES.length][0]);
+};
 
 // ── 立即更新 ──
 const CFG = window.DASH_CONFIG || {};
