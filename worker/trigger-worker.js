@@ -6,12 +6,14 @@
  *
  * 需要設定：
  *   Secret  GH_TOKEN   Fine-grained token，只授權 CN_TW_Commodity_Dashboard_V1，權限 Actions: Read and write
+ *   Secret  ADMIN_KEY  管理密碼（至少 20 字元）。網頁按「立即更新」時必須帶上正確的管理密碼，沒設定就一律不能手動觸發
  *   變數    REPO       MaxTrader0207/CN_TW_Commodity_Dashboard_V1（可省略，預設此值）
  *   變數    ALLOW_ORIGIN https://maxtrader0207.github.io（可省略，預設此值）
  *
  * 路由：
- *   POST /trigger  觸發一次更新（全域 3 分鐘冷卻：以 GitHub 上最近一次執行為準，進行中也不重複觸發）
- *   GET  /status   回傳最近一次執行的狀態
+ *   POST /trigger  觸發一次更新：需要管理密碼（標頭 X-Admin-Key）、全域 3 分鐘冷卻、24 小時上限
+ *   POST /verify   只檢查管理密碼是否正確（網頁的管理者登入用，不會觸發更新）
+ *   GET  /status   回傳最近一次執行的狀態（公開，不含任何機密）
  *
  * 定時觸發（Cloudflare Cron Triggers，取代不準時的 GitHub 排程；GitHub 排程保留當備援）：
  *   Worker → Settings → Trigger events → Cron triggers 加入下面 SCHEDULES 的 5 個 cron（UTC）。
@@ -36,6 +38,22 @@ function jobFor(event) {
   if (SCHEDULES[event.cron]) return SCHEDULES[event.cron];
   const h = new Date(event.scheduledTime).getUTCHours();
   return h === 22 || h === 23 ? NIGHT : h === 9 ? DAY : h === 2 ? CALIB : null;
+}
+
+const KEY_MIN = 20;   // 管理密碼最短長度，太短視同未設定（避免被猜中）
+
+function safeEqual(a, b) {
+  // 固定時間比對，避免從回應時間猜出密碼
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+function adminState(req, env) {
+  const key = env.ADMIN_KEY;
+  if (!key || key.length < KEY_MIN) return "unset";
+  return safeEqual(req.headers.get("X-Admin-Key") || "", key) ? "ok" : "bad";
 }
 
 function ghFetch(env, path, init = {}) {
@@ -70,7 +88,7 @@ export default {
     const cors = {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key",
       "Content-Type": "application/json; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
       "Cache-Control": "no-store",
@@ -100,9 +118,16 @@ export default {
       });
     }
 
-    if (path === "/trigger" && req.method === "POST") {
-      // 觸發只接受從儀表板網頁送出的請求（瀏覽器一定會帶 Origin；沒帶的多半是腳本直接呼叫）
+    if ((path === "/trigger" || path === "/verify") && req.method === "POST") {
+      // 只接受從儀表板網頁送出的請求（瀏覽器一定會帶 Origin；沒帶的多半是腳本直接呼叫）
       if (reqOrigin !== origin) return reply({ ok: false, error: "只接受從儀表板網頁觸發" }, 403);
+      const adm = adminState(req, env);
+      if (adm === "unset") return reply({ ok: false, error: "Worker 尚未設定管理密碼（ADMIN_KEY，至少 20 字元）" }, 503);
+      if (adm !== "ok") return reply({ ok: false, error: "管理密碼錯誤" }, 401);
+      if (path === "/verify") return reply({ ok: true });
+    }
+
+    if (path === "/trigger" && req.method === "POST") {
       // 24 小時上限
       const since = new Date(Date.now() - 864e5).toISOString().slice(0, 19) + "Z";
       const cnt = await gh(`/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=1&created=%3E${since}`);

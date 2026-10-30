@@ -15,6 +15,7 @@
   --up-bg:rgba(var(--up-rgb),.14);--dn-bg:rgba(var(--dn-rgb),.14);
   --accent:#f5b544;--on-accent:#1a1200;--lag:#60a5fa;--demo-bg:#3a2a05;--tip-bg:#1f2937;
   --cell-off:#3b4656;--overlay:rgba(0,0,0,.6);--shadow:none;
+  --warn:#ffb86b;--warn-bg:rgba(255,140,0,.10);--warn-line:rgba(255,160,60,.45);
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 /* 亮色：跟隨系統（未手動選擇時），或手動選「亮」 */
@@ -25,6 +26,7 @@
     --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
     --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--demo-bg:#fff4dc;--tip-bg:#ffffff;
     --cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);--shadow:0 1px 2px rgba(15,23,42,.06);
+    --warn:#9a4a00;--warn-bg:#fff3e0;--warn-line:#f2b46b;
   }
 }
 :root[data-theme="light"]{
@@ -33,6 +35,7 @@
   --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
   --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--demo-bg:#fff4dc;--tip-bg:#ffffff;
   --cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);--shadow:0 1px 2px rgba(15,23,42,.06);
+  --warn:#9a4a00;--warn-bg:#fff3e0;--warn-line:#f2b46b;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
@@ -191,6 +194,17 @@ summary{cursor:pointer;font-weight:600}
 .ex-card td.sym{color:var(--muted);font-family:var(--mono);font-size:11px}
 .ex-card{overflow-x:auto}
 @media(max-width:480px){.ex-card td.sym{display:none}.ex-card td.sec{max-width:110px}}
+.disclaimer{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);border:1px solid var(--warn-line);border-left:4px solid var(--warn);color:var(--warn);border-radius:8px;padding:9px 12px;margin:0 0 14px;font-size:12.5px;line-height:1.65}
+.disclaimer b{font-size:13px;white-space:nowrap}
+@media(max-width:480px){.disclaimer{flex-direction:column;gap:2px}}
+.disclaimer span{color:var(--fg)}
+.disclaimer em{font-style:normal;color:var(--warn);font-weight:700}
+.hidden{display:none !important}
+.auto-note{font-size:12px;color:var(--muted);white-space:nowrap}
+.admin{margin-top:10px;font-size:12px;color:var(--muted)}
+.admin summary{font-weight:400;font-size:12px;color:var(--muted)}
+.admin-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.admin-row input{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;min-width:0;flex:1 1 200px;max-width:320px}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:var(--tip-bg);color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.18);border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
 </style>
 </head>
@@ -206,10 +220,16 @@ summary{cursor:pointer;font-weight:600}
       <select id="hist" aria-label="歷史資料"></select>
       <a class="theme-btn" href="#codes" style="text-decoration:none">代碼清單</a>
       <button class="theme-btn" id="theme" type="button" aria-label="切換明暗模式"></button>
-      <button class="btn" id="refresh">⟳ 立即更新</button>
+      <span class="auto-note" id="auto-note" title="盤前版：週一～五 06:17；收盤版：週一～五 17:10（台北時間）">資料每天自動更新</span>
+      <button class="btn hidden" id="refresh">⟳ 立即更新</button>
       <span class="upd" id="upd"></span>
     </div>
   </header>
+  <div class="disclaimer" role="note">
+    <b>⚠ 免責聲明</b>
+    <span>本頁為<em>量化研究參考，不構成任何投資建議</em>。訊號由公開行情（新浪財經、Yahoo、證交所、櫃買中心）自動計算，
+    可能有延遲、錯誤或中斷，<em>不保證正確性與即時性</em>；歷史回測與相關性不代表未來表現。投資請自行判斷，並自負盈虧與風險。</span>
+  </div>
   <div class="demo" id="mkt-note" style="display:none"></div>
   <div class="demo" id="demo">⚠ 目前顯示的是離線示範資料，並非真實行情。GitHub Actions 首次執行後會自動換成實際數據。</div>
 
@@ -316,6 +336,17 @@ summary{cursor:pointer;font-weight:600}
     盤前版（台股開盤前）另外把前一晚已收盤的美國期貨（原油、銅等）以實測的「美盤 → 次一台股交易日」權重計入分數。
     本頁為量化參考，非投資建議。
   </p>
+  <details class="admin" id="admin">
+    <summary>管理者登入</summary>
+    <div class="admin-row" id="admin-login">
+      <input id="admin-key" type="password" autocomplete="current-password" placeholder="管理密碼" aria-label="管理密碼">
+      <button class="theme-btn" id="admin-go" type="button">登入</button>
+    </div>
+    <div class="admin-row hidden" id="admin-in">
+      已登入，這台裝置可以使用「立即更新」。<button class="theme-btn" id="admin-out" type="button">登出</button>
+    </div>
+    <div id="admin-msg"></div>
+  </details>
 </div>
 <div id="tip"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="d-title">

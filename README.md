@@ -52,7 +52,8 @@
 設定 Worker：
 1. GitHub → Settings → Developer settings → Fine-grained tokens → 新增 token，Repository access 只選本 repo，權限 **Actions: Read and write**。
 2. Cloudflare → Workers → 新建 Worker，貼上 `worker/trigger-worker.js`，部署。
-3. Worker → Settings → Variables and Secrets → 新增 Secret `GH_TOKEN` = 上一步的 token。
+3. Worker → Settings → Variables and Secrets → 新增 Secret `GH_TOKEN` = 上一步的 token，
+   再新增 Secret `ADMIN_KEY` = 自訂的管理密碼（至少 20 字元）。
 4. 把 Worker 網址填進 `docs/config.js` 的 `triggerUrl`。
 
 ## 資料來源狀態
@@ -145,3 +146,11 @@
 `watchdog.yml` + `.github/scripts/watchdog.py`：最後一次成功更新超過 30 小時，而且之後有台股交易日的排程（06:17 盤前版、17:10 日盤版，各給 2 小時緩衝）
 沒有成功 → 開 GitHub Issue「儀表板已 N 小時沒有更新」，恢復後自動關閉。週末與證交所休市日不算。
 觸發互為備援：GitHub 每小時排程、Cloudflare Worker 每 4 小時（`41 */4 * * *`）。儀表板頁面也用同一規則，資料過時時在上方顯示警示。
+
+## 管理者模式與分享
+
+- 網頁分享給別人時，訪客**看不到**「立即更新」按鈕（顯示「資料每天自動更新」）；資料由排程自動更新，不需要手動觸發。
+- 擁有者在頁尾「管理者登入」輸入管理密碼（Cloudflare Worker 的 Secret `ADMIN_KEY`，至少 20 字元），
+  這台裝置才會出現更新按鈕；密碼只存在該裝置瀏覽器，可隨時登出。
+- Worker 對 `/trigger` 一律檢查管理密碼（固定時間比對），沒設定或太短就拒絕所有手動觸發；定時觸發不受影響。
+- 頁首有免責聲明：量化研究參考、不構成投資建議、不保證資料正確與即時。

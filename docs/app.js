@@ -899,14 +899,42 @@ async function waitForNewRun(prevRunAt) {
   }, 15000);
 }
 
+// ── 管理者：只有輸入管理密碼的裝置才顯示「立即更新」（密碼只存在這台裝置的瀏覽器）──
+const ADMIN_LS = 'adminKey';
+const getKey = () => { try { return localStorage.getItem(ADMIN_LS) || ''; } catch (e) { return ''; } };
+function setAdmin(key) {
+  try { if (key) localStorage.setItem(ADMIN_LS, key); else localStorage.removeItem(ADMIN_LS); } catch (e) {}
+  const on = !!key;
+  $('#refresh').classList.toggle('hidden', !on);
+  $('#auto-note').classList.toggle('hidden', on);
+  $('#admin-login').classList.toggle('hidden', on);
+  $('#admin-in').classList.toggle('hidden', !on);
+}
+setAdmin(getKey());
+$('#admin-go').onclick = async () => {
+  const key = $('#admin-key').value.trim(), msg = $('#admin-msg');
+  if (!key) return;
+  if (!CFG.triggerUrl) { msg.textContent = '尚未設定更新 Worker'; return; }
+  msg.textContent = '驗證中…';
+  try {
+    const r = await fetch(CFG.triggerUrl.replace(/\/$/, '') + '/verify', { method: 'POST', headers: { 'X-Admin-Key': key } });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || r.status);
+    $('#admin-key').value = ''; setAdmin(key); msg.textContent = '';
+  } catch (e) { msg.textContent = '登入失敗：' + e.message; }
+};
+$('#admin-key').addEventListener('keydown', e => { if (e.key === 'Enter') $('#admin-go').click(); });
+$('#admin-out').onclick = () => { setAdmin(''); $('#admin-msg').textContent = '已登出'; };
+
 $('#refresh').onclick = async () => {
   const btn = $('#refresh'); btn.disabled = true;
   const prev = (await loadStatus())?.run_at;
   if (CFG.triggerUrl) {
     setUpd('觸發中…');
     try {
-      const r = await fetch(CFG.triggerUrl.replace(/\/$/, '') + '/trigger', { method: 'POST' });
+      const r = await fetch(CFG.triggerUrl.replace(/\/$/, '') + '/trigger', { method: 'POST', headers: { 'X-Admin-Key': getKey() } });
       const j = await r.json();
+      if (r.status === 401) { setAdmin(''); $('#admin').open = true; }
       if (!j.ok) throw new Error(j.error || r.status);
       setUpd('已觸發，約 1–2 分鐘完成…');
       waitForNewRun(prev);
