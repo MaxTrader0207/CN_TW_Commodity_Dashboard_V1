@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-30T17:10:11+08:00",
+ "run_at": "2026-10-30T23:51:21+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41031436257",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41084514074",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T17:10:13+08:00"
+   "fetched_at": "2026-10-30T23:51:22+08:00"
   },
   {
    "id": "limits",
@@ -25,7 +25,7 @@
    "rows": 36,
    "data_date": null,
    "note": "上期所 ok 20 個商品（2026-10-30）；能源中心 ok 4 個商品（2026-10-30）；鄭商所 ok 16 個商品（2026-10-30）",
-   "fetched_at": "2026-10-30T17:10:19+08:00"
+   "fetched_at": "2026-10-30T23:51:28+08:00"
   },
   {
    "id": "sina_kline",
@@ -36,7 +36,7 @@
    "rows": 57,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T17:10:43+08:00"
+   "fetched_at": "2026-10-30T23:51:55+08:00"
   },
   {
    "id": "sina",
@@ -47,7 +47,7 @@
    "rows": 57,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T17:10:46+08:00"
+   "fetched_at": "2026-10-30T23:51:56+08:00"
   },
   {
    "id": "twse_info",
@@ -58,7 +58,7 @@
    "rows": 1088,
    "data_date": "2026-10-29",
    "note": "",
-   "fetched_at": "2026-10-30T17:10:46+08:00"
+   "fetched_at": "2026-10-30T23:51:57+08:00"
   },
   {
    "id": "isin_otc",
@@ -69,7 +69,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T17:10:52+08:00"
+   "fetched_at": "2026-10-30T23:52:08+08:00"
   },
   {
    "id": "twse_quotes",
@@ -80,7 +80,7 @@
    "rows": 1375,
    "data_date": "2026-10-30",
    "note": "採用官網（另：OpenAPI 2026-10-29）",
-   "fetched_at": "2026-10-30T17:10:55+08:00"
+   "fetched_at": "2026-10-30T23:52:10+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -91,7 +91,7 @@
    "rows": 5936,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T17:11:20+08:00"
+   "fetched_at": "2026-10-30T23:52:20+08:00"
   },
   {
    "id": "yahoo_intl",
@@ -102,7 +102,7 @@
    "rows": 14,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T17:11:23+08:00"
+   "fetched_at": "2026-10-30T23:52:24+08:00"
   },
   {
    "id": "insti",
@@ -110,21 +110,21 @@
    "url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=YYYYMMDD&selectType=ALLBUT0999&response=json",
    "used_for": "個股籌碼：外資、投信、自營",
    "status": "ok",
-   "rows": 7139,
+   "rows": 7144,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T17:11:28+08:00"
+   "fetched_at": "2026-10-30T23:52:28+08:00"
   },
   {
    "id": "margin",
    "name": "融資融券（證交所＋櫃買）",
    "url": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=YYYYMMDD&selectType=ALL&response=json",
    "used_for": "個股融資、融券增減",
-   "status": "warn",
-   "rows": 0,
+   "status": "ok",
+   "rows": 2223,
    "data_date": "2026-10-30",
-   "note": "上市 0／上櫃 0 筆",
-   "fetched_at": "2026-10-30T17:11:28+08:00"
+   "note": "",
+   "fetched_at": "2026-10-30T23:52:29+08:00"
   },
   {
    "id": "volhist",
@@ -135,7 +135,7 @@
    "rows": 6,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T17:11:29+08:00"
+   "fetched_at": "2026-10-30T23:52:30+08:00"
   },
   {
    "id": "twse_index",
@@ -146,7 +146,7 @@
    "rows": null,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T17:11:31+08:00"
+   "fetched_at": "2026-10-30T23:52:30+08:00"
   },
   {
    "id": "klines",
@@ -157,7 +157,7 @@
    "rows": 84,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T17:11:31+08:00"
+   "fetched_at": "2026-10-30T23:52:30+08:00"
   }
  ]
 }
