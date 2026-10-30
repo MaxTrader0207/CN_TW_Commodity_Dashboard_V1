@@ -475,6 +475,7 @@ window.addEventListener('popstate', e => {
     D = await getJSON('../data/latest.json');
   } catch (e) { $('#meta').textContent = '資料載入失敗，請稍後重新整理'; return; }
   BOARD = Object.fromEntries(D.commodities.map(c => [c.code, c]));
+  if (D.params?.min_lots != null) $('#minlots').textContent = D.params.min_lots;
   CHIPS = D.chips || {};
   $('#meta').textContent = `${D.premarket?.on ? '盤前版' : '收盤版'}・更新 ${fmtTime(D.generated_at)}・台股 ${D.tw_date || '—'}`;
   let v = 'home'; try { v = sessionStorage.getItem('mview') || 'home'; } catch (e) {}

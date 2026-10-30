@@ -61,6 +61,7 @@ main{padding:12px 12px calc(var(--nav-h) + var(--safe-b) + 16px)}
 h2{font-size:15px;margin:18px 2px 8px}
 h2:first-child{margin-top:4px}
 .note{color:var(--muted);font-size:12.5px;line-height:1.6;margin:8px 2px}
+.calc h3{font-size:14px;margin:0 0 4px;color:var(--fg)}.calc h4{font-size:13px;margin:10px 0 2px;color:var(--fg);font-weight:600}.calc ul{margin:0;padding-left:1.3em}.calc li{margin:2px 0}.calc li::marker{color:var(--muted)}.calc-end{margin:10px 0 0}
 
 /* 底部導覽 */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:var(--safe-b);height:calc(var(--nav-h) + var(--safe-b))}
@@ -270,7 +271,31 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
     <h2>其他</h2>
     <div class="card">
       <button class="btn ghost" id="to-desktop" type="button">切換到電腦版</button>
-      <p class="note">計算方式：商品訊號 = 今日漲跌 ÷ 近 20 日波動度（z 分數，2σ 為滿格）；類股分數 = Σ(權重 × 商品訊號) ÷ √Σ|權重| × 100。正分代表陸期對該類股偏多（產品報價、庫存利益），負分代表成本壓力。</p>
+      <div class="note">
+        <div class="calc">
+          <h3>計算方式</h3>
+          <h4>商品訊號</h4>
+          <ul>
+            <li>今日漲跌 ÷ 近 20 個交易日波動度（z 分數）</li>
+            <li>2σ 為滿格 ±1；觸及漲跌停再 ×1.5</li>
+            <li>抓不到日K時，改用 漲跌 ÷ 漲跌停幅度</li>
+            <li>價差同樣以 20 日波動度標準化</li>
+          </ul>
+          <h4>類股分數</h4>
+          <ul>
+            <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100</li>
+            <li>權重為正：商品漲有利類股（產品報價、庫存利益）</li>
+            <li>權重為負：商品漲代表成本壓力</li>
+          </ul>
+          <h4>其他規則</h4>
+          <ul>
+            <li>「共振」＝陸期訊號方向與類股當日平均漲跌同向</li>
+            <li>前5強／前5弱：以台股最新收盤漲跌幅排序，只計成交量 ≥ <span id="minlots">100</span> 張的個股</li>
+            <li>盤前版（台股開盤前）：另把前一晚已收盤的美國期貨（原油、銅等），以實測的「美盤 → 次一台股交易日」權重計入分數</li>
+          </ul>
+          <p class="calc-end">本頁為量化參考，非投資建議。</p>
+        </div>
+      </div>
     </div>
   </section>
 </main>

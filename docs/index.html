@@ -95,6 +95,7 @@ summary{cursor:pointer;font-weight:600}
 .map td{white-space:normal;vertical-align:top;padding:5px 4px}
 .map th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px;border-bottom:1px solid var(--line)}
 .foot{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.7}
+.calc h3{font-size:13px;margin:0 0 4px;color:var(--fg)}.calc h4{font-size:12.5px;margin:10px 0 2px;color:var(--fg);font-weight:600}.calc ul{margin:0;padding-left:1.3em}.calc li{margin:2px 0}.calc li::marker{color:var(--muted)}.calc-end{margin:10px 0 0}
 .btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:6px;padding:5px 12px;font:inherit;font-weight:700;cursor:pointer}
 .theme-btn{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
 .theme-btn:hover{border-color:var(--muted)}
@@ -331,13 +332,31 @@ summary{cursor:pointer;font-weight:600}
     </details>
   </section>
 
-  <p class="foot">
-    計算方式：商品訊號 = 今日漲跌 ÷ 近 20 個交易日波動度（z 分數，2σ 為滿格 ±1，觸及漲跌停再 ×1.5；抓不到日K時改用 漲跌 ÷ 漲跌停幅度）；價差同樣以 20 日波動度標準化；類股分數 = Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100。
-    權重為正代表商品漲有利類股（產品報價、庫存利益），為負代表成本壓力。「共振」= 陸期訊號方向與類股當日平均漲跌同向。
-    前5強／前5弱以台股最新收盤漲跌幅排序，僅計成交量 ≥ <span id="minlots">100</span> 張的個股。
-    盤前版（台股開盤前）另外把前一晚已收盤的美國期貨（原油、銅等）以實測的「美盤 → 次一台股交易日」權重計入分數。
-    本頁為量化參考，非投資建議。
-  </p>
+  <div class="foot">
+    <div class="calc">
+      <h3>計算方式</h3>
+      <h4>商品訊號</h4>
+      <ul>
+        <li>今日漲跌 ÷ 近 20 個交易日波動度（z 分數）</li>
+        <li>2σ 為滿格 ±1；觸及漲跌停再 ×1.5</li>
+        <li>抓不到日K時，改用 漲跌 ÷ 漲跌停幅度</li>
+        <li>價差同樣以 20 日波動度標準化</li>
+      </ul>
+      <h4>類股分數</h4>
+      <ul>
+        <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100</li>
+        <li>權重為正：商品漲有利類股（產品報價、庫存利益）</li>
+        <li>權重為負：商品漲代表成本壓力</li>
+      </ul>
+      <h4>其他規則</h4>
+      <ul>
+        <li>「共振」＝陸期訊號方向與類股當日平均漲跌同向</li>
+        <li>前5強／前5弱：以台股最新收盤漲跌幅排序，只計成交量 ≥ <span id="minlots">100</span> 張的個股</li>
+        <li>盤前版（台股開盤前）：另把前一晚已收盤的美國期貨（原油、銅等），以實測的「美盤 → 次一台股交易日」權重計入分數</li>
+      </ul>
+      <p class="calc-end">本頁為量化參考，非投資建議。</p>
+    </div>
+  </div>
   <details class="admin" id="admin">
     <summary>管理者登入</summary>
     <div class="admin-row" id="admin-login">
