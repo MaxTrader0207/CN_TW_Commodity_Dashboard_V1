@@ -193,3 +193,38 @@ def test_update_limits_rejects_bad_values_and_falls_back(tmp_path, monkeypatch):
     cache, st = H.update_limits(S(), date(2026, 10, 30), {"CU", "AL", "AP"}, log=lambda *a: None)
     assert cache["CU"]["limit"] == 9.0 and "AL" not in cache and cache["AP"]["limit"] == 8.0
     assert "AL=95.0" in st["上期所"] and st["鄭商所"].startswith("ok")
+
+
+def _wd():
+    import importlib.util
+    import os
+    os.environ.setdefault("GITHUB_REPOSITORY", "x/y")
+    sys.path.insert(0, str(ROOT / ".github" / "scripts"))
+    spec = importlib.util.spec_from_file_location("watchdog", ROOT / ".github" / "scripts" / "watchdog.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_watchdog_weekend_is_not_stale_until_monday_slot_missed():
+    W = _wd()
+    fri = datetime(2026, 10, 30, 17, 15, tzinfo=TPE)
+    assert not W.check(fri, datetime(2026, 11, 2, 7, 0, tzinfo=TPE), {})[0]     # 週一 07:00：盤前版還在緩衝內
+    stale, age, missed = W.check(fri, datetime(2026, 11, 2, 8, 30, tzinfo=TPE), {})
+    assert stale and age > 60 and [n for _, n in missed] == ["盤前版"]
+
+
+def test_watchdog_weekday_threshold_30h():
+    W = _wd()
+    tue = datetime(2026, 11, 3, 17, 15, tzinfo=TPE)
+    assert not W.check(tue, datetime(2026, 11, 4, 23, 0, tzinfo=TPE), {})[0]   # 29.75 小時：未達門檻
+    stale, _, missed = W.check(tue, datetime(2026, 11, 4, 23, 30, tzinfo=TPE), {})
+    assert stale and len(missed) == 2
+
+
+def test_watchdog_holiday_skipped():
+    W = _wd()
+    hol = {"2026-11-02": "假日", "2026-11-03": "假日"}
+    fri = datetime(2026, 10, 30, 17, 15, tzinfo=TPE)
+    assert not W.check(fri, datetime(2026, 11, 4, 6, 0, tzinfo=TPE), hol)[0]   # 連假中沒有應跑的排程
+    assert W.check(fri, datetime(2026, 11, 4, 9, 0, tzinfo=TPE), hol)[0]       # 連假後第一天盤前版沒跑

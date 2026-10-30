@@ -9,7 +9,7 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 
 REPO = os.environ["GITHUB_REPOSITORY"]
-RUN_ID = os.environ["RUN_ID"]
+RUN_ID = os.environ.get("RUN_ID", "")
 LABEL = "pipeline-failure"
 TPE = timezone(timedelta(hours=8))
 CORE = {"sina": "新浪陸期報價", "twse_quotes": "證交所上市收盤", "tpex_quotes": "櫃買上櫃收盤",

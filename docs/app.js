@@ -122,6 +122,24 @@ function sectorCard(s, i, side) {
   return card;
 }
 
+// 停擺偵測（與 .github/scripts/watchdog.py 同規則）：超過 30 小時沒更新，且之後有週一~五 06:17／17:10 的排程（+2 小時）已經過了
+function staleInfo(d) {
+  if (!d.generated_at || d.demo) return null;
+  const last = new Date(d.generated_at), now = new Date(), age = (now - last) / 36e5;
+  if (age <= 30) return null;
+  const tpe = t => new Date(t.getTime() + 8 * 36e5);   // 以 UTC 欄位表示台北時間
+  let missed = null;
+  for (let day = new Date(Date.UTC(tpe(last).getUTCFullYear(), tpe(last).getUTCMonth(), tpe(last).getUTCDate())); day <= tpe(now); day = new Date(day.getTime() + 864e5)) {
+    if ([0, 6].includes(day.getUTCDay())) continue;
+    for (const [h, m, name] of [[6, 17, '盤前版'], [17, 10, '日盤版']]) {
+      const t = new Date(day.getTime() + (h * 60 + m) * 6e4 - 8 * 36e5);   // 轉回真實時間
+      if (t > last && t.getTime() + 2 * 36e5 <= now.getTime()) { missed = `${tpe(t).toISOString().slice(5, 10).replace('-', '/')} ${name}`; break; }
+    }
+    if (missed) break;
+  }
+  return missed ? { age: Math.round(age), slot: missed } : null;
+}
+
 function render(d) {
   $('#demo').style.display = d.demo ? 'block' : 'none';
   const mk = d.market || {}, notes = [];
@@ -129,6 +147,8 @@ function render(d) {
   if (mk.tw_holiday) notes.push(`今日台股休市（${mk.tw_holiday}），台股資料為 ${d.tw_date || '—'}。`);
   else if (mk.tw_open_today === false) notes.push(`今日台股休市，台股資料為 ${d.tw_date || '—'}。`);
   if (mk.cn?.rolled?.length) notes.push(`主力合約今日換月：${mk.cn.rolled.map(c => d.commodities.find(x => x.code === c)?.name || c).join('、')}（漲跌已用新合約的昨結算計算）。`);
+  const st = staleInfo(d);
+  if (st) notes.unshift(`⚠ 資料已 ${st.age} 小時沒有更新（最後更新 ${fmtTime(d.generated_at)}，之後應有的「${st.slot}」沒有跑），以下內容可能過時。可按右上角「立即更新」。`);
   if (d.industry?.stale?.length) notes.push(`⚠ ${d.industry.stale.join('、')}（來源抓取失敗，沿用舊快取），新上市櫃股票可能沒有類股。`);
   $('#mkt-note').textContent = notes.join('　');
   $('#mkt-note').style.display = notes.length ? 'block' : 'none';

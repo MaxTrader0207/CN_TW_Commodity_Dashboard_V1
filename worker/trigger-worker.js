@@ -14,7 +14,7 @@
  *   GET  /status   回傳最近一次執行的狀態
  *
  * 定時觸發（Cloudflare Cron Triggers，取代不準時的 GitHub 排程；GitHub 排程保留當備援）：
- *   Worker → Settings → Trigger events → Cron triggers 加入下面 SCHEDULES 的 4 個 cron（UTC）。
+ *   Worker → Settings → Trigger events → Cron triggers 加入下面 SCHEDULES 的 5 個 cron（UTC）。
  *   注意 Cloudflare 的星期 1 = 星期日（和 GitHub 不同），所以一律用英文星期名稱。
  *   cron 字串對不上時，改用觸發時間（UTC 小時）判斷，避免後台格式差異造成漏跑。
  */
@@ -24,11 +24,13 @@ const DAILY_MAX = 30;   // 24 小時內最多手動觸發次數（含 Worker 定
 const NIGHT = { workflow: "daily.yml", inputs: { session: "night-once" } };
 const DAY = { workflow: "daily.yml", inputs: { session: "day" } };
 const CALIB = { workflow: "calibrate.yml", inputs: {} };
+const WATCH = { workflow: "watchdog.yml", inputs: {} };
 const SCHEDULES = {
   "17 22 * * SUN-THU": NIGHT,   // 台北 週一~五 06:17 盤前版
   "7 23 * * SUN-THU": NIGHT,    // 台北 週一~五 07:07 盤前版（備援，已完成則略過）
   "10 9 * * MON-FRI": DAY,      // 台北 週一~五 17:10 日盤版
   "20 2 * * SAT": CALIB,        // 台北 週六 10:20 校準
+  "41 */4 * * *": WATCH,        // 每 4 小時停擺監控（與 GitHub 每小時排程互為備援）
 };
 function jobFor(event) {
   if (SCHEDULES[event.cron]) return SCHEDULES[event.cron];

@@ -1,0 +1,32 @@
+name: Watchdog
+
+# 停擺監控：超過 30 小時沒有成功更新（且有交易日排程被錯過）就開 Issue 通知，恢復後自動關閉。
+# 觸發來源互為備援：GitHub 每小時排程、Cloudflare Worker 每 4 小時（見 worker/trigger-worker.js）、手動。
+on:
+  schedule:
+    - cron: "37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Restore data branch
+        run: python pipeline/datastore.py restore
+      - name: Check freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/watchdog.py
