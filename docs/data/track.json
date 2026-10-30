@@ -1,26 +1,26 @@
 {
- "updated": "2026-10-30T09:47+08:00",
+ "updated": "2026-10-30T17:10+08:00",
  "since": "2026-10-28",
- "index_last": "2026-10-29",
+ "index_last": "2026-10-30",
  "summary": {
   "day": {
    "next": {
-    "n": 1,
-    "bull_avg": -1.096,
-    "bull_win": 0.333,
-    "bear_avg": 0.08,
-    "bear_win": 0.667,
-    "spread_avg": -1.176,
+    "n": 2,
+    "bull_avg": -1.14,
+    "bull_win": 0.167,
+    "bear_avg": 0.275,
+    "bear_win": 0.5,
+    "spread_avg": -1.415,
     "spread_win": 0.0
    },
    "same": {
-    "n": 2,
-    "bull_avg": -0.429,
+    "n": 3,
+    "bull_avg": -0.524,
     "bull_win": 0.333,
-    "bear_avg": -1.026,
-    "bear_win": 0.833,
-    "spread_avg": 0.596,
-    "spread_win": 1.0
+    "bear_avg": -0.663,
+    "bear_win": 0.778,
+    "spread_avg": 0.139,
+    "spread_win": 0.667
    }
   },
   "night": {
@@ -45,12 +45,12 @@
   },
   "all": {
    "next": {
-    "n": 1,
-    "bull_avg": -1.096,
-    "bull_win": 0.333,
-    "bear_avg": 0.08,
-    "bear_win": 0.667,
-    "spread_avg": -1.176,
+    "n": 2,
+    "bull_avg": -1.14,
+    "bull_win": 0.167,
+    "bear_avg": 0.275,
+    "bear_win": 0.5,
+    "spread_avg": -1.415,
     "spread_win": 0.0
    }
   },
@@ -75,8 +75,58 @@
     "水泥"
    ],
    "same_date": null,
-   "next_date": null,
+   "next_date": "2026-10-30",
    "same": null,
+   "next": {
+    "bull": [
+     -1.707,
+     0.487,
+     3.135
+    ],
+    "bear": [
+     -0.734,
+     -0.29,
+     1.212
+    ],
+    "bull_avg": 0.6383316876831673,
+    "bear_avg": 0.062429367671857916,
+    "spread": 0.5759023200113094
+   }
+  },
+  {
+   "key": "2026-10-30_day",
+   "run_at": "2026-10-30T17:10+08:00",
+   "session": "day",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "塑膠",
+    "紡織纖維",
+    "造紙"
+   ],
+   "bear": [
+    "鋼鐵",
+    "電器電纜",
+    "水泥"
+   ],
+   "same_date": "2026-10-30",
+   "next_date": null,
+   "same": {
+    "bull": [
+     -1.707,
+     0.177,
+     -0.612
+    ],
+    "bear": [
+     -0.29,
+     -0.734,
+     1.212
+    ],
+    "bull_avg": -0.7139708971168149,
+    "bear_avg": 0.062429367671857916,
+    "spread": -0.7764002647886729
+   },
    "next": null
   },
   {
@@ -97,9 +147,23 @@
     "電器電纜"
    ],
    "same_date": null,
-   "next_date": null,
+   "next_date": "2026-10-30",
    "same": null,
-   "next": null
+   "next": {
+    "bull": [
+     -0.612,
+     -1.235,
+     1.291
+    ],
+    "bear": [
+     -0.29,
+     1.212,
+     -0.734
+    ],
+    "bull_avg": -0.18522045347663796,
+    "bear_avg": 0.062429367671857916,
+    "spread": -0.24764982114849587
+   }
   },
   {
    "key": "2026-10-29_day",
@@ -119,7 +183,7 @@
     "水泥"
    ],
    "same_date": "2026-10-29",
-   "next_date": null,
+   "next_date": "2026-10-30",
    "same": {
     "bull": [
      0.377,
@@ -135,7 +199,21 @@
     "bear_avg": -1.0641229515927537,
     "spread": 0.7311719833612935
    },
-   "next": null
+   "next": {
+    "bull": [
+     -0.612,
+     -1.235,
+     -1.707
+    ],
+    "bear": [
+     -0.29,
+     0.487,
+     1.212
+    ],
+    "bull_avg": -1.1845719399158658,
+    "bear_avg": 0.4694770774763432,
+    "spread": -1.654049017392209
+   }
   },
   {
    "key": "2026-10-28_day",
