@@ -465,7 +465,9 @@ def spread_returns(pairs_by, legs, limits):
 LIMITS_JSON = CACHE_DIR / "limits.json"
 SHFE_PARAM_URL = "https://www.shfe.com.cn/data/busiparamdata/future/ContractDailyTradeArgument{}.dat"
 INE_PARAM_URL = "https://www.ine.cn/data/busiparamdata/future/ContractDailyTradeArgument{}.dat"
-ZCE_PARAM_URL = "http://www.czce.com.cn/cn/DFSStaticFiles/Future/{}/{}/FutureDataClearParams.txt"
+ZCE_PARAM_URL = "https://www.czce.com.cn/cn/DFSStaticFiles/Future/{}/{}/FutureDataClearParams.txt"
+ZCE_PARAM_URL_HTTP = ZCE_PARAM_URL.replace("https://", "http://", 1)   # 鄭商所 https 抓不到時的備援
+LIMIT_RANGE = (1.0, 30.0)   # 合理的漲跌停幅度（%）；超出視為資料異常或遭竄改，不採用
 
 
 def _mode(vals):
@@ -510,8 +512,12 @@ def update_limits(session, today: date, codes, log=print, lookback=7):
     status = {}
     srcs = [("上期所", lambda d: SHFE_PARAM_URL.format(d.strftime("%Y%m%d")), "json"),
             ("能源中心", lambda d: INE_PARAM_URL.format(d.strftime("%Y%m%d")), "json"),
-            ("鄭商所", lambda d: ZCE_PARAM_URL.format(d.year, d.strftime("%Y%m%d")), "zce")]
+            ("鄭商所", lambda d: ZCE_PARAM_URL.format(d.year, d.strftime("%Y%m%d")), "zce"),
+            ("鄭商所", lambda d: ZCE_PARAM_URL_HTTP.format(d.year, d.strftime("%Y%m%d")), "zce")]
+    done = set()
     for name, url_of, kind in srcs:
+        if name in done:
+            continue
         got = None
         for k in range(lookback):
             d = today - timedelta(days=k)
@@ -528,15 +534,21 @@ def update_limits(session, today: date, codes, log=print, lookback=7):
                     break
             except Exception as e:  # noqa: BLE001
                 status[name] = f"失敗：{str(e)[:80]}"
+                break   # 連線層錯誤（如 https 不通）不再逐日重試，直接換下一個來源
         if not got:
             status.setdefault(name, "抓不到")
             continue
-        n = 0
+        done.add(name)
+        status.pop(name, None)
+        n, bad = 0, []
         for code, v in got[1].items():
+            if code in codes and not (LIMIT_RANGE[0] <= v <= LIMIT_RANGE[1]):
+                bad.append(f"{code}={v}")
+                continue
             if code in codes:
                 cache[code] = {"limit": v, "date": got[0], "src": name}
                 n += 1
-        status[name] = f"ok {n} 個商品（{got[0]}）"
+        status[name] = f"ok {n} 個商品（{got[0]}）" + (f"；不合理已略過：{'、'.join(bad)}" if bad else "")
         log(f"漲跌停幅度 {name}：{n} 個商品（{got[0]}）")
     LIMITS_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=0, sort_keys=True), encoding="utf-8")
     return cache, status

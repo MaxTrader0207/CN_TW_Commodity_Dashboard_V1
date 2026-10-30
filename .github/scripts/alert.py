@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import subprocess
 from datetime import datetime, timedelta, timezone
 
@@ -14,6 +15,13 @@ TPE = timezone(timedelta(hours=8))
 CORE = {"sina": "新浪陸期報價", "twse_quotes": "證交所上市收盤", "tpex_quotes": "櫃買上櫃收盤",
         "twse_info": "證交所上市產業別", "isin_otc": "ISIN 上櫃產業別", "industry_cache": "產業別快取"}
 FAIL = {"failure", "timed_out", "startup_failure"}
+TRUSTED_EVENTS = {"push", "schedule", "workflow_dispatch", "workflow_call"}
+
+
+def clean(text, n=300):
+    """Issue 內容裡的外部文字：去掉 @提及（避免通知到別人）、反引號與 HTML，限制長度"""
+    t = re.sub(r"<[^>]*>", "", str(text or "")).replace("`", "'").replace("\n", " ")
+    return re.sub(r"@(?=\w)", "@\u200b", t).strip()[:n]
 
 
 DRY = os.environ.get("DRY_RUN") == "1"   # 本機測試：只印出會做的寫入動作
@@ -75,8 +83,7 @@ def failure_detail(run):
         for a in (api(f"repos/{REPO}/check-runs/{job['id']}/annotations", ok_fail=True) or [])[:6]:
             if a.get("annotation_level") == "failure" or (
                     a.get("annotation_level") == "warning" and "Node.js" not in (a.get("message") or "")):
-                msg = (a.get("message") or "").strip().replace("\n", " ")[:300]
-                lines.append(f"  - {a.get('title') or a['annotation_level']}：{msg}")
+                lines.append(f"  - {clean(a.get('title') or a['annotation_level'], 80)}：`{clean(a.get('message'))}`")
     return "\n".join(lines) or "- （沒有取得失敗步驟，請開執行紀錄查看）"
 
 
@@ -91,7 +98,7 @@ def check_sources(run):
     if not run_at or not (started - timedelta(minutes=5) <= run_at <= started + timedelta(hours=2)):
         print("這次執行沒有產生新的 status.json（例如盤前版已完成而略過），不檢查來源")
         return
-    bad = [f"- {CORE[s['id']]}：{s.get('note') or '失敗'}" for s in st.get("sources", [])
+    bad = [f"- {CORE[s['id']]}：{clean(s.get('note') or '失敗', 200)}" for s in st.get("sources", [])
            if s["id"] in CORE and s["status"] == "fail"]
     if bad:
         raise_alert("sources", "⚠ 資料來源異常（核心來源抓取失敗）",
@@ -105,8 +112,10 @@ def main():
     run = api(f"repos/{REPO}/actions/runs/{RUN_ID}")
     name, concl = run["name"], run["conclusion"]
     print(f"{name} #{run['run_number']} {run['event']} {run['head_branch']} → {concl}")
-    if run["head_branch"] != "main":
-        print("非 main 分支，不通知")
+    # 只處理本 repo 自己在 main 上的執行；fork 的 PR 即使分支也叫 main，也不能開／關 Issue
+    head_repo = (run.get("head_repository") or {}).get("full_name")
+    if run["head_branch"] != "main" or head_repo != REPO or run["event"] not in TRUSTED_EVENTS:
+        print(f"略過：分支 {run['head_branch']}、來源 {head_repo}、事件 {run['event']}（只處理本 repo main 的 push／排程／手動執行）")
         return
     key = name
     if concl in FAIL:

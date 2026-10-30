@@ -166,3 +166,30 @@ def test_build_fixtures_end_to_end(tmp_path):
         assert len(by[n]["strong"]) <= 5 and len(by[n]["weak"]) <= 5
     st = json.loads((work / "docs" / "data" / "status.json").read_text(encoding="utf-8"))
     assert st["ok"] is True
+
+
+def test_update_limits_rejects_bad_values_and_falls_back(tmp_path, monkeypatch):
+    """交易所漲跌停：超出 1~30% 的數字不採用；鄭商所 https 不通時改用 http"""
+    monkeypatch.setattr(H, "LIMITS_JSON", tmp_path / "limits.json")
+
+    class R:
+        def __init__(self, code, text=None, j=None):
+            self.status_code, self.text, self._j, self.encoding = code, text, j, None
+
+        def json(self):
+            return self._j
+
+    class S:
+        def get(self, url, timeout=0):
+            if "shfe" in url:
+                return R(200, j={"ContractDailyTradeArgument": [
+                    {"INSTRUMENTID": "cu2611", "UPPER_VALUE": "0.09"}, {"INSTRUMENTID": "al2611", "UPPER_VALUE": "0.95"}]})
+            if "ine.cn" in url:
+                return R(404)
+            if url.startswith("https://www.czce"):
+                raise ConnectionError("tls")
+            return R(200, text="h\nAP611 |1|N|0|10|±8|5\n")
+
+    cache, st = H.update_limits(S(), date(2026, 10, 30), {"CU", "AL", "AP"}, log=lambda *a: None)
+    assert cache["CU"]["limit"] == 9.0 and "AL" not in cache and cache["AP"]["limit"] == 8.0
+    assert "AL=95.0" in st["上期所"] and st["鄭商所"].startswith("ok")

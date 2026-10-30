@@ -20,6 +20,7 @@
  */
 const WORKFLOW = "daily.yml";
 const COOLDOWN_MS = 3 * 60 * 1000;
+const DAILY_MAX = 30;   // 24 小時內最多手動觸發次數（含 Worker 定時觸發），防止被大量呼叫洗爆 Actions 與 data 分支
 const NIGHT = { workflow: "daily.yml", inputs: { session: "night-once" } };
 const DAY = { workflow: "daily.yml", inputs: { session: "day" } };
 const CALIB = { workflow: "calibrate.yml", inputs: {} };
@@ -69,6 +70,9 @@ export default {
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "no-store",
+      Vary: "Origin",
     };
     const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: cors });
 
@@ -95,6 +99,14 @@ export default {
     }
 
     if (path === "/trigger" && req.method === "POST") {
+      // 觸發只接受從儀表板網頁送出的請求（瀏覽器一定會帶 Origin；沒帶的多半是腳本直接呼叫）
+      if (reqOrigin !== origin) return reply({ ok: false, error: "只接受從儀表板網頁觸發" }, 403);
+      // 24 小時上限
+      const since = new Date(Date.now() - 864e5).toISOString().slice(0, 19) + "Z";
+      const cnt = await gh(`/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=1&created=%3E${since}`);
+      if (cnt.ok && ((await cnt.json()).total_count || 0) >= DAILY_MAX) {
+        return reply({ ok: false, error: `24 小時內已觸發 ${DAILY_MAX} 次，已達上限，請稍後再試` }, 429);
+      }
       // 全域冷卻：看 GitHub 上最近一次執行（不論是誰、從哪觸發），所有 Worker 實例共用同一個判斷
       const last = await gh(`/actions/workflows/${WORKFLOW}/runs?per_page=1`);
       if (!last.ok) return reply({ ok: false, error: `GitHub ${last.status}` }, 502);
