@@ -1,4 +1,4 @@
-// 陸期 × 台股 多空儀表板 — 頁面程式（由 index.html 載入；放在獨立檔案以便用 CSP 禁止頁內腳本）
+// 陸期×台股 產業多空儀表板 — 頁面程式（由 index.html 載入；放在獨立檔案以便用 CSP 禁止頁內腳本）
 const $ = s => document.querySelector(s);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const cls = v => v == null ? 'flat' : v > 0 ? 'up' : v < 0 ? 'dn' : 'flat';
