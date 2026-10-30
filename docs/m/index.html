@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cn-tw-dashboard-trigger.maxwei6699.workers.dev; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#0b0f14" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>陸期 × 台股 多空（手機版）</title>
+<script src="../theme.js"></script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0f14;--panel:#121821;--panel2:#18202b;--line:#243041;--fg:#e6edf3;--muted:#8b98a8;
+  --up:#ff4d4f;--dn:#22c55e;--up-rgb:255,77,79;--dn-rgb:34,197,94;
+  --accent:#f5b544;--on-accent:#1a1200;--lag:#60a5fa;--cell-off:#3b4656;--overlay:rgba(0,0,0,.55);
+  --warn:#ffb86b;--warn-bg:rgba(255,140,0,.10);--warn-line:rgba(255,160,60,.45);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --nav-h:58px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --bg:#f4f6f9;--panel:#ffffff;--panel2:#eef1f5;--line:#d5dbe3;--fg:#17202b;--muted:#5d6b7c;
+    --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
+    --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);
+    --warn:#9a4a00;--warn-bg:#fff3e0;--warn-line:#f2b46b;
+  }
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f6f9;--panel:#ffffff;--panel2:#eef1f5;--line:#d5dbe3;--fg:#17202b;--muted:#5d6b7c;
+  --up:#d42a2d;--dn:#13803a;--up-rgb:229,57,53;--dn-rgb:22,163,74;
+  --accent:#a86400;--on-accent:#ffffff;--lag:#1d64d8;--cell-off:#c3cad4;--overlay:rgba(15,23,42,.35);
+  --warn:#9a4a00;--warn-bg:#fff3e0;--warn-line:#f2b46b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font:15px/1.5 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior-y:contain}
+button,input{font:inherit;color:inherit}
+.up{color:var(--up)} .dn{color:var(--dn)} .flat{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.hidden{display:none !important}
+
+/* 頂部 */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(8px + var(--safe-t)) 14px 8px;border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:8px}
+.top h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .meta{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{min-width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:center;padding:0 10px;font-size:13px;cursor:pointer}
+.icon-btn:active{transform:scale(.96)}
+
+/* 主內容與分頁 */
+main{padding:12px 12px calc(var(--nav-h) + var(--safe-b) + 16px)}
+.view{display:none}
+.view.on{display:block;animation:fade .15s ease}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+h2{font-size:15px;margin:18px 2px 8px}
+h2:first-child{margin-top:4px}
+.note{color:var(--muted);font-size:12.5px;line-height:1.6;margin:8px 2px}
+
+/* 底部導覽 */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);background:var(--panel);border-top:1px solid var(--line);padding-bottom:var(--safe-b);height:calc(var(--nav-h) + var(--safe-b))}
+.nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11.5px;color:var(--muted);cursor:pointer;min-height:44px}
+.nav button .ic{font-size:19px;line-height:1}
+.nav button.on{color:var(--accent);font-weight:700}
+
+/* 區塊 */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.banner{border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.6}
+.banner.warn{background:var(--warn-bg);border:1px solid var(--warn-line);border-left:4px solid var(--warn);color:var(--fg)}
+.banner.warn b{color:var(--warn)}
+.disc{background:var(--warn-bg);border:1px solid var(--warn-line);border-left:4px solid var(--warn);border-radius:12px;margin-bottom:12px;font-size:12.5px}
+.disc summary{list-style:none;padding:9px 12px;color:var(--warn);font-weight:700;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+.disc summary::-webkit-details-marker{display:none}
+.disc summary span{font-weight:400;color:var(--fg)}
+.disc[open] summary::after{content:"收合"}
+.disc:not([open]) summary::after{content:"詳情"}
+.disc summary::after{font-weight:400;font-size:12px;color:var(--warn);white-space:nowrap}
+.disc p{margin:0;padding:0 12px 10px;line-height:1.7;color:var(--fg)}
+.disc em{font-style:normal;color:var(--warn);font-weight:700}
+
+/* 分段切換 */
+.seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px 10px;padding:0 12px}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:13.5px;min-height:38px;cursor:pointer;white-space:nowrap}
+.seg button.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.seg.full button{flex:1}
+
+/* 類股卡片 */
+.sc-h{display:flex;align-items:center;gap:8px}
+.sc-h .rk{font-family:var(--mono);color:var(--muted);font-size:12px}
+.sc-h .nm{font-size:18px;font-weight:700}
+.sc-h .scr{margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700}
+.badge{font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid currentColor;color:var(--accent)}
+.sub{color:var(--muted);font-size:12.5px;margin:2px 0 8px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:2px 12px 4px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:6px 10px;font-size:13px;cursor:pointer;min-height:40px;text-align:left}
+.chip.lim{border-color:var(--accent)}
+.chip small{display:block;font-family:var(--mono);font-size:12px}
+details.more{border-top:1px dashed var(--line);margin-top:10px}
+details.more>summary{list-style:none;padding:10px 0 2px;font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;justify-content:space-between;min-height:40px;align-items:center}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:"▾";transition:transform .15s}
+details.more[open]>summary::after{transform:rotate(180deg)}
+
+/* 清單列 */
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);min-height:48px;cursor:pointer}
+.row:last-child{border-bottom:0}
+.row .l{flex:1;min-width:0}
+.row .t{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t .cd{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:4px}
+.row .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .r{text-align:right;font-family:var(--mono);flex:0 0 auto}
+.row .r b{font-size:15.5px;display:block}
+.row .r small{font-size:11.5px;color:var(--muted)}
+.row.static{cursor:default}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:5px;border:1px solid currentColor;margin-left:4px;vertical-align:1px;white-space:nowrap}
+.tag.p{color:var(--up)} .tag.c{color:var(--dn)} .tag.ok{color:var(--dn)} .tag.lag{color:var(--lag)} .tag.rev{color:var(--up)} .tag.no{color:var(--muted)} .tag.new{color:var(--accent)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.split h4{margin:6px 0 2px;font-size:12.5px;color:var(--muted);font-weight:600}
+.mini{display:flex;justify-content:space-between;gap:6px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.mini:last-child{border-bottom:0}
+.mini span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini span:last-child{font-family:var(--mono);flex:0 0 auto}
+
+/* 分數長條 */
+.bar{display:grid;grid-template-columns:76px 1fr 54px;gap:8px;align-items:center;font-size:13px;padding:5px 0}
+.bar .tr{position:relative;height:12px;background:var(--panel2);border-radius:3px}
+.bar .tr::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.bar .tr i{position:absolute;top:2px;bottom:2px;border-radius:2px}
+.bar .v{text-align:right;font-family:var(--mono)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--panel2);border-radius:10px;padding:8px}
+.kpi .k{font-size:11.5px;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:17px;font-weight:700}
+.kpi .s{font-size:11px;color:var(--muted)}
+.kpis.two{grid-template-columns:1fr 1fr}
+
+/* 熱力圖 */
+.heat-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -12px;padding:0 12px}
+canvas.heat{display:block;touch-action:pan-x pan-y}
+.heat-info{font-size:12.5px;color:var(--muted);min-height:20px;margin-top:6px;font-family:var(--mono)}
+
+/* 搜尋 */
+.search{position:sticky;top:calc(var(--top-h, 62px));z-index:4;background:var(--bg);padding:2px 0 8px}
+.search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px}
+.grp-h{font-size:13px;color:var(--muted);margin:12px 2px 4px;font-weight:600}
+
+/* 詳細頁（全螢幕） */
+.sheet{position:fixed;inset:0;z-index:10;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateY(100%);transition:transform .22s ease;padding-bottom:calc(20px + var(--safe-b))}
+.sheet.on{transform:none}
+.sheet .bar-top{position:sticky;top:0;z-index:2;background:var(--bg);display:flex;align-items:center;gap:8px;padding:calc(8px + var(--safe-t)) 10px 8px;border-bottom:1px solid var(--line)}
+.sheet .bar-top b{font-size:17px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet .body{padding:12px}
+.big{font-family:var(--mono);font-size:26px;font-weight:700}
+.chart{width:100%;height:auto;display:block;touch-action:pan-y}
+.chart text{fill:var(--muted);font-size:10px;font-family:var(--mono)}
+.chart-tip{font-family:var(--mono);font-size:12.5px;color:var(--muted);min-height:20px;margin-top:4px}
+
+/* 表單與按鈕 */
+.btn{display:block;width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--on-accent);font-weight:700;padding:12px;font-size:15px;cursor:pointer;min-height:46px}
+.btn.ghost{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
+.btn:disabled{opacity:.55}
+.field{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:16px;margin-bottom:8px}
+.src{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.src:last-child{border-bottom:0}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:0 0 auto}
+.dot.ok{background:var(--dn)} .dot.warn{background:var(--accent)} .dot.fail{background:var(--up)}
+.empty{color:var(--muted);font-size:13.5px;padding:14px 2px;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + var(--safe-b) + 14px);transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:13px;z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:90vw;text-align:center}
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <div class="top-row">
+    <h1>陸期 × 台股 多空</h1>
+    <button class="icon-btn" id="theme" type="button" aria-label="切換明暗模式"></button>
+  </div>
+  <div class="meta" id="meta">載入中…</div>
+</header>
+
+<main>
+  <section class="view on" id="v-home" aria-label="多空">
+    <div id="notes"></div>
+    <details class="disc">
+      <summary><span><b style="color:var(--warn)">⚠ 免責聲明</b>　量化研究參考，非投資建議</span></summary>
+      <p>本頁為<em>量化研究參考，不構成任何投資建議</em>。訊號由公開行情（新浪財經、Yahoo、證交所、櫃買中心）自動計算，可能有延遲、錯誤或中斷，<em>不保證正確性與即時性</em>；歷史回測與相關性不代表未來表現。投資請自行判斷，並自負盈虧與風險。</p>
+    </details>
+    <div class="seg full" id="side-seg">
+      <button class="on" data-side="bull" type="button">多頭助攻 前3</button>
+      <button data-side="bear" type="button">空頭壓力 前3</button>
+    </div>
+    <div id="sectors"></div>
+    <h2>全部類股分數</h2>
+    <div class="card" id="bars"></div>
+  </section>
+
+  <section class="view" id="v-board" aria-label="看板">
+    <div class="seg" id="ex-seg"></div>
+    <div class="seg" id="sort-seg">
+      <button class="on" data-sort="chg" type="button">依漲跌</button>
+      <button data-sort="z" type="button">依 z 分數</button>
+      <button data-sort="m5" type="button">依 5 日動能</button>
+    </div>
+    <div class="card"><div class="rows" id="board"></div></div>
+  </section>
+
+  <section class="view" id="v-verify" aria-label="驗證">
+    <h2>實盤命中率</h2>
+    <div class="card" id="track"><div class="empty">載入中…</div></div>
+    <h2>歷史回測（樣本外）</h2>
+    <div class="card" id="bt"><div class="empty">載入中…</div></div>
+    <h2>類股分數歷史</h2>
+    <div class="card">
+      <div class="seg" id="heat-seg">
+        <button class="on" data-m="s" type="button">陸期分數</button>
+        <button data-m="a" type="button">實際報酬</button>
+        <button data-m="x" type="button">方向一致</button>
+      </div>
+      <div class="heat-wrap"><canvas class="heat" id="heat"></canvas></div>
+      <div class="heat-info" id="heat-info">點格子看當天數字</div>
+      <p class="note" id="heat-note"></p>
+    </div>
+    <h2>近期訊號開獎</h2>
+    <div class="card"><div class="rows" id="tk-rows"></div></div>
+  </section>
+
+  <section class="view" id="v-codes" aria-label="代碼">
+    <div class="search"><input id="q" type="search" placeholder="搜尋代碼、名稱或類股" aria-label="搜尋商品"></div>
+    <div id="codes"></div>
+  </section>
+
+  <section class="view" id="v-more" aria-label="更多">
+    <h2>顯示</h2>
+    <div class="seg full" id="theme-seg">
+      <button data-t="" type="button">自動</button>
+      <button data-t="light" type="button">亮色</button>
+      <button data-t="dark" type="button">暗色</button>
+    </div>
+    <h2>更新</h2>
+    <div class="card">
+      <div id="auto-txt" class="note" style="margin-top:0">資料每天自動更新：週一～五 06:17（盤前版）、17:10（收盤版）。</div>
+      <div id="admin-box">
+        <div id="admin-login">
+          <input class="field" id="admin-key" type="password" autocomplete="current-password" placeholder="管理密碼（管理者用）" aria-label="管理密碼">
+          <button class="btn ghost" id="admin-go" type="button">管理者登入</button>
+        </div>
+        <div id="admin-in" class="hidden">
+          <button class="btn" id="refresh" type="button">⟳ 立即更新</button>
+          <div class="note" id="upd"></div>
+          <button class="btn ghost" id="admin-out" type="button">登出管理者</button>
+        </div>
+        <div class="note" id="admin-msg"></div>
+      </div>
+    </div>
+    <h2 id="src-h">資料來源狀態</h2>
+    <div class="card" id="srcs"><div class="empty">載入中…</div></div>
+    <h2>其他</h2>
+    <div class="card">
+      <button class="btn ghost" id="to-desktop" type="button">切換到電腦版</button>
+      <p class="note">計算方式：商品訊號 = 今日漲跌 ÷ 近 20 日波動度（z 分數，2σ 為滿格）；類股分數 = Σ(權重 × 商品訊號) ÷ √Σ|權重| × 100。正分代表陸期對該類股偏多（產品報價、庫存利益），負分代表成本壓力。</p>
+    </div>
+  </section>
+</main>
+
+<nav class="nav" id="nav" aria-label="主選單">
+  <button class="on" data-v="home" type="button"><span class="ic">◎</span>多空</button>
+  <button data-v="board" type="button"><span class="ic">▦</span>看板</button>
+  <button data-v="verify" type="button"><span class="ic">✓</span>驗證</button>
+  <button data-v="codes" type="button"><span class="ic">⌕</span>代碼</button>
+  <button data-v="more" type="button"><span class="ic">≡</span>更多</button>
+</nav>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="d-title">
+  <div class="bar-top">
+    <button class="icon-btn" id="d-back" type="button" aria-label="返回">‹ 返回</button>
+    <b id="d-title"></b>
+  </div>
+  <div class="body" id="d-body"></div>
+</div>
+
+<script src="../config.js"></script>
+<script src="m.js"></script>
+</body>
+</html>

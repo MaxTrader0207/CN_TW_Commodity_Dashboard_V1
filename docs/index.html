@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://cn-tw-dashboard-trigger.maxwei6699.workers.dev; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>陸期 × 台股 多空儀表板</title>
+<script src="redirect.js"></script>
 <script src="theme.js"></script>
 <style>
 :root{
@@ -218,6 +219,7 @@ summary{cursor:pointer;font-weight:600}
       <span class="pill" id="m-tw">—</span>
       <span class="pill" id="m-weights">—</span>
       <select id="hist" aria-label="歷史資料"></select>
+      <a class="theme-btn" href="m/" id="to-mobile" style="text-decoration:none">手機版</a>
       <a class="theme-btn" href="#codes" style="text-decoration:none">代碼清單</a>
       <button class="theme-btn" id="theme" type="button" aria-label="切換明暗模式"></button>
       <span class="auto-note" id="auto-note" title="盤前版：週一～五 06:17；收盤版：週一～五 17:10（台北時間）">資料每天自動更新</span>

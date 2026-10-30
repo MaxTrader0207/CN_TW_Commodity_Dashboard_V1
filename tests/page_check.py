@@ -83,6 +83,34 @@ def main():
                 problems.append(f"{name}：資料沒有載入（更新時間空白）")
             if not r["tiles"] or not r["bars"]:
                 problems.append(f"{name}：商品看板或類股分數沒有畫出來 {r}")
+        # 手機版（模擬 iPhone）：自動轉址、每個分頁不破版、詳細頁可開關
+        ctx = b.new_context(**p.devices["iPhone 13"])
+        page = ctx.new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)))
+        page.goto(url)
+        page.wait_for_url("**/m/**", timeout=5000)
+        page.wait_for_selector("#sectors .card, #sectors .empty", timeout=10000)
+        res = {}
+        for v in ("home", "board", "verify", "codes", "more"):
+            page.click(f'#nav button[data-v="{v}"]')
+            page.wait_for_timeout(1200 if v == "verify" else 300)
+            res[v] = page.evaluate("document.documentElement.scrollWidth - innerWidth")
+        page.click('#nav button[data-v="board"]')
+        page.click("#board .row")
+        page.wait_for_timeout(1000)
+        opened = page.evaluate("document.querySelector('#sheet').classList.contains('on')")
+        page.go_back()
+        page.wait_for_timeout(400)
+        closed = page.evaluate("!document.querySelector('#sheet').classList.contains('on')")
+        print(f"[{LABEL}手機版 iPhone] 各分頁超出寬度 {res}，詳細頁開 {opened} 關 {closed}")
+        if any(x > 1 for x in res.values()):
+            problems.append(f"手機版：分頁超出畫面 {res}")
+        if not (opened and closed):
+            problems.append("手機版：詳細頁無法開啟或返回鍵無法關閉")
+        if errs:
+            problems.append(f"手機版：JS 錯誤 {errs[:3]}")
+        ctx.close()
         b.close()
     srv.shutdown()
     if problems:

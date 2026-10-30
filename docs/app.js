@@ -856,6 +856,9 @@ async function loadStatus() {
   } catch (e) { return null; }
 }
 
+// 點「手機版」：取消「偏好電腦版」
+document.getElementById('to-mobile')?.addEventListener('click', () => { try { localStorage.removeItem('preferDesktop'); } catch (e) {} });
+
 // ── 明暗模式：自動（跟隨系統）→ 亮 → 暗 ──
 const THEMES = [['', '自動', 'auto'], ['light', '亮色', 'light'], ['dark', '暗色', 'dark']];
 function applyTheme(t) {
