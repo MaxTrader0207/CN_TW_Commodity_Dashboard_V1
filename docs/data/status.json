@@ -1,9 +1,9 @@
 {
- "run_at": "2026-10-30T23:51:21+08:00",
- "session": "day",
+ "run_at": "2026-11-02T06:17:32+08:00",
+ "session": "night",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41084514074",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41356374437",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T23:51:22+08:00"
+   "fetched_at": "2026-11-02T06:17:34+08:00"
   },
   {
    "id": "limits",
@@ -24,8 +24,8 @@
    "status": "ok",
    "rows": 36,
    "data_date": null,
-   "note": "上期所 ok 20 個商品（2026-10-30）；能源中心 ok 4 個商品（2026-10-30）；鄭商所 ok 16 個商品（2026-10-30）",
-   "fetched_at": "2026-10-30T23:51:28+08:00"
+   "note": "上期所 ok 20 個商品（2026-11-02）；能源中心 ok 4 個商品（2026-11-02）；鄭商所 ok 16 個商品（2026-10-30）",
+   "fetched_at": "2026-11-02T06:17:39+08:00"
   },
   {
    "id": "sina_kline",
@@ -36,7 +36,7 @@
    "rows": 57,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T23:51:55+08:00"
+   "fetched_at": "2026-11-02T06:18:09+08:00"
   },
   {
    "id": "sina",
@@ -45,9 +45,9 @@
    "used_for": "商品漲跌 → 類股多空分數",
    "status": "ok",
    "rows": 57,
-   "data_date": "2026-10-30",
+   "data_date": "2026-10-31",
    "note": "",
-   "fetched_at": "2026-10-30T23:51:56+08:00"
+   "fetched_at": "2026-11-02T06:18:10+08:00"
   },
   {
    "id": "twse_info",
@@ -55,10 +55,10 @@
    "url": "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",
    "used_for": "上市個股 → 類股",
    "status": "ok",
-   "rows": 1088,
-   "data_date": "2026-10-29",
+   "rows": 1089,
+   "data_date": "2026-11-01",
    "note": "",
-   "fetched_at": "2026-10-30T23:51:57+08:00"
+   "fetched_at": "2026-11-02T06:18:11+08:00"
   },
   {
    "id": "isin_otc",
@@ -69,7 +69,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T23:52:08+08:00"
+   "fetched_at": "2026-11-02T06:18:14+08:00"
   },
   {
    "id": "twse_quotes",
@@ -79,8 +79,8 @@
    "status": "ok",
    "rows": 1375,
    "data_date": "2026-10-30",
-   "note": "採用官網（另：OpenAPI 2026-10-29）",
-   "fetched_at": "2026-10-30T23:52:10+08:00"
+   "note": "採用官網（另：OpenAPI 2026-10-30）",
+   "fetched_at": "2026-11-02T06:18:17+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -91,18 +91,18 @@
    "rows": 5936,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T23:52:20+08:00"
+   "fetched_at": "2026-11-02T06:18:26+08:00"
   },
   {
    "id": "yahoo_intl",
-   "name": "Yahoo 國際期貨（交叉確認）",
+   "name": "Yahoo 國際期貨（盤前計分＋交叉確認）",
    "url": "https://query1.finance.yahoo.com/v8/finance/chart/XX=F?range=6mo&interval=1d",
-   "used_for": "國際價格 vs 陸期方向",
+   "used_for": "隔夜美盤 → 台股",
    "status": "ok",
    "rows": 14,
    "data_date": null,
-   "note": "",
-   "fetched_at": "2026-10-30T23:52:24+08:00"
+   "note": "｜9 項計入盤前分數",
+   "fetched_at": "2026-11-02T06:18:30+08:00"
   },
   {
    "id": "insti",
@@ -113,7 +113,7 @@
    "rows": 7144,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T23:52:28+08:00"
+   "fetched_at": "2026-11-02T06:18:33+08:00"
   },
   {
    "id": "margin",
@@ -124,7 +124,7 @@
    "rows": 2223,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T23:52:29+08:00"
+   "fetched_at": "2026-11-02T06:18:33+08:00"
   },
   {
    "id": "volhist",
@@ -135,7 +135,7 @@
    "rows": 6,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T23:52:30+08:00"
+   "fetched_at": "2026-11-02T06:18:34+08:00"
   },
   {
    "id": "twse_index",
@@ -146,7 +146,7 @@
    "rows": null,
    "data_date": "2026-10-30",
    "note": "",
-   "fetched_at": "2026-10-30T23:52:30+08:00"
+   "fetched_at": "2026-11-02T06:18:37+08:00"
   },
   {
    "id": "klines",
@@ -157,7 +157,7 @@
    "rows": 84,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-10-30T23:52:30+08:00"
+   "fetched_at": "2026-11-02T06:18:37+08:00"
   }
  ]
 }
