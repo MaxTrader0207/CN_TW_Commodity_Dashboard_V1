@@ -1,26 +1,26 @@
 {
- "updated": "2026-11-02T06:17+08:00",
+ "updated": "2026-11-02T17:10+08:00",
  "since": "2026-10-28",
- "index_last": "2026-10-30",
+ "index_last": "2026-11-02",
  "summary": {
   "day": {
    "next": {
-    "n": 2,
-    "bull_avg": -1.137,
-    "bull_win": 0.167,
-    "bear_avg": 0.272,
-    "bear_win": 0.5,
-    "spread_avg": -1.409,
-    "spread_win": 0.0
+    "n": 3,
+    "bull_avg": 0.021,
+    "bull_win": 0.444,
+    "bear_avg": 0.699,
+    "bear_win": 0.444,
+    "spread_avg": -0.679,
+    "spread_win": 0.333
    },
    "same": {
-    "n": 3,
-    "bull_avg": -0.401,
-    "bull_win": 0.444,
-    "bear_avg": -0.662,
-    "bear_win": 0.778,
-    "spread_avg": 0.262,
-    "spread_win": 0.667
+    "n": 4,
+    "bull_avg": -0.112,
+    "bull_win": 0.545,
+    "bear_avg": -0.346,
+    "bear_win": 0.667,
+    "spread_avg": 0.343,
+    "spread_win": 0.75
    }
   },
   "night": {
@@ -45,18 +45,52 @@
   },
   "all": {
    "next": {
-    "n": 2,
-    "bull_avg": -1.137,
-    "bull_win": 0.167,
-    "bear_avg": 0.272,
-    "bear_win": 0.5,
-    "spread_avg": -1.409,
-    "spread_win": 0.0
+    "n": 3,
+    "bull_avg": 0.021,
+    "bull_win": 0.444,
+    "bear_avg": 0.699,
+    "bear_win": 0.444,
+    "spread_avg": -0.679,
+    "spread_win": 0.333
    }
   },
   "excluded": 2
  },
  "rows": [
+  {
+   "key": "2026-11-02_day",
+   "run_at": "2026-11-02T17:10+08:00",
+   "session": "day",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "塑膠",
+    "橡膠"
+   ],
+   "bear": [
+    "鋼鐵",
+    "航運",
+    "水泥"
+   ],
+   "same_date": "2026-11-02",
+   "next_date": null,
+   "same": {
+    "bull": [
+     2.134,
+     0.244
+    ],
+    "bear": [
+     1.013,
+     0.998,
+     -0.202
+    ],
+    "bull_avg": 1.1888520819338062,
+    "bear_avg": 0.6029290414034397,
+    "spread": 0.5859230405303665
+   },
+   "next": null
+  },
   {
    "key": "2026-10-30_night",
    "run_at": "2026-10-30T09:47+08:00",
@@ -111,7 +145,7 @@
     "水泥"
    ],
    "same_date": "2026-10-30",
-   "next_date": null,
+   "next_date": "2026-11-02",
    "same": {
     "bull": [
      -1.7,
@@ -127,7 +161,21 @@
     "bear_avg": 0.061597981249271516,
     "spread": -0.40776359588396743
    },
-   "next": null
+   "next": {
+    "bull": [
+     2.134,
+     4.495,
+     0.381
+    ],
+    "bear": [
+     1.013,
+     3.85,
+     -0.202
+    ],
+    "bull_avg": 2.3365530477633496,
+    "bear_avg": 1.5537565978845824,
+    "spread": 0.7827964498787672
+   }
   },
   {
    "key": "2026-10-29_night",
