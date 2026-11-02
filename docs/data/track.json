@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02T17:10+08:00",
+ "updated": "2026-11-03T03:25+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-02",
  "summary": {
@@ -54,9 +54,31 @@
     "spread_win": 0.333
    }
   },
-  "excluded": 2
+  "excluded": 3
  },
  "rows": [
+  {
+   "key": "2026-11-03_day",
+   "run_at": "2026-11-03T03:25+08:00",
+   "session": "day",
+   "valid": false,
+   "invalid_reason": "03:25 產生，陸期日盤尚未收盤",
+   "weights": "實測",
+   "bull": [
+    "電器電纜",
+    "鋼鐵",
+    "化學工業"
+   ],
+   "bear": [
+    "油電燃氣",
+    "塑膠",
+    "航運"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-02_day",
    "run_at": "2026-11-02T17:10+08:00",
