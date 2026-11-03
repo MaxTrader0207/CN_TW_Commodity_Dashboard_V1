@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T00:58+08:00",
+ "updated": "2026-11-04T06:17+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-03",
  "summary": {
@@ -57,6 +57,28 @@
   "excluded": 3
  },
  "rows": [
+  {
+   "key": "2026-11-04_night",
+   "run_at": "2026-11-04T06:17+08:00",
+   "session": "night",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "化學工業",
+    "食品",
+    "造紙"
+   ],
+   "bear": [
+    "航運",
+    "電器電纜",
+    "油電燃氣"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-04_day",
    "run_at": "2026-11-04T00:58+08:00",
