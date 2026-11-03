@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T17:10+08:00",
+ "updated": "2026-11-04T00:58+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-03",
  "summary": {
@@ -54,9 +54,30 @@
     "spread_win": 0.4
    }
   },
-  "excluded": 2
+  "excluded": 3
  },
  "rows": [
+  {
+   "key": "2026-11-04_day",
+   "run_at": "2026-11-04T00:58+08:00",
+   "session": "day",
+   "valid": false,
+   "invalid_reason": "00:58 產生，陸期日盤尚未收盤",
+   "weights": "實測",
+   "bull": [
+    "化學工業",
+    "造紙"
+   ],
+   "bear": [
+    "油電燃氣",
+    "航運",
+    "電器電纜"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-03_night",
    "run_at": "2026-11-03T06:17+08:00",

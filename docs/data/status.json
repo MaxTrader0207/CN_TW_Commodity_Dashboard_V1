@@ -1,9 +1,9 @@
 {
- "run_at": "2026-11-03T17:10:17+08:00",
+ "run_at": "2026-11-04T00:58:47+08:00",
  "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41608799591",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/41679616583",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-03T17:10:19+08:00"
+   "fetched_at": "2026-11-04T00:58:49+08:00"
   },
   {
    "id": "limits",
@@ -24,8 +24,8 @@
    "status": "ok",
    "rows": 36,
    "data_date": null,
-   "note": "上期所 ok 20 個商品（2026-11-03）；能源中心 ok 4 個商品（2026-11-03）；鄭商所 ok 16 個商品（2026-11-03）",
-   "fetched_at": "2026-11-03T17:10:24+08:00"
+   "note": "上期所 ok 20 個商品（2026-11-04）；能源中心 ok 4 個商品（2026-11-04）；鄭商所 ok 16 個商品（2026-11-03）",
+   "fetched_at": "2026-11-04T00:58:54+08:00"
   },
   {
    "id": "sina_kline",
@@ -36,7 +36,7 @@
    "rows": 57,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-03T17:10:51+08:00"
+   "fetched_at": "2026-11-04T00:59:18+08:00"
   },
   {
    "id": "sina",
@@ -45,9 +45,9 @@
    "used_for": "商品漲跌 → 類股多空分數",
    "status": "ok",
    "rows": 57,
-   "data_date": "2026-11-03",
+   "data_date": "2026-11-04",
    "note": "",
-   "fetched_at": "2026-11-03T17:10:52+08:00"
+   "fetched_at": "2026-11-04T00:59:19+08:00"
   },
   {
    "id": "twse_info",
@@ -58,7 +58,7 @@
    "rows": 1089,
    "data_date": "2026-11-02",
    "note": "",
-   "fetched_at": "2026-11-03T17:10:53+08:00"
+   "fetched_at": "2026-11-04T00:59:20+08:00"
   },
   {
    "id": "isin_otc",
@@ -69,7 +69,7 @@
    "rows": 897,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-03T17:11:38+08:00"
+   "fetched_at": "2026-11-04T00:59:23+08:00"
   },
   {
    "id": "twse_quotes",
@@ -80,7 +80,7 @@
    "rows": 1372,
    "data_date": "2026-11-03",
    "note": "採用官網（另：OpenAPI 2026-11-02）",
-   "fetched_at": "2026-11-03T17:11:40+08:00"
+   "fetched_at": "2026-11-04T00:59:25+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -91,7 +91,7 @@
    "rows": 6240,
    "data_date": "2026-11-03",
    "note": "",
-   "fetched_at": "2026-11-03T17:13:27+08:00"
+   "fetched_at": "2026-11-04T00:59:35+08:00"
   },
   {
    "id": "yahoo_intl",
@@ -102,7 +102,7 @@
    "rows": 14,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-03T17:13:31+08:00"
+   "fetched_at": "2026-11-04T00:59:38+08:00"
   },
   {
    "id": "insti",
@@ -110,21 +110,21 @@
    "url": "https://www.twse.com.tw/rwd/zh/fund/T86?date=YYYYMMDD&selectType=ALLBUT0999&response=json",
    "used_for": "個股籌碼：外資、投信、自營",
    "status": "ok",
-   "rows": 7454,
+   "rows": 7457,
    "data_date": "2026-11-03",
    "note": "",
-   "fetched_at": "2026-11-03T17:13:35+08:00"
+   "fetched_at": "2026-11-04T00:59:41+08:00"
   },
   {
    "id": "margin",
    "name": "融資融券（證交所＋櫃買）",
    "url": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=YYYYMMDD&selectType=ALL&response=json",
    "used_for": "個股融資、融券增減",
-   "status": "warn",
-   "rows": 0,
+   "status": "ok",
+   "rows": 2225,
    "data_date": "2026-11-03",
-   "note": "上市 0／上櫃 0 筆",
-   "fetched_at": "2026-11-03T17:13:35+08:00"
+   "note": "",
+   "fetched_at": "2026-11-04T00:59:41+08:00"
   },
   {
    "id": "volhist",
@@ -135,7 +135,7 @@
    "rows": 8,
    "data_date": "2026-11-03",
    "note": "",
-   "fetched_at": "2026-11-03T17:13:35+08:00"
+   "fetched_at": "2026-11-04T00:59:41+08:00"
   },
   {
    "id": "twse_index",
@@ -146,7 +146,7 @@
    "rows": null,
    "data_date": "2026-11-03",
    "note": "",
-   "fetched_at": "2026-11-03T17:13:37+08:00"
+   "fetched_at": "2026-11-04T00:59:43+08:00"
   },
   {
    "id": "klines",
@@ -157,7 +157,7 @@
    "rows": 84,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-03T17:13:37+08:00"
+   "fetched_at": "2026-11-04T00:59:43+08:00"
   }
  ]
 }
