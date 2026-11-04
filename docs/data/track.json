@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-05T01:08+08:00",
+ "updated": "2026-11-05T06:17+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-04",
  "summary": {
@@ -57,6 +57,28 @@
   "excluded": 3
  },
  "rows": [
+  {
+   "key": "2026-11-05_night",
+   "run_at": "2026-11-05T06:17+08:00",
+   "session": "night",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "鋼鐵",
+    "食品",
+    "水泥"
+   ],
+   "bear": [
+    "油電燃氣",
+    "航運",
+    "塑膠"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-05_day",
    "run_at": "2026-11-05T01:08+08:00",
