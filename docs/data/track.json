@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T01:20+08:00",
+ "updated": "2026-11-06T06:17+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-05",
  "summary": {
@@ -57,6 +57,28 @@
   "excluded": 3
  },
  "rows": [
+  {
+   "key": "2026-11-06_night",
+   "run_at": "2026-11-06T06:17+08:00",
+   "session": "night",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "鋼鐵",
+    "造紙",
+    "水泥"
+   ],
+   "bear": [
+    "塑膠",
+    "電器電纜",
+    "橡膠"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-06_day",
    "run_at": "2026-11-06T01:20+08:00",
