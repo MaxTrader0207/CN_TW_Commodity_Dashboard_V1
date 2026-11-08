@@ -1,9 +1,9 @@
 {
- "run_at": "2026-11-07T00:43:05+08:00",
- "session": "day",
+ "run_at": "2026-11-09T06:17:33+08:00",
+ "session": "night",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/42254946376",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/42529482549",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 24,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-07T00:43:06+08:00"
+   "fetched_at": "2026-11-09T06:17:35+08:00"
   },
   {
    "id": "limits",
@@ -24,8 +24,8 @@
    "status": "ok",
    "rows": 36,
    "data_date": null,
-   "note": "上期所 ok 20 個商品（2026-11-06）；能源中心 ok 4 個商品（2026-11-06）；鄭商所 ok 16 個商品（2026-11-06）",
-   "fetched_at": "2026-11-07T00:43:13+08:00"
+   "note": "上期所 ok 20 個商品（2026-11-09）；能源中心 ok 4 個商品（2026-11-09）；鄭商所 ok 16 個商品（2026-11-06）",
+   "fetched_at": "2026-11-09T06:17:41+08:00"
   },
   {
    "id": "sina_kline",
@@ -36,7 +36,7 @@
    "rows": 57,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-07T00:43:42+08:00"
+   "fetched_at": "2026-11-09T06:18:12+08:00"
   },
   {
    "id": "sina",
@@ -47,7 +47,7 @@
    "rows": 57,
    "data_date": "2026-11-07",
    "note": "",
-   "fetched_at": "2026-11-07T00:43:44+08:00"
+   "fetched_at": "2026-11-09T06:18:13+08:00"
   },
   {
    "id": "twse_info",
@@ -56,31 +56,20 @@
    "used_for": "上市個股 → 類股",
    "status": "ok",
    "rows": 1089,
-   "data_date": "2026-11-05",
+   "data_date": "2026-11-08",
    "note": "",
-   "fetched_at": "2026-11-07T00:43:44+08:00"
+   "fetched_at": "2026-11-09T06:18:14+08:00"
   },
   {
    "id": "isin_otc",
    "name": "證交所 ISIN 上櫃產業別",
    "url": "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4",
    "used_for": "上櫃個股 → 類股",
-   "status": "fail",
-   "rows": null,
-   "data_date": null,
-   "note": "頁面解析不到任何上櫃股票；上次成功 2026-11-06（1 天前）",
-   "fetched_at": "2026-11-07T00:43:45+08:00"
-  },
-  {
-   "id": "industry_cache",
-   "name": "產業別快取（補位）",
-   "url": "pipeline/industry_cache.json",
-   "used_for": "即時來源失敗的部分改用上次成功資料",
-   "status": "warn",
+   "status": "ok",
    "rows": 897,
    "data_date": null,
-   "note": "897 檔沿用快取",
-   "fetched_at": "2026-11-07T00:43:45+08:00"
+   "note": "",
+   "fetched_at": "2026-11-09T06:18:17+08:00"
   },
   {
    "id": "twse_quotes",
@@ -90,8 +79,8 @@
    "status": "ok",
    "rows": 1378,
    "data_date": "2026-11-06",
-   "note": "採用官網（另：OpenAPI 2026-11-05）",
-   "fetched_at": "2026-11-07T00:43:48+08:00"
+   "note": "採用官網（另：OpenAPI 2026-11-06）",
+   "fetched_at": "2026-11-09T06:18:19+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -102,18 +91,18 @@
    "rows": 5249,
    "data_date": "2026-11-06",
    "note": "",
-   "fetched_at": "2026-11-07T00:43:51+08:00"
+   "fetched_at": "2026-11-09T06:18:30+08:00"
   },
   {
    "id": "yahoo_intl",
-   "name": "Yahoo 國際期貨（交叉確認）",
+   "name": "Yahoo 國際期貨（盤前計分＋交叉確認）",
    "url": "https://query1.finance.yahoo.com/v8/finance/chart/XX=F?range=6mo&interval=1d",
-   "used_for": "國際價格 vs 陸期方向",
+   "used_for": "隔夜美盤 → 台股",
    "status": "ok",
    "rows": 14,
    "data_date": null,
-   "note": "",
-   "fetched_at": "2026-11-07T00:43:54+08:00"
+   "note": "｜6 項計入盤前分數",
+   "fetched_at": "2026-11-09T06:18:34+08:00"
   },
   {
    "id": "insti",
@@ -124,7 +113,7 @@
    "rows": 6416,
    "data_date": "2026-11-06",
    "note": "",
-   "fetched_at": "2026-11-07T00:44:08+08:00"
+   "fetched_at": "2026-11-09T06:18:37+08:00"
   },
   {
    "id": "margin",
@@ -135,7 +124,7 @@
    "rows": 2225,
    "data_date": "2026-11-06",
    "note": "",
-   "fetched_at": "2026-11-07T00:44:09+08:00"
+   "fetched_at": "2026-11-09T06:18:38+08:00"
   },
   {
    "id": "volhist",
@@ -146,7 +135,7 @@
    "rows": 10,
    "data_date": "2026-11-06",
    "note": "",
-   "fetched_at": "2026-11-07T00:44:09+08:00"
+   "fetched_at": "2026-11-09T06:18:38+08:00"
   },
   {
    "id": "twse_index",
@@ -157,7 +146,7 @@
    "rows": null,
    "data_date": "2026-11-06",
    "note": "",
-   "fetched_at": "2026-11-07T00:44:09+08:00"
+   "fetched_at": "2026-11-09T06:18:40+08:00"
   },
   {
    "id": "klines",
@@ -168,7 +157,7 @@
    "rows": 84,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-07T00:44:09+08:00"
+   "fetched_at": "2026-11-09T06:18:40+08:00"
   }
  ]
 }
