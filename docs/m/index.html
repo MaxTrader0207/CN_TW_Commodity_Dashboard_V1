@@ -9,6 +9,11 @@
 <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="陸期多空">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-180.png">
+<link rel="icon" type="image/png" href="../icons/icon-192.png">
 <title>陸期×台股 產業多空儀表板</title>
 <script src="../theme.js"></script>
 <style>
@@ -264,6 +269,11 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
   </section>
 
   <section class="view" id="v-more" aria-label="更多">
+    <h2>加到主畫面</h2>
+    <div class="card">
+      <button class="btn hidden" id="install" type="button">安裝到主畫面</button>
+      <p class="note" id="install-note">iPhone：用 Safari 打開本頁 → 分享 → 「加入主畫面」。Android：Chrome 選單 →「安裝應用程式」或「加到主畫面」。安裝後像 App 一樣全螢幕開啟，沒網路時也能看上一次的資料。</p>
+    </div>
     <h2>顯示</h2>
     <div class="seg full" id="theme-seg">
       <button data-t="" type="button">自動</button>

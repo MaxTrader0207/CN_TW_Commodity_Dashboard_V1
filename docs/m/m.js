@@ -598,3 +598,24 @@ window.addEventListener('popstate', e => {
   const hc = decodeURIComponent(location.hash.slice(1));
   if (hc && BOARD[hc]) { try { history.replaceState(null, '', location.pathname); } catch (e) {} openDetail(hc); }
 })();
+
+// ── PWA：離線快取、安裝到主畫面 ──
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#install').classList.remove('hidden'); });
+$('#install').onclick = async () => {
+  if (!installEvt) return;
+  installEvt.prompt();
+  try { await installEvt.userChoice; } catch (e) {}
+  installEvt = null; $('#install').classList.add('hidden');
+};
+if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('#install-note').textContent = '已經從主畫面開啟。';
+function offlineNote() {
+  const id = 'offline-note', old = document.getElementById(id);
+  if (navigator.onLine) { old?.remove(); return; }
+  if (old) return;
+  const b = el('div', 'banner warn'); b.id = id;
+  b.append(el('b', null, '⚠ '), document.createTextNode('目前離線，顯示的是上一次載入的資料。'));
+  $('#notes')?.prepend(b);
+}
+addEventListener('online', offlineNote); addEventListener('offline', offlineNote); setTimeout(offlineNote, 1500);

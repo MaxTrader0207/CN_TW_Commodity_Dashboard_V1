@@ -184,6 +184,39 @@ def annotate_quality(rows, series_of, excess, tw_dates):
         r["decay"] = bool((rho > 0) != (full > 0) or abs(t) < 1)
 
 
+ROBUST_FRACS = (0.5, 0.6, 0.7)   # 採用新計分方式前，用 3 個不同的訓練／測試切點檢查，全部通過才採用
+
+
+def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, cn_shift):
+    """不同訓練期長度下，各計分方式在測試期的 t 值。
+    同一份資料只換切點，隔日 t 值就可能從 1 跳到 2.8（哪些關聯在訓練期剛好顯著會改變），
+    所以「回測過關才採用」要在每個切點都過關，避免每週校準結果來回切換。"""
+    intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
+    pre_series = {**cn_shift, **intl_series}
+    out = {}
+    for frac in ROBUST_FRACS:
+        sp = tw_dates[int(len(tw_dates) * frac)]
+        ex = H.excess_returns(idx_ret, H.estimate_betas(idx_ret, d_end=sp))
+        sp_items, _ = spread_items(spr_ret, d_end=sp)
+        items = commodity_items() + sp_items
+        pr, dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
+        conf = F.sector_confidence({"pairs": pr, "discovered": dc})
+        t = lambda r: {"lag0": r["lag0"]["spread_t"] or 0, "lag1": r["lag1"]["spread_t"] or 0,  # noqa: E731
+                       "dir0": r["lag0"]["dir_t"] or 0}
+        row = {"split": sp, "base": t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig))}
+        for v in F.FACTOR_VARIANTS:
+            row["factor_" + v] = t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig,
+                                            factor=F.sector_factor(conf, v)))
+        _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
+        row["pre_intl"] = t(backtest(intl_items, intl_series, ex, tw_dates, il, sp, tw_dates[-1], zpre))
+        row["pre_combo"] = t(backtest(intl_items + items, pre_series, ex, tw_dates, {**lv, **il}, sp, tw_dates[-1], zpre))
+        out[str(frac)] = row
+        print(f"  穩健性 切點 {sp}：基準 隔日 t {row['base']['lag1']}｜" +
+              "｜".join(f"{v} {row['factor_' + v]['lag1']}" for v in F.FACTOR_VARIANTS) +
+              f"｜盤前 國際 {row['pre_intl']['lag0']} vs 合併 {row['pre_combo']['lag0']}")
+    return out
+
+
 def commodity_items():
     """(交易所, 代碼, 名稱, 訊號滿格幅度, 對照, 漲跌停加成)；價差的滿格幅度由 2σ 決定，見 spread_items()"""
     return [(ex, code, name, limit, links, True) for ex, code, name, limit, links in COMMODITIES]
@@ -679,6 +712,19 @@ def main():
                       "intl_t": gi(pre["pre_intl"], "spread_t"), "combo_t": gi(pre["pre_combo"], "spread_t"),
                       "rule": "只用國際的多空價差 t 值比合併版高 0.3 以上、且方向命中 t 值不低於合併版 −0.3 才採用"}
     print(f"盤前版排名改用國際隔夜：{pm_adopt}（價差 t {premarket_mode['intl_t']} vs {premarket_mode['combo_t']}）")
+    # 穩健性：3 個切點都通過才採用（盤前排名、可信度調整）
+    robust = robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, cn_shift)
+    pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
+                 for r_ in robust.values())
+    premarket_mode.update(adopt=pm_all, mode="intl" if pm_all else "combo", single_split=pm_adopt,
+                          rule=premarket_mode["rule"] + "；並且在 3 個不同訓練期切點都要通過")
+    ok_v = [v for v in F.FACTOR_VARIANTS
+            if all(r_["factor_" + v]["lag1"] > r_["base"]["lag1"] + 0.3 and r_["factor_" + v]["lag0"] >= r_["base"]["lag0"] - 0.3
+                   for r_ in robust.values())]
+    sector_factor.update(adopt=bool(ok_v), single_split=sector_factor["variant"],
+                         variant=max(ok_v, key=lambda v: min(r_["factor_" + v]["lag1"] for r_ in robust.values())) if ok_v else None,
+                         rule=sector_factor["rule"] + "；並且在 3 個不同訓練期切點都要通過")
+    print(f"穩健性檢查後：盤前改用國際 {pm_all}；可信度調整 {sector_factor['adopt']} {sector_factor['variant'] or ''}")
     for k, v in pre.items():
         x = v['lag0']
         print(f"盤前回測 {k}：方向命中 {x['dir_avg']}（勝率 {x['dir_win']}, t={x['dir_t']}, n={x['dir_n']}）｜"
@@ -739,6 +785,7 @@ def main():
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "sector_factor": sector_factor,
         "premarket_mode": premarket_mode,
+        "robust": robust,
         "quality": {"fdr_q": FDR_Q, "decay_days": DECAY_DAYS},
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         "kline": kline_info,

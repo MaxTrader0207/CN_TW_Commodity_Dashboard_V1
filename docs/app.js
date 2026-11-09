@@ -530,6 +530,9 @@ function renderCalibration(c) {
     `${mo.adopt ? '組合版通過門檻，即時分數已加入 5 日動能。' : '組合版未通過門檻（' + mo.rule + '），即時分數仍只用 1 日 z，5 日／20 日動能只顯示在商品看板。'}` : '') +
     (c.sector_factor ? `「可信度」列：依訓練期的類股信心等級調整分數後排名（比較基準為「實測＋價差・z 分數」）；` +
       (c.sector_factor.adopt ? `「${c.sector_factor.variant}」通過門檻，即時排名已採用。` : `都未通過門檻（${c.sector_factor.rule}），即時排名維持原樣；手機版「高信心族群」分頁就是「只排高信心」的排法，可自行參考。`) : '') +
+    (c.robust ? '穩健性檢查（換 3 個訓練期切點，全部通過才採用）：' + Object.values(c.robust).map(r =>
+      `${r.split.slice(2)} 起測試：原本隔日 t ${r.base.lag1}、只排高信心 ${r.factor_conf_only.lag1}；盤前 國際 ${r.pre_intl.lag0} vs 合併 ${r.pre_combo.lag0}`).join('；') +
+      `。盤前排名${c.premarket_mode?.adopt ? '已改用國際隔夜' : '維持國際＋陸期合併'}。` : '') +
     '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 
@@ -1138,3 +1141,6 @@ async function load(key) {
   const hc = decodeURIComponent(location.hash.slice(1));
   if (hc && BOARD[hc]) openDetail(hc);
 })();
+
+// PWA 離線快取（電腦版也能離線看上一次的資料）
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

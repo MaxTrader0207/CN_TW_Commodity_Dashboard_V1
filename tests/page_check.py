@@ -103,6 +103,13 @@ def main():
         page.go_back()
         page.wait_for_timeout(400)
         closed = page.evaluate("!document.querySelector('#sheet').classList.contains('on')")
+        # PWA：要註冊離線快取、manifest 讀得到
+        page.wait_for_timeout(800)
+        pwa = page.evaluate("""async () => ({ sw: !!(await navigator.serviceWorker.getRegistration('../')),
+            mf: await fetch('../manifest.webmanifest').then(r => r.json()).then(j => j.start_url).catch(() => null) })""")
+        print(f"[{LABEL}手機版 PWA] {pwa}")
+        if not pwa["sw"] or not pwa["mf"]:
+            problems.append(f"手機版：PWA 設定有問題 {pwa}")
         # 高信心族群：有預測卡資料時要畫出來，「高信心族群」分頁要有內容
         page.click('#nav button[data-v="home"]')
         fc = page.evaluate("""() => ({cards: (D.focus?.cards || []).length, shown: document.querySelectorAll('#pred .pred').length,
