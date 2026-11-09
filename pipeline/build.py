@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mapping import BENEFICIARIES, COMMODITIES, INDUSTRY_CODE, INTL, SPREADS  # noqa: E402
+import focus  # noqa: E402
 import history  # noqa: E402
 import track  # noqa: E402
 
@@ -842,6 +843,33 @@ def score_sectors(board, industry, stocks):
     return out, bull, bear
 
 
+def next_tw_day(d, include_today):
+    """include_today=True：d 本身是交易日就回傳 d；否則找 d 之後第一個台股交易日"""
+    x = d if include_today else d + timedelta(days=1)
+    for _ in range(15):
+        if history.is_tw_trading_day(x, HOLIDAYS):
+            return x.isoformat()
+        x += timedelta(days=1)
+    return None
+
+
+def build_focus(cal, board, sectors, session, now, stocks, industry):
+    """高信心族群（有實測支持的類股）、各類股最敏感個股、隔日預測卡"""
+    conf = focus.sector_confidence(cal) if cal else {}
+    for s in sectors:
+        c = conf.get(s["name"])
+        s["confidence"] = ({"level": c["level"], "label": c["label"], "best_t0": c["best_t0"], "best_t1": c["best_t1"],
+                            "links": c["links"][:6]} if c else None)
+        s["sensitive"] = focus.sensitive_stocks(cal, s["name"], stocks, industry) if cal else []
+    names = [s["name"] for s in sorted(sectors, key=lambda s: -abs(s["score"])) if s["confidence"]]
+    # 盤前版：預測台股今天；日盤收盤版：預測下一個台股交易日
+    target = next_tw_day(now.date(), include_today=(session == "night"))
+    cards = focus.predict_cards(cal or {}, KLINE_DUMP, board, session, now.strftime("%Y-%m-%d"), target, stocks)
+    return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN,
+            "levels": {"A": "同日＋隔日都有實測支持（有預測力）", "B": "只有同日關係（同步反映，預測力弱）"}}
+
+
+
 # ───────────────────────── 輸出 ─────────────────────────
 SCORE_HIST = DATA_DIR / "score_history.json"
 
@@ -976,10 +1004,13 @@ def run(now):
         board = board + intl_board(src.s, board, cal, premarket=premarket)
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
+    focus_out = build_focus(cal, board, sectors, session, now, stocks, industry)
     chips = {}
     if not a.fixtures and tw_date:
         shown = {x["code"] for sc in sectors for x in sc["strong"] + sc["weak"]}
         shown |= {x["code"] for c in board for x in c.get("stocks", [])}
+        shown |= {x["code"] for sc in sectors for x in sc.get("sensitive", [])}
+        shown |= {x["code"] for cd in focus_out["cards"] for x in cd["stocks"]}
         chips = build_chips(src, stocks, industry, tw_date, sorted(shown))
         print(f"籌碼：{len(chips)} 檔（法人 {sum(1 for v in chips.values() if v['inst'] is not None)}、"
               f"量比 {sum(1 for v in chips.values() if v['vr'] is not None)}、融資券 {sum(1 for v in chips.values() if v['mg'] is not None)}）")
@@ -1004,6 +1035,7 @@ def run(now):
         "sources": SOURCES,
         "run_url": os.environ.get("RUN_URL"),
         "commodities": board, "sectors": sectors, "bull": bull, "bear": bear, "chips": chips,
+        "focus": focus_out,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號

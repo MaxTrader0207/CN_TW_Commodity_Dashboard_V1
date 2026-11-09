@@ -89,14 +89,29 @@ h2:first-child{margin-top:4px}
 .seg::-webkit-scrollbar{display:none}
 .seg button{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:13.5px;min-height:38px;cursor:pointer;white-space:nowrap}
 .seg button.on{border-color:var(--accent);color:var(--accent);font-weight:700}
-.seg.full button{flex:1}
+.seg.full button{flex:1;padding:7px 8px}
+
+
+/* 高信心／隔日預測 */
+.badge.conf{font-weight:600}.badge.cA{color:var(--lag)}.badge.cB{color:var(--accent)}.badge.c0{color:var(--muted);border-style:dashed}
+.sc-h .nm{min-width:0}
+.pred{border:1px solid var(--lag)}
+.pred .ph{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pred .ph b{font-size:16px}
+.pred .dir{margin-left:auto;font-size:18px;font-weight:800}
+.pred .it{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.pred .it:last-of-type{border-bottom:0}
+.pred .it .k{color:var(--muted);font-size:12px;grid-column:1/-1;line-height:1.5}
+.pchips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}.pchip{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:4px 8px;font-size:13px}.pchip.obs{opacity:.75;border-style:dashed}
+.f-note{color:var(--muted);font-size:12px;line-height:1.55;margin:6px 2px 0}
+.links-line{color:var(--muted);font-size:12.5px;margin:-4px 0 8px;line-height:1.5}
 
 /* 類股卡片 */
 .sc-h{display:flex;align-items:center;gap:8px}
 .sc-h .rk{font-family:var(--mono);color:var(--muted);font-size:12px}
 .sc-h .nm{font-size:18px;font-weight:700}
 .sc-h .scr{margin-left:auto;font-family:var(--mono);font-size:20px;font-weight:700}
-.badge{font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid currentColor;color:var(--accent)}
+.badge{font-size:11px;white-space:nowrap;padding:1px 7px;border-radius:6px;border:1px solid currentColor;color:var(--accent)}
 .sub{color:var(--muted);font-size:12.5px;margin:2px 0 8px}
 .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:2px 12px 4px}
 .chips::-webkit-scrollbar{display:none}
@@ -199,9 +214,11 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
       <summary><span><b style="color:var(--warn)">⚠ 免責聲明</b>　量化研究參考，非投資建議</span></summary>
       <p>本頁為<em>量化研究參考，不構成任何投資建議</em>。訊號由公開行情（新浪財經、Yahoo、證交所、櫃買中心）自動計算，可能有延遲、錯誤或中斷，<em>不保證正確性與即時性</em>；歷史回測與相關性不代表未來表現。投資請自行判斷，並自負盈虧與風險。</p>
     </details>
+    <div id="pred"></div>
     <div class="seg full" id="side-seg">
-      <button class="on" data-side="bull" type="button">多頭助攻 前3</button>
-      <button data-side="bear" type="button">空頭壓力 前3</button>
+      <button class="on" data-side="bull" type="button">多頭 前3</button>
+      <button data-side="bear" type="button">空頭 前3</button>
+      <button data-side="focus" type="button">高信心族群</button>
     </div>
     <div id="sectors"></div>
     <h2>全部類股分數</h2>

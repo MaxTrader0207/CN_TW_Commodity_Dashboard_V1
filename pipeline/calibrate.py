@@ -23,6 +23,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import focus as F  # noqa: E402
 import history as H  # noqa: E402
 from build import LIMIT_BONUS, TPE, UA, norm  # noqa: E402
 from mapping import BENEFICIARIES, COMMODITIES, INTL, SPREADS  # noqa: E402
@@ -624,6 +625,11 @@ def main():
     ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
+    # 高信心族群：隔日關係（陸期 D 日 → 台股下一交易日）的歷史命中率，給「隔日預測卡」使用
+    focus_pred = F.predictive_stats(pairs + discovered, stocks, cmd_ret,
+                                    {c: H.rolling_sigma(v) for c, v in cmd_ret.items()}, excess, closes_cache, split)
+    for r_ in focus_pred:
+        print(f"  [隔日預測] {r_['name']}→{r_['sector']} t1={r_['t1']} 命中 {r_['all']} 樣本外 {r_['test']}")
     eff = {(c, sct): (r, t, st) for c, sct, r, t, st in roll_effect}
     changed = [(p["name"], p["sector"], eff[(p["code"], p["sector"])], (p["rho0"], p["t0"], p["status"]))
                for p in pairs if (p["code"], p["sector"]) in eff and eff[(p["code"], p["sector"])][2] != p["status"]]
@@ -652,6 +658,7 @@ def main():
         "momentum": {"adopt": mom_adopt, "combo_w": H.MOM_COMBO_W,
                      "rule": "組合版隔日價差 t 值比 1 日版高 0.3 以上、且同日 t 值不低於 1 日版 −0.3 才採用"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
+        "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         "kline": kline_info,
         "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},
         "roll_changed": [{"name": nm, "sector": sct, "before": list(a), "after": list(b)} for nm, sct, a, b in changed],

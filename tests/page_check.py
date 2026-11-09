@@ -103,6 +103,17 @@ def main():
         page.go_back()
         page.wait_for_timeout(400)
         closed = page.evaluate("!document.querySelector('#sheet').classList.contains('on')")
+        # 高信心族群：有預測卡資料時要畫出來，「高信心族群」分頁要有內容
+        page.click('#nav button[data-v="home"]')
+        fc = page.evaluate("""() => ({cards: (D.focus?.cards || []).length, shown: document.querySelectorAll('#pred .pred').length,
+            secs: (D.focus?.sectors || []).length})""")
+        page.click('#side-seg button[data-side="focus"]')
+        page.wait_for_timeout(200)
+        fc["focus_cards"] = page.evaluate("document.querySelectorAll('#sectors .card:not(.empty)').length")
+        page.click('#side-seg button[data-side="bull"]')
+        print(f"[{LABEL}手機版 高信心] {fc}")
+        if fc["cards"] != fc["shown"] or (fc["secs"] and fc["focus_cards"] != fc["secs"]):
+            problems.append(f"手機版：高信心族群／隔日預測卡沒有正確顯示 {fc}")
         # 文字不可被「…」截斷（標題列除外）：展開所有區塊、逐一打開每個項目的詳細頁檢查
         page.click('#nav button[data-v="home"]')
         page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")

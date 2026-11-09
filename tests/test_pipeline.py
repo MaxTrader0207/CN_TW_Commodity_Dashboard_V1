@@ -228,3 +228,45 @@ def test_watchdog_holiday_skipped():
     fri = datetime(2026, 10, 30, 17, 15, tzinfo=TPE)
     assert not W.check(fri, datetime(2026, 11, 4, 6, 0, tzinfo=TPE), hol)[0]   # 連假中沒有應跑的排程
     assert W.check(fri, datetime(2026, 11, 4, 9, 0, tzinfo=TPE), hol)[0]       # 連假後第一天盤前版沒跑
+
+
+# ───────── 高信心族群／隔日預測 ─────────
+def _cal_focus():
+    return {"pairs": [
+        {"ex": "上期所", "code": "CU", "name": "銅", "sector": "電器電纜", "t0": 6.3, "t1": 4.8, "stable1": True, "status": "有效"},
+        {"ex": "上期所", "code": "RB", "name": "螺紋鋼", "sector": "鋼鐵", "t0": 3.9, "t1": 1.0, "stable1": True, "status": "有效"},
+        {"ex": "大商所", "code": "M", "name": "豆粕", "sector": "食品", "t0": 1.2, "t1": 0.3, "stable1": False, "status": "不顯著"},
+        {"ex": "上期所", "code": "X", "name": "反轉", "sector": "鋼鐵", "t0": 3.0, "t1": -3.0, "stable1": True, "status": "有效"}],
+        "discovered": [{"ex": "上期所", "code": "SN", "name": "錫", "sector": "電器電纜", "t0": 6.6, "t1": 3.6, "stable1": True, "status": "數據新增"}]}
+
+
+def test_sector_confidence_levels():
+    import focus as F
+    conf = F.sector_confidence(_cal_focus())
+    assert conf["電器電纜"]["level"] == "A" and conf["鋼鐵"]["level"] == "B" and "食品" not in conf
+    assert not any(x["predictive"] for x in conf["鋼鐵"]["links"]), "隔日方向與同日相反的不算預測力"
+
+
+def test_hit_stats_counts_only_clear_signals():
+    import focus as F
+    ds = [(date(2026, 1, 5) + timedelta(days=i)).isoformat() for i in range(6)]
+    ret = {ds[0]: 2.0, ds[1]: -2.0, ds[2]: 0.1, ds[3]: 2.0}
+    sig = {d: 1.0 for d in ds}
+    target = {ds[1]: 1.0, ds[2]: 1.0, ds[3]: -1.0, ds[4]: -1.0}   # 下一交易日
+    st = F.hit_stats(ret, sig, target, ds, 1)
+    assert st["n"] == 3 and st["hit"] == pytest.approx(1 / 3, abs=0.001)   # ds[2] 的 |z|<0.5 不計
+
+
+def test_predict_cards_direction_uses_valid_links_only():
+    import focus as F
+    cal = {"focus": {"predictive": [
+        {"code": "CU", "name": "銅", "sector": "電器電纜", "t1": 4.8, "status": "有效", "sign": 1,
+         "all": {"n": 100, "hit": 0.55, "avg": 0.3}, "test": {"n": 40, "hit": 0.56, "avg": 0.2}, "stocks": []},
+        {"code": "SN", "name": "錫", "sector": "電器電纜", "t1": 3.6, "status": "數據新增", "sign": 1,
+         "all": {"n": 100, "hit": 0.52, "avg": 0.2}, "test": {"n": 40, "hit": 0.5, "avg": 0.1}, "stocks": []}]}}
+    kl = {"CU": [["2026-11-05", 1, 0.2, 0.3], ["2026-11-06", 1, -1.9, -3.2], ["2026-11-09", 1, 0.5, 0.8]],
+          "SN": [["2026-11-06", 1, 2.0, 1.5]]}
+    night = F.predict_cards(cal, kl, [], "night", "2026-11-09", "2026-11-09", {})
+    assert night[0]["signal_date"] == "2026-11-06" and night[0]["direction"] == -1, "盤前版用前一個陸期交易日；錫只觀察"
+    day = F.predict_cards(cal, kl, [], "day", "2026-11-09", "2026-11-10", {})
+    assert day[0]["signal_date"] == "2026-11-09" and day[0]["direction"] == 1

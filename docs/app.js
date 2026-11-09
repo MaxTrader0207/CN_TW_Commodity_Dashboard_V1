@@ -66,6 +66,7 @@ function sectorCard(s, i, side) {
   const h = el('div', 'card-h');
   h.append(el('span', 'rank', '#' + (i + 1)), el('span', 'sec', s.name));
   if (s.resonance) h.append(el('span', 'badge res', '共振'));
+  h.append(confBadge(s));
   const score = el('span', 'score ' + cls(s.score), sc(s.score)); h.append(score);
   card.append(h);
   const sub = el('div', 'sub');
@@ -114,12 +115,127 @@ function sectorCard(s, i, side) {
     card.append(box);
   }
 
+  card.append(sensitiveBox(s));
   const lists = el('div', 'lists');
   const a = el('div'); a.append(el('h4', null, '前5強'), stockTable(s.strong, ben));
   const b = el('div'); b.append(el('h4', null, '前5弱'), stockTable(s.weak, ben));
   if (side === 'bear') lists.append(b, a); else lists.append(a, b);
-  card.append(lists);
+  const det = el('details', 'day-move');
+  det.append(el('summary', null, '當日漲跌 前5強／前5弱（只是當天盤面，不代表與陸期有關）'), lists);
+  card.append(det);
   return card;
+}
+
+// ── 高信心族群／最敏感個股／隔日預測卡 ──
+const CONF_TIP = { A: '同日＋隔日都有實測支持：陸期收盤後，對台股下一交易日仍有預測力', B: '只有同日關係：陸期與台股同步反映，預測力弱' };
+function confBadge(s) {
+  const c = s.confidence;
+  const b = el('span', 'badge conf ' + (c ? 'c' + c.level : 'c0'), c ? (c.level === 'A' ? '可預測' : '同步') : '未驗證');
+  hoverTip(b, c ? `${CONF_TIP[c.level]}\n最強同日 t=${c.best_t0}${c.best_t1 ? `、隔日 t=${c.best_t1}` : ''}\n` +
+    c.links.slice(0, 4).map(x => `${x.name} 同日 t=${x.t0}${x.predictive ? `／隔日 t=${x.t1}` : ''}${x.status === '有效' ? '' : '（數據新增，未計分）'}`).join('\n')
+    : '此類股的陸期關聯在歷史資料中都不顯著，分數僅供參考');
+  return b;
+}
+function tval(t) { return t == null ? '—' : (t > 0 ? '+' : '') + t; }
+function sensitiveBox(s) {
+  const box = el('div', 'ben sens');
+  box.append(el('h4', null, '最敏感個股（依歷史實測敏感度排序）'));
+  const list = s.sensitive || [];
+  if (!list.length) { box.append(el('p', 'note', '此類股還沒有實測支持的個股，請參考下方當日漲跌排行。')); return box; }
+  const t = el('table');
+  const h = t.insertRow();
+  ['', '', '經由', '同日 t', '隔日 t', '', '最新漲跌'].forEach(x => { const c = el('th', null, x); c.className = 'th-s'; h.append(c); });
+  list.forEach(x => {
+    const tr = t.insertRow();
+    tr.insertCell().textContent = x.code;
+    const nm = tr.insertCell(); nm.className = 'nm'; nm.textContent = x.name || x.code;
+    tr.insertCell().append(el('span', 'via', BOARD[x.item]?.name || x.item));
+    const a = tr.insertCell(); a.className = 'n'; a.textContent = tval(x.t0);
+    const b = tr.insertCell(); b.className = 'n'; b.textContent = tval(x.t1);
+    const g = tr.insertCell();
+    if (x.oos_same) g.append(el('span', 'tag ok', '樣本外確認'));
+    if (x.oos_next) g.append(el('span', 'tag lag', '隔日仍成立'));
+    const p = tr.insertCell(); p.className = 'n ' + cls(x.chg_pct); p.textContent = pct(x.chg_pct);
+    hoverTip(tr, `${x.why || ''}\n同日 t=${x.t0}、隔日 t=${x.t1}（|t|≥2 才算顯著）` + chipTip(x.code));
+  });
+  box.append(t);
+  return box;
+}
+function mmdd(d) { return d ? d.slice(5).replace('-', '/') : '—'; }
+function predCard(cd, d) {
+  const box = el('div', 'card pred');
+  const h = el('div', 'card-h');
+  const dir = cd.direction;
+  h.append(el('span', 'sec', `隔日預測：${cd.sector}`), el('span', 'badge conf cA', '同日＋隔日'),
+    el('span', 'score ' + (dir > 0 ? 'up' : dir < 0 ? 'dn' : 'flat'), dir > 0 ? '偏多' : dir < 0 ? '偏空' : '訊號不明確'));
+  box.append(h);
+  const today = d.run_date === cd.target;
+  box.append(el('div', 'sub', `依陸期 ${mmdd(cd.signal_date)} 日盤收盤 → 預測台股 ${mmdd(cd.target)}${today ? '（今天）' : '（下一交易日）'}`));
+  const t = el('table', 'vt');
+  const hr = t.insertRow();
+  ['商品', '收盤漲跌', 'z', '預測', '歷史命中', '樣本外', ''].forEach(x => hr.append(el('th', null, x)));
+  cd.items.forEach(x => {
+    const tr = t.insertRow();
+    const nm = tr.insertCell(); nm.textContent = x.name;
+    if (x.status !== '有效') nm.append(el('span', 'tag new', '觀察'));
+    const a = tr.insertCell(); a.className = 'n ' + cls(x.ret); a.textContent = pct(x.ret);
+    tr.insertCell().textContent = x.z == null ? '—' : (x.z > 0 ? '+' : '') + x.z + 'σ';
+    tr.insertCell().append(x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', x.dir > 0 ? '偏多' : '偏空') : el('span', 'flat', '不明確'));
+    const hit = tr.insertCell(); hit.className = 'n'; hit.textContent = x.hit == null ? '—' : `${Math.round(x.hit * 100)}%（${x.n} 次）`;
+    const te = tr.insertCell(); te.className = 'n'; te.textContent = x.hit_test == null ? '—' : `${Math.round(x.hit_test * 100)}%`;
+    tr.insertCell().textContent = x.night != null ? `夜盤 ${pct(x.night)}` : '';
+    hoverTip(tr, `陸期 ${x.name} 收盤後，對台股${cd.sector}下一交易日超額報酬：隔日 t=${x.t1}\n` +
+      `只計 |z|≥${LATEST?.focus?.z_min ?? 0.5} 的日子；預測方向的平均超額報酬 ${x.avg > 0 ? '+' : ''}${x.avg}%` +
+      (x.status !== '有效' ? '\n「觀察」= 數據發現的關係，未計入分數與預測方向' : '') +
+      (x.night != null ? '\n夜盤是下一個陸期交易日的一部分，未經回測，只供參考' : ''));
+  });
+  box.append(t);
+  if (cd.stocks.length) {
+    box.append(el('h4', null, '對應個股（隔日關係顯著）'));
+    const st = el('table', 'vt');
+    const hr2 = st.insertRow();
+    ['', '', '經由', '隔日 t', '歷史命中', '樣本外', '最新收盤漲跌'].forEach(x => hr2.append(el('th', null, x)));
+    cd.stocks.forEach(x => {
+      const tr = st.insertRow();
+      tr.insertCell().textContent = x.code;
+      const nm = tr.insertCell(); nm.textContent = x.name || x.code;
+      if (x.next_ok) nm.append(el('span', 'tag lag', '隔日仍成立'));
+      tr.insertCell().append(el('span', 'via', x.via));
+      const a = tr.insertCell(); a.className = 'n'; a.textContent = tval(x.t1);
+      const b = tr.insertCell(); b.className = 'n'; b.textContent = x.hit == null ? '—' : `${Math.round(x.hit * 100)}%`;
+      const c = tr.insertCell(); c.className = 'n'; c.textContent = x.hit_test == null ? '—' : `${Math.round(x.hit_test * 100)}%`;
+      const p = tr.insertCell(); p.className = 'n ' + cls(x.last_chg); p.textContent = pct(x.last_chg);
+      hoverTip(tr, x.why + chipTip(x.code));
+    });
+    box.append(st);
+  }
+  box.append(el('p', 'note', '命中率約 52～57%，只比隨機略好，請當成「機率略偏一邊」的參考；只計訊號明確（|z|≥0.5）的日子。樣本外＝最近 40% 期間（未參與權重估計）。'));
+  return box;
+}
+function renderFocus(d) {
+  const sec = $('#focus'); const f = d.focus;
+  if (!f) { sec.classList.add('hidden'); return; }
+  sec.classList.remove('hidden');
+  const pb = $('#pred'); pb.replaceChildren();
+  if (f.cards?.length) f.cards.forEach(cd => pb.append(predCard(cd, d)));
+  else pb.append(el('div', 'card empty', '目前沒有陸期 → 台股隔日關係顯著的族群（下次校準後更新）。'));
+  const box = $('#conf'); box.replaceChildren();
+  const by = Object.fromEntries(d.sectors.map(s => [s.name, s]));
+  const t = el('table', 'vt');
+  const hr = t.insertRow();
+  ['類股', '信心', '今日分數', '主要實測關聯', '最敏感個股'].forEach(x => hr.append(el('th', null, x)));
+  f.sectors.forEach(n => {
+    const s = by[n]; if (!s) return;
+    const tr = t.insertRow();
+    tr.insertCell().append(el('b', null, s.name));
+    tr.insertCell().append(confBadge(s));
+    const sc_ = tr.insertCell(); sc_.className = 'n ' + cls(s.score); sc_.textContent = sc(s.score);
+    tr.insertCell().textContent = s.confidence.links.filter(x => x.status === '有效').slice(0, 3)
+      .map(x => `${x.name} t${tval(x.t0)}`).join('、');
+    tr.insertCell().textContent = (s.sensitive || []).slice(0, 3).map(x => `${x.name || x.code} ${pct(x.chg_pct)}`).join('、') || '—';
+  });
+  box.append(t);
+  box.append(el('p', 'note', '只列出陸期關聯在歷史資料中有效（|t|≥2、前後期間方向一致）的類股，依今日分數絕對值排序。「可預測」＝陸期收盤後對台股隔日仍有關係；「同步」＝只在同一天同步反映；其他類股標「未驗證」，分數僅供參考。'));
 }
 
 // 停擺偵測（與 .github/scripts/watchdog.py 同規則）：超過 30 小時沒更新，且之後有週一~五 06:17／17:10 的排程（+2 小時）已經過了
@@ -168,6 +284,7 @@ function render(d) {
     if (!d[side].length) box.append(el('div', 'card empty', side === 'bull' ? '今日無正向助攻類股' : '今日無負向壓力類股'));
     d[side].forEach((n, i) => box.append(sectorCard(byName[n], i, side)));
   }
+  renderFocus(d);
 
   const bars = $('#bars'); bars.replaceChildren();
   const max = Math.max(1, ...d.sectors.map(s => Math.abs(s.score)));

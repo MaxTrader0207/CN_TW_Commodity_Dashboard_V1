@@ -49,6 +49,12 @@ h1 small{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-
 select{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font:inherit}
 .demo{background:var(--demo-bg);border:1px solid var(--accent);color:var(--accent);padding:8px 12px;border-radius:8px;margin-bottom:16px;display:none}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.badge.conf{font-weight:600;white-space:nowrap}.badge.cA{color:var(--lag)}.badge.cB{color:var(--accent)}.badge.c0{color:var(--muted);border-style:dashed}
+.pred h4{margin:10px 0 4px;font-size:12px;color:var(--muted);font-weight:600}.pred .vt{width:100%}.pred{overflow-x:auto}
+.sens .th-s{font-size:10.5px;color:var(--muted);font-weight:500;text-align:right}.sens .tag{margin-left:3px}
+details.day-move>summary{cursor:pointer;font-size:12px;color:var(--muted);margin:6px 0}
+#conf .vt{width:100%}
+
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .col-h{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0 0 10px}
 .col-h .dot{width:10px;height:10px;border-radius:50%}
@@ -242,6 +248,14 @@ summary{cursor:pointer;font-weight:600}
       <div class="src-head" id="src-head"></div>
       <ul class="src-list" id="src-list"></ul>
     </details>
+  </section>
+
+  <section id="focus" class="hidden">
+    <h2>高信心族群</h2>
+    <div class="grid2">
+      <div><p class="col-h">隔日預測（只用已驗證的隔日關係）</p><div id="pred"></div></div>
+      <div><p class="col-h">有實測支持的類股</p><div class="card" id="conf" style="overflow-x:auto"></div></div>
+    </div>
   </section>
 
   <div class="grid2">
