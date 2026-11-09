@@ -181,3 +181,18 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
         card["stocks"] = sorted(card["stocks"].values(), key=lambda x: -x["t1"])
         out.append(card)
     return out
+
+
+# ── 依類股可信度調整分數（第 4 項）：倍數只用訓練期的信心等級決定，回測過關才採用 ──
+FACTOR_VARIANTS = {
+    "conf_only": {"A": 1.0, "B": 1.0, None: 0.0},     # 只讓有實測支持的類股進排名
+    "discount": {"A": 1.0, "B": 1.0, None: 0.5},      # 未驗證類股分數打五折
+    "pred_boost": {"A": 1.5, "B": 1.0, None: 0.5},    # 可預測族群加權、未驗證打折
+}
+
+
+def sector_factor(conf, variant):
+    m = FACTOR_VARIANTS[variant]
+    f = {name: m[c["level"]] for name, c in conf.items()}
+    f["_default"] = m[None]
+    return f

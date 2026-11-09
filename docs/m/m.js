@@ -221,7 +221,8 @@ function drawSectors() {
     if (s.resonance) h.append(el('span', 'badge', '共振'));
     h.append(confBadge(s));
     h.append(el('span', 'scr ' + cls(s.score), sc(s.score)));
-    c.append(h, el('div', 'sub', `類股平均 ${pct(s.tw_avg_chg)}　漲 ${s.tw_up}／跌 ${s.tw_down}（${s.n} 檔）`));
+    c.append(h, el('div', 'sub', `類股平均 ${pct(s.tw_avg_chg)}　漲 ${s.tw_up}／跌 ${s.tw_down}（${s.n} 檔）` +
+      (s.score_raw != null && s.score_raw !== s.score ? `｜已依可信度調整（原始 ${sc(s.score_raw)}）` : '')));
     if (s.confidence) c.append(el('div', 'links-line', '實測關聯：' + s.confidence.links.filter(x => x.status === '有效').slice(0, 4)
       .map(x => `${x.name} t${tval(x.t0)}${x.predictive ? `／隔日 t${tval(x.t1)}` : ''}`).join('、')));
     const chips = el('div', 'chips');
@@ -299,6 +300,25 @@ function drawBoard() {
 }
 
 // ── 驗證 ──
+const LVL_NAME = { A: '可預測', B: '同步', none: '未驗證' };
+function drawBreakdown() {
+  const box = $('#tk-break'); box.replaceChildren();
+  const b = TRACK.summary.breakdown; if (!b) { box.append(el('div', 'empty', '下次更新後開始統計')); return; }
+  const line = (label, m) => {
+    const r = el('div', 'mini');
+    r.append(el('span', null, `${label}（${m?.n ?? 0} 次）`), el('span', cls(m?.avg), m?.n ? `${pp(m.avg)}・對 ${wr(m.win)}` : '—'));
+    return r;
+  };
+  box.append(el('h4', 'sub', '信心等級'));
+  for (const k of ['A', 'B', 'none']) box.append(line(LVL_NAME[k], b.by_level[k]));
+  box.append(line('隔日預測卡', b.cards));
+  const f = b.focus_rank, a = TRACK.summary.all.next;
+  box.append(el('p', 'note', `高信心排法前 3 多空價差：${f.n ? `${pp(f.spread_avg)}（${f.n} 次）` : '尚未開獎'}；原排法：${pp(a.spread_avg)}（${a.n} 次）`));
+  const det = el('details', 'more'); det.append(el('summary', null, '依類股'));
+  Object.entries(b.by_sector).forEach(([k, m]) => det.append(line(k, m)));
+  box.append(det, el('p', 'note', '數字 = 訊號方向 × 下一交易日超額報酬（正值代表方向對）。' +
+    (b.backfilled ? `${b.backfilled} 筆舊訊號的信心等級以目前校準回推。` : '') + '樣本很少時只供觀察。'));
+}
 async function drawVerify() {
   try { TRACK ??= await getJSON('../data/track.json'); } catch (e) { $('#track').replaceChildren(el('div', 'empty', '尚無追蹤資料')); }
   if (TRACK) {
@@ -309,6 +329,7 @@ async function drawVerify() {
     kp('空頭隔日', pp(m.bear_avg), '勝率 ' + wr(m.bear_win), cls(m.bear_avg));
     kp('多空價差', pp(m.spread_avg), '為正 ' + wr(m.spread_win), cls(m.spread_avg));
     box.append(k, el('p', 'note', `自 ${TRACK.since || '—'} 起，已開獎 ${m.n} 次${m.n < 20 ? '，樣本還太少，僅供觀察' : ''}。數字為類股扣掉大盤影響後的超額報酬。`));
+    drawBreakdown();
     const rows = $('#tk-rows'); rows.replaceChildren();
     TRACK.rows.slice(0, 12).forEach(r => {
       const x = el('div', 'row static'); const l = el('div', 'l');
@@ -328,6 +349,7 @@ async function drawVerify() {
     add('隔日 多空價差', bt.calibrated_spreads_z?.lag1);
     if (bt.pre_combo) add('盤前版（國際＋陸期）', bt.pre_combo.lag0);
     if (bt.pre_intl) add('盤前版（僅國際）', bt.pre_intl.lag0);
+    if (bt.factor_conf_only) add('只排高信心 隔日', bt.factor_conf_only.lag1);
     box.append(k, el('p', 'note', `${bt.test[0]}～${bt.test[1]} 樣本外測試（實測權重＋價差、z 分數）。t 值絕對值大於 2 才算統計上顯著；「同日」代表同步，「隔日」才是預測力。`));
   }
   try { HEAT ??= await getJSON('../data/score_history.json'); drawHeat(); } catch (e) { $('#heat-note').textContent = '尚無分數歷史'; }

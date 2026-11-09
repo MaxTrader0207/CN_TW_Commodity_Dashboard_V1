@@ -843,6 +843,21 @@ def score_sectors(board, industry, stocks):
     return out, bull, bear
 
 
+def apply_sector_factor(cal, sectors, bull, bear):
+    """校準回測通過時，依類股可信度調整分數再排名（原始分數保留在 score_raw）"""
+    sf = (cal or {}).get("sector_factor") or {}
+    if not sf.get("adopt") or sf.get("variant") not in focus.FACTOR_VARIANTS:
+        return {"on": False}, bull, bear
+    f = focus.sector_factor(focus.sector_confidence(cal), sf["variant"])
+    for s in sectors:
+        s["score_raw"] = s["score"]
+        s["score"] = round(s["score"] * f.get(s["name"], f["_default"]), 1)
+    sectors.sort(key=lambda s: s["score"], reverse=True)
+    bull = [s["name"] for s in sectors if s["score"] > 0][:TOP_N_SECTORS]
+    bear = [s["name"] for s in sorted(sectors, key=lambda s: s["score"]) if s["score"] < 0][:TOP_N_SECTORS]
+    return {"on": True, "variant": sf["variant"]}, bull, bear
+
+
 def next_tw_day(d, include_today):
     """include_today=True：d 本身是交易日就回傳 d；否則找 d 之後第一個台股交易日"""
     x = d if include_today else d + timedelta(days=1)
@@ -935,10 +950,21 @@ def run(now):
     ap.add_argument("--session", choices=["day", "night"])
     ap.add_argument("--fixtures")
     ap.add_argument("--skip-if-done", action="store_true",
-                    help="今天已有準時（09:00 前）的夜盤盤前版就不再執行（排程多次嘗試用）")
+                    help="今天已有準時的同版本（盤前版 09:00 前／收盤版 15:00 後）就不再執行（排程備援用）")
     a = ap.parse_args()
 
     session = a.session or ("night" if now.hour < 12 else "day")
+    if a.skip_if_done and session == "day":
+        # 收盤版：今天已有準時（15:00 後）的收盤版（通常是 Cloudflare 17:10 觸發）就不再重跑
+        f = DATA_DIR / "history" / f"{now.strftime('%Y-%m-%d')}_day.json"
+        if f.exists():
+            try:
+                g = json.loads(f.read_text(encoding="utf-8"))["generated_at"]
+                if datetime.fromisoformat(g).hour >= 15:
+                    print(f"今天的收盤版已在 {g[11:16]} 完成，這次排程略過")
+                    raise SystemExit(0)
+            except (KeyError, ValueError):
+                pass
     if a.skip_if_done and session == "night":
         f = DATA_DIR / "history" / f"{now.strftime('%Y-%m-%d')}_night.json"
         if f.exists():
@@ -1004,6 +1030,7 @@ def run(now):
         board = board + intl_board(src.s, board, cal, premarket=premarket)
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
+    factor_on, bull, bear = apply_sector_factor(cal, sectors, bull, bear)
     focus_out = build_focus(cal, board, sectors, session, now, stocks, industry)
     chips = {}
     if not a.fixtures and tw_date:
@@ -1036,6 +1063,7 @@ def run(now):
         "run_url": os.environ.get("RUN_URL"),
         "commodities": board, "sectors": sectors, "bull": bull, "bear": bear, "chips": chips,
         "focus": focus_out,
+        "sector_factor": factor_on,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號

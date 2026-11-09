@@ -270,3 +270,34 @@ def test_predict_cards_direction_uses_valid_links_only():
     assert night[0]["signal_date"] == "2026-11-06" and night[0]["direction"] == -1, "盤前版用前一個陸期交易日；錫只觀察"
     day = F.predict_cards(cal, kl, [], "day", "2026-11-09", "2026-11-10", {})
     assert day[0]["signal_date"] == "2026-11-09" and day[0]["direction"] == 1
+
+
+def test_sector_factor_and_breakdown():
+    import focus as F
+    import track as T
+    conf = F.sector_confidence(_cal_focus())
+    f = F.sector_factor(conf, "conf_only")
+    assert f["電器電纜"] == 1.0 and f["_default"] == 0.0
+    sig = {"bull": [{"name": "電器電纜", "score": 10}], "bear": [{"name": "食品", "score": -5}],
+           "conf": {"電器電纜": "A", "食品": None}, "focus_bull": [{"name": "電器電纜", "score": 10}], "focus_bear": [],
+           "cards": [{"sector": "電器電纜", "direction": -1}]}
+    b = T.sector_breakdown([(sig, {"next_date": "2026-11-10"})], {"2026-11-10": {"電器電纜": 1.0, "食品": 0.5}}, {})
+    assert b["by_level"]["A"]["avg"] == 1.0 and b["by_level"]["none"]["avg"] == -0.5
+    assert b["cards"]["avg"] == -1.0 and b["backfilled"] == 0
+
+
+def test_build_skip_day_if_done(tmp_path):
+    """收盤版備援排程：今天已有 15:00 後的收盤版就略過"""
+    import json
+    import subprocess
+    import shutil
+    work = tmp_path / "repo"
+    for d in ("pipeline", "docs"):
+        shutil.copytree(ROOT / d, work / d, ignore=shutil.ignore_patterns("__pycache__"))
+    today = datetime.now(TPE).strftime("%Y-%m-%d")
+    h = work / "docs" / "data" / "history"
+    h.mkdir(parents=True, exist_ok=True)
+    (h / f"{today}_day.json").write_text(json.dumps({"generated_at": f"{today}T17:10+08:00"}), encoding="utf-8")
+    r = subprocess.run([sys.executable, str(work / "pipeline" / "build.py"), "--session", "day", "--skip-if-done",
+                        "--fixtures", str(tmp_path / "nofx")], capture_output=True, text=True)
+    assert r.returncode == 0 and "略過" in r.stdout, r.stdout[-800:] + r.stderr[-800:]

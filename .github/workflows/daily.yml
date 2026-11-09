@@ -73,7 +73,14 @@ jobs:
               python pipeline/build.py --session night --skip-if-done
             fi
           else
-            python pipeline/build.py --session day
+            # 收盤版備援排程（主要由 Cloudflare 17:10 觸發）：GitHub 排程曾延遲到隔天凌晨才跑，
+            # 不在 15:00~23:59（週一~五）就略過；今天已有準時的收盤版也略過
+            h=$(TZ=Asia/Taipei date +%-H); wd=$(TZ=Asia/Taipei date +%u)
+            if [ "$h" -lt 15 ] || [ "$wd" -gt 5 ]; then
+              echo "收盤版排程延遲到 $(TZ=Asia/Taipei date '+%m-%d %H:%M')，已不在收盤後時段，略過"
+            else
+              python pipeline/build.py --session day --skip-if-done
+            fi
           fi
           } 2>&1 | tee docs/data/run_log.txt
       - name: Save to data branch

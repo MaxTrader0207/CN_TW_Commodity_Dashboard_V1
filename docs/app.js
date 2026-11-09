@@ -71,6 +71,7 @@ function sectorCard(s, i, side) {
   card.append(h);
   const sub = el('div', 'sub');
   sub.textContent = `台股類股平均 ${pct(s.tw_avg_chg)}　漲 ${s.tw_up}／跌 ${s.tw_down}（${s.n} 檔）`;
+  if (s.score_raw != null && s.score_raw !== s.score) sub.textContent += `　｜分數已依可信度調整（原始 ${sc(s.score_raw)}）`;
   card.append(sub);
 
   const chips = el('div', 'chips');
@@ -426,6 +427,7 @@ function renderTrack(t) {
     (t.summary.excluded ? `另有 ${t.summary.excluded} 筆因排程延遲、在盤中才產生的訊號不計入。` : '') +
     '多頭勝率 = 超額報酬為正的比例；空頭勝率 = 為負的比例。';
 
+  renderBreakdown(t);
   const tb = $('#tk-rows'); tb.replaceChildren();
   const h = tb.insertRow(); ['訊號時間', '版本', '多頭 3', '空頭 3', '開獎日', '多頭', '空頭', '價差'].forEach(x => h.append(el('th', null, x)));
   t.rows.forEach(r => {
@@ -441,6 +443,31 @@ function renderTrack(t) {
       const c = tr.insertCell(); c.className = 'n ' + cls(x?.[k]); c.textContent = x ? pp(x[k]) : '—';
     }
   });
+}
+
+const LVL_NAME = { A: '可預測', B: '同步', none: '未驗證' };
+function renderBreakdown(t) {
+  const box = $('#tk-break'); box.replaceChildren();
+  const b = t.summary.breakdown; if (!b) { box.append(el('p', 'note', '下次更新後開始統計。')); return; }
+  const tb = el('table', 'vt');
+  const head = (a) => { const r = tb.insertRow(); a.forEach(x => r.append(el('th', null, x))); };
+  const row = (label, m, extra) => {
+    const r = tb.insertRow(); r.insertCell().textContent = label;
+    const n = r.insertCell(); n.className = 'n'; n.textContent = m?.n ?? 0;
+    const a = r.insertCell(); a.className = 'n ' + cls(m?.avg); a.textContent = m?.n ? pp(m.avg) : '—';
+    const w = r.insertCell(); w.className = 'n'; w.textContent = m?.n ? wr(m.win) : '—';
+    if (extra) r.insertCell().textContent = extra;
+  };
+  head(['信心等級', '次數', '方向報酬', '方向正確']);
+  for (const k of ['A', 'B', 'none']) row(LVL_NAME[k], b.by_level[k]);
+  row('隔日預測卡', b.cards);
+  const f = b.focus_rank;
+  const r2 = tb.insertRow(); const c2 = r2.insertCell(); c2.colSpan = 4;
+  c2.textContent = `高信心排法前 3（多空價差）：${f.n ? `${pp(f.spread_avg)}，為正 ${wr(f.spread_win)}（${f.n} 次）` : '尚未開獎'}　｜　原排法：${pp(t.summary.all.next.spread_avg)}（${t.summary.all.next.n} 次）`;
+  head(['類股', '次數', '方向報酬', '方向正確']);
+  Object.entries(b.by_sector).slice(0, 12).forEach(([k, m]) => row(k, m));
+  box.append(tb, el('p', 'note', '方向報酬 = 訊號方向 × 下一交易日超額報酬的平均（正值代表方向對；多頭看漲、空頭看跌）。' +
+    (b.backfilled ? `其中 ${b.backfilled} 筆是功能上線前的舊訊號，信心等級以目前校準結果回推。` : '') + '樣本很少時只供觀察。'));
 }
 
 function btRow(t, label, m) {
@@ -469,6 +496,8 @@ function renderCalibration(c) {
     }
     for (const [k, label] of [['mom_1d', '動能・1 日'], ['mom_5d', '動能・5 日累計'], ['mom_20d', '動能・20 日累計'], ['mom_combo', '動能・1 日＋0.5×5 日']])
       if (bt[k]) btRow(t, label, bt[k][lag]);
+    for (const [k, label] of [['factor_conf_only', '可信度・只排高信心'], ['factor_discount', '可信度・未驗證打五折'], ['factor_pred_boost', '可信度・可預測加權']])
+      if (bt[k]) btRow(t, label, bt[k][lag]);
   }
   const tp = $('#bt-pre'); tp.replaceChildren();
   if (bt.pre_intl) {
@@ -488,6 +517,8 @@ function renderCalibration(c) {
   const mo = c.momentum;
   $('#bt-note').textContent = (mo ? `「動能」列用實測＋價差權重、z 分數、不含漲跌停加成，比較 1 日、5 日、20 日累計漲跌與組合；` +
     `${mo.adopt ? '組合版通過門檻，即時分數已加入 5 日動能。' : '組合版未通過門檻（' + mo.rule + '），即時分數仍只用 1 日 z，5 日／20 日動能只顯示在商品看板。'}` : '') +
+    (c.sector_factor ? `「可信度」列：依訓練期的類股信心等級調整分數後排名（比較基準為「實測＋價差・z 分數」）；` +
+      (c.sector_factor.adopt ? `「${c.sector_factor.variant}」通過門檻，即時排名已採用。` : `都未通過門檻（${c.sector_factor.rule}），即時排名維持原樣；手機版「高信心族群」分頁就是「只排高信心」的排法，可自行參考。`) : '') +
     '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 

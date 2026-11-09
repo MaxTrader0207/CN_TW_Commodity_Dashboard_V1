@@ -214,7 +214,8 @@ def daily_scores(items, cmd_ret, links_by_code, d, zsig=None):
     return {s: num.get(s, 0) / norm(den[s]) * 100 for s in den if den[s]}
 
 
-def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None):
+def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None, factor=None):
+    """factor：{類股: 分數乘數}（含 "_default"），用來測試依類股可信度調整分數"""
     all_days = sorted({d for c in cmd_ret.values() for d in c})
     days = [d for d in all_days if d0 <= d <= d1]
     prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
@@ -246,6 +247,8 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None)
             if not row:
                 continue
             sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d, zsig).items() if s in row}
+            if factor is not None:
+                sc = {s: v * factor.get(s, factor.get("_default", 1.0)) for s, v in sc.items()}
             # 方向命中：每個有分數的類股，分數方向 × 實際超額報酬（適用於關聯很少、常常只有單邊的模型）
             dirs += [math.copysign(1, v) * row[s] for s, v in sc.items() if abs(v) >= 1]
             b = [s for s, v in sorted(sc.items(), key=lambda kv: -kv[1]) if v > 0][:TOP]
@@ -480,7 +483,7 @@ def main():
     items_c = commodity_items()
     items_all = items_c + sp_items_tr
     _, _, live_c = build_links(items_c, series, excess_bt, tw_dates, d1=split)
-    _, _, live_all = build_links(items_all, series, excess_bt, tw_dates, d1=split)
+    pairs_all_tr, disc_all_tr, live_all = build_links(items_all, series, excess_bt, tw_dates, d1=split)
     test = {"manual": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1]),
             "calibrated": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1]),
             "calibrated_spreads": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1])}
@@ -504,6 +507,20 @@ def main():
     for k, v in mom.items():
         print(f"動能回測 {k}：同日價差 {v['lag0']['spread_avg']}(t {v['lag0']['spread_t']})｜隔日 {v['lag1']['spread_avg']}(t {v['lag1']['spread_t']})")
     print(f"動能組合是否採用於即時計分：{mom_adopt}")
+    # 依類股可信度調整分數：倍數只用「訓練期」的信心等級決定，測試期比較；規則同動能
+    conf_tr = F.sector_confidence({"pairs": pairs_all_tr, "discovered": disc_all_tr})
+    base = test["calibrated_spreads_z"]
+    fac = {v: backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1], zsig,
+                       factor=F.sector_factor(conf_tr, v)) for v in F.FACTOR_VARIANTS}
+    test.update({f"factor_{v}": r_ for v, r_ in fac.items()})
+    passed = [(g(r_, "lag1"), v) for v, r_ in fac.items()
+              if g(r_, "lag1") > g(base, "lag1") + 0.3 and g(r_, "lag0") >= g(base, "lag0") - 0.3]
+    sector_factor = {"adopt": bool(passed), "variant": max(passed)[1] if passed else None,
+                     "base": "calibrated_spreads_z", "train_conf": {k: v_["level"] for k, v_ in conf_tr.items()},
+                     "rule": "隔日價差 t 值比原本高 0.3 以上、且同日 t 值不低於原本 −0.3 才採用"}
+    for v, r_ in fac.items():
+        print(f"可信度調整 {v}：同日 t {g(r_, 'lag0')}（原 {g(base, 'lag0')}）｜隔日 t {g(r_, 'lag1')}（原 {g(base, 'lag1')}）")
+    print(f"可信度調整是否採用：{sector_factor['adopt']} {sector_factor['variant'] or ''}")
     # 歷史分數熱力圖：最近 HEAT_DAYS 個台股交易日，用全期實測權重＋z 分數回填（樣本內，僅供觀察）
     heat_days = [d for d in tw_dates[-HEAT_DAYS:]]
     hist_rows = []
@@ -658,6 +675,7 @@ def main():
         "momentum": {"adopt": mom_adopt, "combo_w": H.MOM_COMBO_W,
                      "rule": "組合版隔日價差 t 值比 1 日版高 0.3 以上、且同日 t 值不低於 1 日版 −0.3 才採用"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
+        "sector_factor": sector_factor,
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         "kline": kline_info,
         "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},

@@ -17,6 +17,7 @@ import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import focus as F
 import history as H
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,11 +45,18 @@ def entry(p):
     by = {s["name"]: s for s in p.get("sectors", [])}
     pick = lambda names: [{"name": n, "score": by[n]["score"]} for n in names if n in by]  # noqa: E731
     run_at = p["generated_at"]
-    return {f"{run_at[:10]}_{p['session']}": {
-        "run_at": run_at, "session": p["session"], "tw_date": p.get("tw_date"),
-        "weights": p.get("weights_mode", "手動"),
-        "bull": pick(p.get("bull", [])), "bear": pick(p.get("bear", [])),
-    }}
+    e = {"run_at": run_at, "session": p["session"], "tw_date": p.get("tw_date"),
+         "weights": p.get("weights_mode", "手動"),
+         "bull": pick(p.get("bull", [])), "bear": pick(p.get("bear", []))}
+    if p.get("focus"):
+        # 訊號當下的信心等級（之後校準改變也不回頭改）、高信心排法的前 3、隔日預測卡方向
+        e["conf"] = {s["name"]: (s.get("confidence") or {}).get("level") for s in p.get("sectors", [])}
+        fs = [by[n] for n in p["focus"].get("sectors", []) if n in by]
+        e["focus_bull"] = pick([s["name"] for s in sorted(fs, key=lambda s: -s["score"]) if s["score"] > 0][:3])
+        e["focus_bear"] = pick([s["name"] for s in sorted(fs, key=lambda s: s["score"]) if s["score"] < 0][:3])
+        e["cards"] = [{"sector": c["sector"], "direction": c["direction"], "target": c.get("target")}
+                      for c in p["focus"].get("cards", [])]
+    return {f"{run_at[:10]}_{p['session']}": e}
 
 
 def validity(sig):
@@ -103,6 +111,58 @@ def summarize(rows, key):
     }
 
 
+def current_conf():
+    """舊帳本沒有記錄信心等級時，用目前的校準結果回推（標示為回推）"""
+    f = DATA / "calibration.json"
+    try:
+        cal = json.loads(f.read_text(encoding="utf-8"))
+        return {k: v["level"] for k, v in F.sector_confidence(cal).items()}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _agg(xs):
+    rnd = lambda v: None if v is None else round(v, 3)  # noqa: E731
+    return {"n": len(xs), "avg": rnd(sum(xs) / len(xs)) if xs else None,
+            "win": rnd(sum(v > 0 for v in xs) / len(xs)) if xs else None}
+
+
+def sector_breakdown(pairs, excess, conf_now):
+    """依類股、信心等級拆解隔日表現（數字 = 訊號方向 × 下一交易日超額報酬，正值代表方向對）；
+    另外比較「高信心排法」的前 3 與隔日預測卡"""
+    by_sec, by_lvl, focus_rows, card = {}, {"A": [], "B": [], "none": []}, [], []
+    backfilled = 0
+    for sig, r in pairs:
+        row = excess.get(r["next_date"]) if r.get("next_date") else None
+        if not row:
+            continue
+        conf = sig.get("conf")
+        if conf is None:
+            conf, backfilled = conf_now, backfilled + 1
+        for side, d in (("bull", 1), ("bear", -1)):
+            for x in sig[side]:
+                v = row.get(x["name"])
+                if v is None:
+                    continue
+                by_sec.setdefault(x["name"], []).append(d * v)
+                by_lvl[conf.get(x["name"]) or "none"].append(d * v)
+        if "focus_bull" in sig:
+            focus_rows.append(score({"bull": sig["focus_bull"], "bear": sig["focus_bear"]}, row))
+        for c in sig.get("cards", []):
+            v = row.get(c["sector"])
+            if v is not None and c["direction"]:
+                card.append(c["direction"] * v)
+    xs = {"focus": focus_rows}
+    return {
+        "by_level": {k: _agg(v) for k, v in by_lvl.items()},
+        "by_sector": dict(sorted(((k, _agg(v)) for k, v in by_sec.items()), key=lambda kv: -kv[1]["n"])),
+        "focus_rank": summarize([{"next": x} for x in xs["focus"] if x], "next"),
+        "cards": _agg(card),
+        "backfilled": backfilled,
+        "note": "數字 = 訊號方向 × 下一交易日 β 調整超額報酬（正值 = 方向對）",
+    }
+
+
 def update(payload, session=None, log=print, skip_signal=False):
     """session：requests.Session（None 時只用快取，不連網）"""
     if session is not None:
@@ -148,11 +208,13 @@ def update(payload, session=None, log=print, skip_signal=False):
                      "same": score(sig, excess.get(same)) if same else None,
                      "next": score(sig, excess.get(nxt)) if nxt else None})
     valid = [r for r in rows if r["valid"]]
+    breakdown = sector_breakdown([(led[r["key"]], r) for r in rows if r["valid"]], excess, current_conf())
     summary = {s: {"next": summarize([r for r in valid if r["session"] == s], "next"),
                    "same": summarize([r for r in valid if r["session"] == s], "same")}
                for s in ("day", "night")}
     summary["all"] = {"next": summarize(valid, "next")}
     summary["excluded"] = len(rows) - len(valid)
+    summary["breakdown"] = breakdown
     out = {"updated": payload["generated_at"], "since": rows[0]["run_at"][:10] if rows else None,
            "index_last": tw_dates[-1] if tw_dates else None,
            "summary": summary, "rows": list(reversed(rows))[:40]}
