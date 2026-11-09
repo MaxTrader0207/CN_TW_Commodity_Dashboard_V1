@@ -141,6 +141,49 @@ def discover_ok(st):
             and ta is not None and tb is not None and abs(ta) >= T_VALID and abs(tb) >= T_VALID)
 
 
+FDR_Q = 0.05          # 多重比較：Benjamini-Hochberg 偽發現率
+DECAY_DAYS = 120      # 關聯衰退：最近 120 個交易日
+
+
+def bh_pass(ts, q=FDR_Q):
+    """Benjamini-Hochberg：回傳通過的索引集合（p 值以常態近似 t 值）"""
+    ps = [math.erfc(abs(t or 0) / math.sqrt(2)) for t in ts]
+    m = len(ps)
+    order = sorted(range(m), key=lambda i: ps[i])
+    k = 0
+    for r, i in enumerate(order, 1):
+        if ps[i] <= q * r / m:
+            k = r
+    return {order[r] for r in range(k)}
+
+
+def annotate_quality(rows, series_of, excess, tw_dates):
+    """每組關聯加上：fdr_ok（同日）、fdr1_ok（隔日）＝多重比較校正後仍顯著；
+    recent＝最近 DECAY_DAYS 個交易日的相關；decay＝原本有效、近期方向相反或 |t| < 1 時標「轉弱」"""
+    ok0, ok1 = bh_pass([r["t0"] for r in rows]), bh_pass([r["t1"] for r in rows])
+    d0 = tw_dates[-DECAY_DAYS] if len(tw_dates) > DECAY_DAYS else None
+    sret_by = {}
+    for i, r in enumerate(rows):
+        r["fdr_ok"], r["fdr1_ok"] = i in ok0, i in ok1
+        if r.get("status") not in ("有效", "數據新增") or not d0:
+            continue
+        sct = r["sector"]
+        if sct not in sret_by:
+            sret_by[sct] = {d: row[sct] for d, row in excess.items() if sct in row}
+        intl = r.get("ex") == "國際"
+        xs, ys, _ = align(series_of(r), sret_by[sct], tw_dates, 0, d0=d0)
+        if intl:   # 國際序列已對齊到台股日：同一天比對
+            sr = series_of(r)
+            xs = [sr[d] for d in tw_dates[-DECAY_DAYS:] if d in sr and d in sret_by[sct]]
+            ys = [sret_by[sct][d] for d in tw_dates[-DECAY_DAYS:] if d in sr and d in sret_by[sct]]
+        rho, t = corr(xs, ys)
+        if rho is None:
+            continue
+        r["recent"] = {"rho": round(rho, 3), "t": round(t, 2), "n": len(xs)}
+        full = r["t0"] or 0
+        r["decay"] = bool((rho > 0) != (full > 0) or abs(t) < 1)
+
+
 def commodity_items():
     """(交易所, 代碼, 名稱, 訊號滿格幅度, 對照, 漲跌停加成)；價差的滿格幅度由 2σ 決定，見 spread_items()"""
     return [(ex, code, name, limit, links, True) for ex, code, name, limit, links in COMMODITIES]
@@ -628,6 +671,14 @@ def main():
                               split, tw_dates[-1], zpre),
     }
     test.update(pre)
+    # 盤前版排名：只用國際隔夜 vs 國際＋陸期，回測過關才改用（同動能規則，以多空價差 t 值比較）
+    gi = lambda r, k: (r["lag0"].get(k) or 0)  # noqa: E731
+    pm_adopt = (gi(pre["pre_intl"], "spread_t") > gi(pre["pre_combo"], "spread_t") + 0.3
+                and gi(pre["pre_intl"], "dir_t") >= gi(pre["pre_combo"], "dir_t") - 0.3)
+    premarket_mode = {"adopt": pm_adopt, "mode": "intl" if pm_adopt else "combo",
+                      "intl_t": gi(pre["pre_intl"], "spread_t"), "combo_t": gi(pre["pre_combo"], "spread_t"),
+                      "rule": "只用國際的多空價差 t 值比合併版高 0.3 以上、且方向命中 t 值不低於合併版 −0.3 才採用"}
+    print(f"盤前版排名改用國際隔夜：{pm_adopt}（價差 t {premarket_mode['intl_t']} vs {premarket_mode['combo_t']}）")
     for k, v in pre.items():
         x = v['lag0']
         print(f"盤前回測 {k}：方向命中 {x['dir_avg']}（勝率 {x['dir_win']}, t={x['dir_t']}, n={x['dir_n']}）｜"
@@ -642,9 +693,20 @@ def main():
     ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
+    # 多重比較校正與關聯衰退（陸期、價差、國際、數據新增一起當作同一批檢定）
+    qrows = pairs + discovered + intl_rows
+    annotate_quality(qrows, lambda r: (intl_series if r.get("ex") == "國際" else series).get(r["code"], {}), excess, tw_dates)
+    n_fdr = sum(1 for r in qrows if r.get("status") == "有效" and not r["fdr_ok"])
+    n_decay = sum(1 for r in qrows if r.get("decay"))
+    print(f"多重比較校正（BH q={FDR_Q}）：有效但未通過 {n_fdr} 組；近 {DECAY_DAYS} 日轉弱 {n_decay} 組")
+    for r in qrows:
+        if r.get("decay") or (r.get("status") == "有效" and not r["fdr_ok"]):
+            print(f"  {r['name']}→{r['sector']} t0={r['t0']} FDR {'過' if r['fdr_ok'] else '未過'} 近期 {r.get('recent')}")
     # 高信心族群：隔日關係（陸期 D 日 → 台股下一交易日）的歷史命中率，給「隔日預測卡」使用
     focus_pred = F.predictive_stats(pairs + discovered, stocks, cmd_ret,
                                     {c: H.rolling_sigma(v) for c, v in cmd_ret.items()}, excess, closes_cache, split)
+    focus_pred += F.predictive_stats_intl(intl_rows, intl_series, {c: H.rolling_sigma(v) for c, v in intl_series.items()},
+                                          excess, closes_cache, stocks, {code: cn for code, _s, _n, cn, _l in INTL}, split)
     for r_ in focus_pred:
         print(f"  [隔日預測] {r_['name']}→{r_['sector']} t1={r_['t1']} 命中 {r_['all']} 樣本外 {r_['test']}")
     eff = {(c, sct): (r, t, st) for c, sct, r, t, st in roll_effect}
@@ -676,6 +738,8 @@ def main():
                      "rule": "組合版隔日價差 t 值比 1 日版高 0.3 以上、且同日 t 值不低於 1 日版 −0.3 才採用"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "sector_factor": sector_factor,
+        "premarket_mode": premarket_mode,
+        "quality": {"fdr_q": FDR_Q, "decay_days": DECAY_DAYS},
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         "kline": kline_info,
         "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},

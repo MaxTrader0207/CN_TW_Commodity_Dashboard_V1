@@ -843,6 +843,26 @@ def score_sectors(board, industry, stocks):
     return out, bull, bear
 
 
+def apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks):
+    """盤前版：校準回測顯示「只用國際隔夜」的預測力明顯較好時，排名改用國際隔夜分數；
+    原本（國際＋陸期夜盤）的分數保留在 score_combo"""
+    pm = (cal or {}).get("premarket_mode") or {}
+    if session != "night" or not pm.get("adopt"):
+        return {"on": False}, bull, bear
+    intl = [c for c in board if c.get("kind") == "intl" and c.get("links")]
+    if not intl:
+        return {"on": False, "reason": "沒有可計分的國際商品"}, bull, bear
+    sec_i, _, _ = score_sectors(intl, industry, stocks)
+    si = {s["name"]: s["score"] for s in sec_i}
+    for s in sectors:
+        s["score_combo"] = s["score"]
+        s["score"] = si.get(s["name"], 0.0)
+    sectors.sort(key=lambda s: s["score"], reverse=True)
+    bull = [s["name"] for s in sectors if s["score"] > 0][:TOP_N_SECTORS]
+    bear = [s["name"] for s in sorted(sectors, key=lambda s: s["score"]) if s["score"] < 0][:TOP_N_SECTORS]
+    return {"on": True, "mode": "intl", "intl_t": pm.get("intl_t"), "combo_t": pm.get("combo_t")}, bull, bear
+
+
 def apply_sector_factor(cal, sectors, bull, bear):
     """校準回測通過時，依類股可信度調整分數再排名（原始分數保留在 score_raw）"""
     sf = (cal or {}).get("sector_factor") or {}
@@ -1030,6 +1050,7 @@ def run(now):
         board = board + intl_board(src.s, board, cal, premarket=premarket)
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
+    pm_on, bull, bear = apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks)
     factor_on, bull, bear = apply_sector_factor(cal, sectors, bull, bear)
     focus_out = build_focus(cal, board, sectors, session, now, stocks, industry)
     chips = {}
@@ -1064,6 +1085,7 @@ def run(now):
         "commodities": board, "sectors": sectors, "bull": bull, "bear": bear, "chips": chips,
         "focus": focus_out,
         "sector_factor": factor_on,
+        "premarket_mode": pm_on,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號

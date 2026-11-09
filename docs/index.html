@@ -54,6 +54,7 @@ select{background:var(--panel);color:var(--fg);border:1px solid var(--line);bord
 .sens .th-s{font-size:10.5px;color:var(--muted);font-weight:500;text-align:right}.sens .tag{margin-left:3px}
 details.day-move>summary{cursor:pointer;font-size:12px;color:var(--muted);margin:6px 0}
 #conf .vt{width:100%}
+.badge.tier{font-weight:700;white-space:nowrap}.badge.t強{color:var(--up)}.badge.t中{color:var(--accent)}.badge.t弱{color:var(--muted)}
 
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .col-h{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin:0 0 10px}
@@ -253,11 +254,12 @@ summary{cursor:pointer;font-weight:600}
   <section id="focus" class="hidden">
     <h2>高信心族群</h2>
     <div class="grid2">
-      <div><p class="col-h">隔日預測（只用已驗證的隔日關係）</p><div id="pred"></div></div>
+      <div><p class="col-h">預測卡（只用已驗證的預測關係）</p><div id="pred"></div></div>
       <div><p class="col-h">有實測支持的類股</p><div class="card" id="conf" style="overflow-x:auto"></div></div>
     </div>
   </section>
 
+  <p class="note hidden" id="pm-note" style="margin:0 0 10px;color:var(--lag)"></p>
   <div class="grid2">
     <div class="bull"><p class="col-h"><span class="dot"></span>多頭助攻 前3類股</p><div id="bull"></div></div>
     <div class="bear"><p class="col-h"><span class="dot"></span>空頭壓力 前3類股</p><div id="bear"></div></div>

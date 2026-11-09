@@ -301,3 +301,26 @@ def test_build_skip_day_if_done(tmp_path):
     r = subprocess.run([sys.executable, str(work / "pipeline" / "build.py"), "--session", "day", "--skip-if-done",
                         "--fixtures", str(tmp_path / "nofx")], capture_output=True, text=True)
     assert r.returncode == 0 and "略過" in r.stdout, r.stdout[-800:] + r.stderr[-800:]
+
+
+def test_intl_card_premarket_only_and_tier():
+    import focus as F
+    cal = {"focus": {"predictive": [
+        {"code": "BZ", "name": "Brent", "sector": "油電燃氣", "t1": 6.5, "status": "有效", "sign": 1, "kind": "intl",
+         "all": {"n": 100, "hit": 0.55, "avg": 0.6}, "test": {"n": 40, "hit": 0.58, "avg": 1.2},
+         "tiers": {"強": {"n": 50, "hit": 0.62, "avg": 2.1}}, "stocks": []}]}}
+    board = [{"code": "BZ", "kind": "intl", "settled_date": "2026-11-06", "chg_settled": -3.0, "z": -2.4}]
+    assert F.predict_cards(cal, {}, board, "day", "2026-11-09", "2026-11-10", {}) == []
+    c = F.predict_cards(cal, {}, board, "night", "2026-11-09", "2026-11-09", {})[0]
+    assert c["direction"] == -1 and c["tier"] == "強" and c["items"][0]["tier_hit"] == 0.62
+
+
+def test_bh_pass_and_fdr_excludes_confidence():
+    import focus as F
+    ok = C.bh_pass([6.0, 2.05, 0.1, 0.2, 0.3, 0.1, 0.4, 0.2, 0.1, 0.3])
+    assert 0 in ok and 1 not in ok, "t=2.05 在 10 組檢定中不應通過 BH"
+    cal = _cal_focus()
+    cal["pairs"][1]["fdr_ok"] = False                  # 螺紋鋼→鋼鐵 未通過校正
+    assert "鋼鐵" in F.sector_confidence(cal)            # 仍有「反轉」那組有效關聯撐著
+    cal["pairs"][3]["fdr_ok"] = False
+    assert "鋼鐵" not in F.sector_confidence(cal)

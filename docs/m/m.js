@@ -89,6 +89,7 @@ function drawHome() {
   if (mk.tw_holiday) add(`今日台股休市（${mk.tw_holiday}）。`);
   if (mk.cn?.rolled?.length) add('主力合約今日換月：' + mk.cn.rolled.map(c => BOARD[c]?.name || c).join('、'));
   if (D.industry?.stale?.length) add(D.industry.stale.join('、') + '，新上市櫃股票可能沒有類股。');
+  if (D.premarket_mode?.on) add(`盤前版排名只用「國際隔夜」分數（回測價差 t ${D.premarket_mode.intl_t}，合併版 ${D.premarket_mode.combo_t}）；陸期夜盤僅供參考。`);
   drawPred();
   drawSectors();
   const bars = $('#bars'); bars.replaceChildren();
@@ -166,37 +167,42 @@ function drawPred() {
     const c = el('div', 'card pred');
     const dir = cd.direction;
     const h = el('div', 'ph');
-    h.append(el('b', null, `隔日預測：${cd.sector}`), el('span', 'badge conf cA', '可預測'),
-      el('span', 'dir ' + (dir > 0 ? 'up' : dir < 0 ? 'dn' : 'flat'), dir > 0 ? '偏多' : dir < 0 ? '偏空' : '不明確'));
-    c.append(h, el('div', 'sub', `依陸期 ${mmdd(cd.signal_date)} 日盤收盤 → 台股 ${mmdd(cd.target)}${D.run_date === cd.target ? '（今天）' : '（下一交易日）'}`));
+    const intl = cd.kind === 'intl';
+    h.append(el('b', null, `${intl ? '盤前預測' : '隔日預測'}：${cd.sector}`), el('span', 'badge conf cA', intl ? '國際隔夜' : '陸期收盤'));
+    if (cd.tier) h.append(el('span', 'badge tier t' + cd.tier, cd.tier + '訊號'));
+    h.append(el('span', 'dir ' + (dir > 0 ? 'up' : dir < 0 ? 'dn' : 'flat'), dir > 0 ? '偏多' : dir < 0 ? '偏空' : '不明確'));
+    c.append(h, el('div', 'sub', `依${intl ? '美國' : '陸期'} ${mmdd(cd.signal_date)} ${intl ? '收盤' : '日盤收盤'} → 台股 ${mmdd(cd.target)}${D.run_date === cd.target ? '（今天）' : '（下一交易日）'}`));
     const sum = el('div', 'pchips');
     cd.items.forEach(x => {
       const ch = el('span', 'pchip' + (x.status !== '有效' ? ' obs' : ''));
       ch.append(document.createTextNode(x.name + ' '), el('span', cls(x.ret), pct(x.ret)), document.createTextNode(' '),
-        x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', x.dir > 0 ? '偏多' : '偏空') : el('span', 'flat', '不明確'));
+        x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', (x.dir > 0 ? '偏多' : '偏空') + (x.tier ? '・' + x.tier : '')) : el('span', 'flat', '不明確'));
       sum.append(ch);
     });
-    c.append(sum);
-    const det0 = el('details', 'more'); det0.append(el('summary', null, '命中率與夜盤'));
+    if (dir) c.append(sum);
+    const det0 = el('details', 'more'); det0.append(el('summary', null, dir ? '命中率與夜盤' : '今日訊號不明確（各商品 |z| < 0.5）・明細'));
+    if (!dir) det0.append(sum);
     cd.items.forEach(x => {
       const it = el('div', 'it');
       const nm = el('div'); nm.append(document.createTextNode(x.name + ' '), el('span', cls(x.ret), pct(x.ret)),
         document.createTextNode(x.z == null ? '' : `（${x.z > 0 ? '+' : ''}${x.z}σ）`));
       if (x.status !== '有效') nm.append(el('span', 'tag new', '觀察'));
       it.append(nm, x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', x.dir > 0 ? '偏多' : '偏空') : el('span', 'flat', '不明確'));
-      it.append(el('div', 'k', `歷史命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}（${x.n} 次）・樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}` +
+      it.append(el('div', 'k', (x.tier_n ? `${x.tier}訊號歷史：命中 ${Math.round(x.tier_hit * 100)}%、平均 ${x.tier_avg > 0 ? '+' : ''}${x.tier_avg}%（${x.tier_n} 天）・` : '') +
+        `全部命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}（${x.n} 次）・樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}` +
         (x.night != null ? `・夜盤目前 ${pct(x.night)}（僅參考）` : '')));
       det0.append(it);
     });
-    det0.append(el('p', 'f-note', '命中率約 52～57%，只比隨機略好，請當成「機率略偏一邊」的參考；只計訊號明確（|z|≥0.5）的日子。樣本外＝最近 40% 期間。「觀察」為數據發現的關係，不影響預測方向。'));
+    det0.append(el('p', 'f-note', '強度：弱 |z| 0.5～1、中 1～2、強 ≥2。命中率多在 52～60%，只比隨機略好，請當成「機率略偏一邊」的參考；訊號越強，歷史平均報酬通常越高。樣本外＝最近 40% 期間。「觀察」為數據發現的關係，不影響預測方向。'));
     c.append(det0);
     if (cd.stocks.length) {
       const det = el('details', 'more'); det.append(el('summary', null, `對應個股（${cd.stocks.length}）`));
+      const tl = intl ? '同日 t' : '隔日 t';
       const rows = el('div', 'rows');
       cd.stocks.forEach(x => {
         const r = el('div', 'row stk static'), l = el('div', 'l');
         const t = el('div', 't', x.name || x.code); t.append(el('span', 'cd', x.code));
-        l.append(t, el('div', 's', `經由 ${x.via}・隔日 t ${tval(x.t1)}・歷史命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}／樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}`));
+        l.append(t, el('div', 's', `經由 ${x.via}・${tl} ${tval(x.t1)}・歷史命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}／樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}`));
         if (x.next_ok) { const tg = el('div', 'vt'); tg.append(el('span', 'tag lag', '隔日仍成立')); l.append(tg); }
         const rr = el('div', 'r'); rr.append(el('b', cls(x.last_chg), pct(x.last_chg)), el('small', null, '最新收盤'));
         r.append(l, rr); rows.append(r);
@@ -211,7 +217,7 @@ function drawSectors() {
   const by = Object.fromEntries(D.sectors.map(s => [s.name, s]));
   const focusMode = SIDE === 'focus';
   const names = focusMode ? (D.focus?.sectors || []) : (D[SIDE] || []);
-  if (focusMode) box.append(el('p', 'f-note', '只列陸期關聯在歷史資料中有效（|t|≥2、前後期間方向一致）的類股，依今日分數絕對值排序。「可預測」＝陸期收盤後對台股隔日仍有關係；「同步」＝只在同一天同步反映；「未驗證」＝沒有實測支持，分數僅供參考。'));
+  if (focusMode) box.append(el('p', 'f-note', '只列陸期（或國際隔夜）關聯在歷史資料中有效（|t|≥2、前後期間方向一致）的類股，依今日分數絕對值排序。「可預測」＝陸期收盤後對台股隔日仍有關係；「同步」＝只在同一天同步反映；「未驗證」＝沒有實測支持，分數僅供參考。'));
   if (!names.length) { box.append(el('div', 'card empty', focusMode ? '尚無高信心族群資料（下次更新後出現）' : SIDE === 'bull' ? '今日沒有正向助攻的類股' : '今日沒有負向壓力的類股')); return; }
   names.forEach((n, i) => {
     const s = by[n]; if (!s) return; const c = el('div', 'card');
@@ -222,9 +228,10 @@ function drawSectors() {
     h.append(confBadge(s));
     h.append(el('span', 'scr ' + cls(s.score), sc(s.score)));
     c.append(h, el('div', 'sub', `類股平均 ${pct(s.tw_avg_chg)}　漲 ${s.tw_up}／跌 ${s.tw_down}（${s.n} 檔）` +
-      (s.score_raw != null && s.score_raw !== s.score ? `｜已依可信度調整（原始 ${sc(s.score_raw)}）` : '')));
+      (s.score_raw != null && s.score_raw !== s.score ? `｜已依可信度調整（原始 ${sc(s.score_raw)}）` : '') +
+      (s.score_combo != null ? `｜國際＋陸期合併 ${sc(s.score_combo)}` : '')));
     if (s.confidence) c.append(el('div', 'links-line', '實測關聯：' + s.confidence.links.filter(x => x.status === '有效').slice(0, 4)
-      .map(x => `${x.name} t${tval(x.t0)}${x.predictive ? `／隔日 t${tval(x.t1)}` : ''}`).join('、')));
+      .map(x => `${x.name}${x.intl ? '（隔夜）' : ''} t${tval(x.t0)}${x.predictive && !x.intl ? `／隔日 t${tval(x.t1)}` : ''}${x.decay ? '（近期轉弱）' : ''}`).join('、')));
     const chips = el('div', 'chips');
     s.drivers.filter(d => d.contrib !== 0).slice(0, 8).forEach(d => {
       const b = el('button', 'chip' + (d.at_limit ? ' lim' : '')); b.type = 'button';
