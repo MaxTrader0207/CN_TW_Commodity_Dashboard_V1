@@ -184,6 +184,51 @@ def annotate_quality(rows, series_of, excess, tw_dates):
         r["decay"] = bool((rho > 0) != (full > 0) or abs(t) < 1)
 
 
+WEAK_PCT = 30         # 訊號強度（當天最大 |分數|）低於訓練期第 30 百分位 → 弱訊號日
+DECAY_MULTS = {"decay_half": 0.5, "decay_zero": 0.0}
+
+
+def decay_links(live, series, excess, tw_dates, d_end, mult):
+    """近期轉弱的關聯降權：用 d_end 之前最近 DECAY_DAYS 個交易日檢查，方向與權重相反或 |t| < 1 → 權重 × mult。
+    回傳（新的 links, 被降權的 [(code, sector)]）"""
+    k = bisect.bisect_left(tw_dates, d_end)
+    d0 = tw_dates[max(0, k - DECAY_DAYS)]
+    out, hit = {}, []
+    sret_by = {}
+    for code, ls in live.items():
+        out[code] = []
+        for l in ls:
+            sct = l["sector"]
+            if sct not in sret_by:
+                sret_by[sct] = {d: row[sct] for d, row in excess.items() if sct in row}
+            xs, ys, _ = align(series.get(code, {}), sret_by[sct], tw_dates, 0, d0=d0, d1=d_end)
+            rho, t = corr(xs, ys)
+            weak = rho is not None and ((rho > 0) != (l["w"] > 0) or abs(t) < 1)
+            if weak:
+                hit.append((code, sct))
+            out[code].append({**l, "w": l["w"] * mult} if weak else l)
+    return out, hit
+
+
+def weak_day_stats(rec, d_split):
+    """訓練期（d_split 之前）的強度第 WEAK_PCT 百分位當門檻，比較測試期強／弱訊號日的多空價差"""
+    out = {}
+    tr = sorted(x[1] for x in rec.get(0, []) if x[0] < d_split)
+    if len(tr) < 30:
+        return None
+    th = tr[int(len(tr) * WEAK_PCT / 100)]
+    out["threshold"] = round(th, 1)
+    for lag in (0, 1):
+        te = [x for x in rec.get(lag, []) if x[0] >= d_split]
+        weak = [x[2] for x in te if x[1] < th]
+        strong = [x[2] for x in te if x[1] >= th]
+        avg = lambda xs: round(sum(xs) / len(xs), 3) if xs else None  # noqa: E731
+        out[f"lag{lag}"] = {"weak_n": len(weak), "weak_avg": avg(weak), "strong_n": len(strong), "strong_avg": avg(strong),
+                            "weak_win": round(sum(v > 0 for v in weak) / len(weak), 3) if weak else None,
+                            "strong_win": round(sum(v > 0 for v in strong) / len(strong), 3) if strong else None}
+    return out
+
+
 ROBUST_FRACS = (0.5, 0.6, 0.7)   # 採用新計分方式前，用 3 個不同的訓練／測試切點檢查，全部通過才採用
 
 
@@ -203,7 +248,14 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
         conf = F.sector_confidence({"pairs": pr, "discovered": dc})
         t = lambda r: {"lag0": r["lag0"]["spread_t"] or 0, "lag1": r["lag1"]["spread_t"] or 0,  # noqa: E731
                        "dir0": r["lag0"]["dir_t"] or 0}
+        rec = {}
         row = {"split": sp, "base": t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig))}
+        backtest(items, series, ex, tw_dates, lv, tw_dates[0], tw_dates[-1], zsig, record=rec)   # 全期每日強度與價差
+        row["weak_day"] = weak_day_stats(rec, sp)
+        for v, m in DECAY_MULTS.items():
+            lv_d, hit = decay_links(lv, series, ex, tw_dates, sp, m)
+            row[v] = t(backtest(items, series, ex, tw_dates, lv_d, sp, tw_dates[-1], zsig))
+            row[v]["n_links"] = len(hit)
         for v in F.FACTOR_VARIANTS:
             row["factor_" + v] = t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig,
                                             factor=F.sector_factor(conf, v)))
@@ -211,9 +263,11 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
         row["pre_intl"] = t(backtest(intl_items, intl_series, ex, tw_dates, il, sp, tw_dates[-1], zpre))
         row["pre_combo"] = t(backtest(intl_items + items, pre_series, ex, tw_dates, {**lv, **il}, sp, tw_dates[-1], zpre))
         out[str(frac)] = row
-        print(f"  穩健性 切點 {sp}：基準 隔日 t {row['base']['lag1']}｜" +
+        print(f"  穩健性 切點 {sp}：基準 同日 t {row['base']['lag0']} 隔日 t {row['base']['lag1']}｜" +
               "｜".join(f"{v} {row['factor_' + v]['lag1']}" for v in F.FACTOR_VARIANTS) +
-              f"｜盤前 國際 {row['pre_intl']['lag0']} vs 合併 {row['pre_combo']['lag0']}")
+              f"｜盤前 國際 {row['pre_intl']['lag0']} vs 合併 {row['pre_combo']['lag0']}"
+              f"｜降權 半 {row['decay_half']['lag0']}/{row['decay_half']['lag1']} 零 {row['decay_zero']['lag0']}/{row['decay_zero']['lag1']}"
+              f"（{row['decay_half']['n_links']} 組）｜弱訊號日 {row['weak_day']}")
     return out
 
 
@@ -290,8 +344,9 @@ def daily_scores(items, cmd_ret, links_by_code, d, zsig=None):
     return {s: num.get(s, 0) / norm(den[s]) * 100 for s in den if den[s]}
 
 
-def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None, factor=None):
-    """factor：{類股: 分數乘數}（含 "_default"），用來測試依類股可信度調整分數"""
+def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None, factor=None, record=None):
+    """factor：{類股: 分數乘數}（含 "_default"），用來測試依類股可信度調整分數。
+    record：傳入 dict 時，記錄每天的（日期, 訊號強度 = 最大 |分數|, 多空價差）到 record[lag]"""
     all_days = sorted({d for c in cmd_ret.values() for d in c})
     days = [d for d in all_days if d0 <= d <= d1]
     prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
@@ -336,6 +391,8 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None,
             bear += [row[s] for s in e]
             if b and e:
                 spread.append(sum(row[s] for s in b) / len(b) - sum(row[s] for s in e) / len(e))
+                if record is not None:
+                    record.setdefault(lag, []).append((d, max(abs(v) for v in sc.values()), spread[-1]))
         avg = lambda xs: round(sum(xs) / len(xs), 3) if xs else None  # noqa: E731
         res[f"lag{lag}"] = {
             "days": used,
@@ -725,6 +782,28 @@ def main():
                          variant=max(ok_v, key=lambda v: min(r_["factor_" + v]["lag1"] for r_ in robust.values())) if ok_v else None,
                          rule=sector_factor["rule"] + "；並且在 3 個不同訓練期切點都要通過")
     print(f"穩健性檢查後：盤前改用國際 {pm_all}；可信度調整 {sector_factor['adopt']} {sector_factor['variant'] or ''}")
+    # 16. 近期轉弱的關聯降權：同日或隔日其中一個 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過
+    def _ok(r_, v):
+        b, x = r_["base"], r_[v]
+        return ((x["lag0"] >= b["lag0"] + 0.3 and x["lag1"] >= b["lag1"] - 0.3)
+                or (x["lag1"] >= b["lag1"] + 0.3 and x["lag0"] >= b["lag0"] - 0.3))
+    ok_d = [v for v in DECAY_MULTS if all(_ok(r_, v) for r_ in robust.values())]
+    decay_cfg = {"adopt": bool(ok_d), "variant": ok_d[0] if ok_d else None, "days": DECAY_DAYS,
+                 "rule": "同日或隔日 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過"}
+    if ok_d:
+        live, hit = decay_links(live, series, excess, tw_dates, tw_dates[-1], DECAY_MULTS[ok_d[0]])
+        decay_cfg["links"] = [f"{c}→{s_}" for c, s_ in hit]
+    # 17. 弱訊號日：測試期「強訊號日」的同日多空價差要在 3 個切點都比「弱訊號日」高 0.1 以上，才在頁面標示
+    wk = [r_["weak_day"] for r_ in robust.values()]
+    wd_ok = all(w and w["lag0"]["strong_avg"] is not None and w["lag0"]["weak_avg"] is not None
+                and w["lag0"]["strong_avg"] > w["lag0"]["weak_avg"] + 0.1 for w in wk)
+    rec_full = {}
+    backtest(items, series, excess, tw_dates, live, tw_dates[0], tw_dates[-1], zsig, record=rec_full)
+    st_all = sorted(x[1] for x in rec_full.get(0, []))
+    weak_day = {"adopt": wd_ok, "pct": WEAK_PCT,
+                "threshold": round(st_all[int(len(st_all) * WEAK_PCT / 100)], 1) if len(st_all) >= 30 else None,
+                "rule": "測試期強訊號日的同日多空價差，要在 3 個切點都比弱訊號日高 0.1 個百分點以上"}
+    print(f"轉弱降權採用：{decay_cfg['adopt']} {decay_cfg['variant'] or ''}；弱訊號日標示：{wd_ok}（門檻 {weak_day['threshold']}）")
     for k, v in pre.items():
         x = v['lag0']
         print(f"盤前回測 {k}：方向命中 {x['dir_avg']}（勝率 {x['dir_win']}, t={x['dir_t']}, n={x['dir_n']}）｜"
@@ -786,6 +865,8 @@ def main():
         "sector_factor": sector_factor,
         "premarket_mode": premarket_mode,
         "robust": robust,
+        "decay_weight": decay_cfg,
+        "weak_day": weak_day,
         "quality": {"fdr_q": FDR_Q, "decay_days": DECAY_DAYS},
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         "kline": kline_info,

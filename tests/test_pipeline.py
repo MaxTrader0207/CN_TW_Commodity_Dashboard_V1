@@ -324,3 +324,34 @@ def test_bh_pass_and_fdr_excludes_confidence():
     assert "鋼鐵" in F.sector_confidence(cal)            # 仍有「反轉」那組有效關聯撐著
     cal["pairs"][3]["fdr_ok"] = False
     assert "鋼鐵" not in F.sector_confidence(cal)
+
+
+def test_watchdog_token_days_left():
+    W = _wd()
+    assert W.token_days_left(date(2027, 9, 29), "2027-10-29\n") == 30
+    assert W.token_days_left(date(2027, 11, 1), "2027-10-29") == -3
+    assert W.token_days_left(date(2027, 1, 1), "壞掉") is None
+    assert (ROOT / ".github" / "token-expiry.txt").read_text().strip() == "2027-10-29"
+
+
+def test_weak_day_stats_and_signal_strength():
+    rec = {0: [(f"2026-01-{i:02d}", float(i), 0.1 * i) for i in range(1, 31)] +
+              [(f"2026-03-{i:02d}", float(i), (1.0 if i > 15 else -0.5)) for i in range(1, 29)],
+           1: []}
+    w = C.weak_day_stats(rec, "2026-02-01")
+    assert w["threshold"] == 10.0 and w["lag0"]["strong_avg"] > w["lag0"]["weak_avg"]
+    cal = {"weak_day": {"adopt": True, "threshold": 50.0, "pct": 30}, "robust": {}}
+    ss = B.signal_strength(cal, [{"score": 20.0}, {"score": -35.0, "score_combo": -60.0}])
+    assert ss["value"] == 60.0 and not ss["weak"], "用原始（合併）分數比門檻"
+    assert B.signal_strength(cal, [{"score": 20.0}])["weak"]
+
+
+def test_decay_links_downweights_reversed_relation():
+    ds = [(date(2026, 1, 1) + timedelta(days=i)).isoformat() for i in range(150)]
+    import random
+    rnd = random.Random(1)
+    x = {d: rnd.gauss(0, 1) for d in ds}
+    ex = {d: {"A": -x[d] + rnd.gauss(0, 0.3), "B": x[d] + rnd.gauss(0, 0.3)} for d in ds}
+    live = {"X": [{"sector": "A", "w": 0.5}, {"sector": "B", "w": 0.5}]}
+    out, hit = C.decay_links(live, {"X": x}, ex, ds, ds[-1], 0.0)
+    assert hit == [("X", "A")] and out["X"][0]["w"] == 0.0 and out["X"][1]["w"] == 0.5

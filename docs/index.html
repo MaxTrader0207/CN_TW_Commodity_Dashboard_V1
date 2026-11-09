@@ -212,6 +212,7 @@ summary{cursor:pointer;font-weight:600}
 .disclaimer b{font-size:13px;white-space:nowrap}
 @media(max-width:480px){.disclaimer{flex-direction:column;gap:2px}}
 .disclaimer span{color:var(--fg)}
+.weak-note{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn);border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:12.5px;line-height:1.6}
 .disclaimer em{font-style:normal;color:var(--warn);font-weight:700}
 .hidden{display:none !important}
 .auto-note{font-size:12px;color:var(--muted);white-space:nowrap}
@@ -264,6 +265,7 @@ summary{cursor:pointer;font-weight:600}
     </div>
   </section>
 
+  <div class="weak-note hidden" id="weak-note"></div>
   <p class="note hidden" id="pm-note" style="margin:0 0 10px;color:var(--lag)"></p>
   <div class="grid2">
     <div class="bull"><p class="col-h"><span class="dot"></span>多頭助攻 前3類股</p><div id="bull"></div></div>

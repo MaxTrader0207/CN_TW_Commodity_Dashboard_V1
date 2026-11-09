@@ -18,6 +18,8 @@ TPE = timezone(timedelta(hours=8))
 STALE_HOURS = 30
 GRACE = timedelta(hours=2)          # 排程時間過後給 2 小時完成
 SLOTS = [(6, 17, "盤前版"), (17, 10, "日盤版")]   # 台北時間，台股交易日
+TOKEN_FILE = ROOT / ".github" / "token-expiry.txt"   # Cloudflare Worker 的 GH_TOKEN 到期日（更換 token 後改這裡）
+TOKEN_WARN_DAYS = 30
 
 
 def trading_day(d: date, holidays) -> bool:
@@ -45,11 +47,42 @@ def check(last_ok: datetime, now: datetime, holidays):
     return age > STALE_HOURS and bool(missed), age, missed
 
 
+def token_days_left(today: date, expiry_text: str):
+    try:
+        return (date.fromisoformat(expiry_text.strip()[:10]) - today).days
+    except ValueError:
+        return None
+
+
+def check_token(now: datetime):
+    """GH_TOKEN 到期前 30 天開 Issue（只開一次，不每小時留言）；更新到期日後自動關閉。
+    到期後 Worker 無法觸發任何更新，而「沒有執行」不會產生失敗通知，所以要提前提醒。"""
+    if not TOKEN_FILE.exists():
+        return
+    exp = TOKEN_FILE.read_text(encoding="utf-8").strip()
+    left = token_days_left(now.astimezone(TPE).date(), exp)
+    if left is None:
+        print(f"token-expiry.txt 格式不對：{exp!r}")
+        return
+    print(f"GH_TOKEN 到期日 {exp}，剩 {left} 天")
+    if left <= TOKEN_WARN_DAYS:
+        if A.find_issue("token"):
+            return
+        A.raise_alert("token", f"⏰ GH_TOKEN 將在 {left} 天後到期（{exp}）" if left >= 0 else f"⛔ GH_TOKEN 已過期（{exp}）",
+                      f"Cloudflare Worker 用來觸發更新的 GitHub token 到期日是 {exp}（剩 {left} 天）。到期後所有自動更新都會停止。\n\n"
+                      "處理步驟：\n1. GitHub → Settings → Developer settings → Fine-grained tokens，重新產生（只選本 repo、Actions: Read and write）\n"
+                      "2. Cloudflare → Workers → cn-tw-dashboard-trigger → Settings → Variables，更新 Secret `GH_TOKEN`\n"
+                      "3. 把 `.github/token-expiry.txt` 改成新的到期日（這個 Issue 會在下次監控時自動關閉）")
+    else:
+        A.resolve("token", f"到期日已更新為 {exp}")
+
+
 def main():
     latest = ROOT / "docs" / "data" / "latest.json"
     hol_f = ROOT / "pipeline" / "cache" / "tw_holidays.json"
     holidays = json.loads(hol_f.read_text(encoding="utf-8")) if hol_f.exists() else {}
     now = datetime.now(TPE)
+    check_token(now)
     if not latest.exists():
         A.raise_alert("stale", "⚠ 儀表板沒有資料", "data 分支找不到 docs/data/latest.json，請檢查每日更新流程。")
         return

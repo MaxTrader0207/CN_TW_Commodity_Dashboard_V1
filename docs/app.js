@@ -292,6 +292,11 @@ function render(d) {
     d[side].forEach((n, i) => box.append(sectorCard(byName[n], i, side)));
   }
   renderFocus(d);
+  const wkn = $('#weak-note'), ss = d.signal_strength;
+  if (wkn) {
+    wkn.classList.toggle('hidden', !ss?.weak);
+    if (ss?.weak) wkn.textContent = `今日訊號偏弱：最大類股分數 ${ss.value}，低於歷史第 ${ss.pct} 百分位（${ss.threshold}）。回測中這類日子，陸期與台股類股的同日連動明顯較弱（多空價差平均 ${ss.weak_avg}%，強訊號日 ${ss.strong_avg}%），今天的排名請當參考。隔日預測不受影響。`;
+  }
   const pmn = $('#pm-note');
   if (pmn) {
     pmn.classList.toggle('hidden', !d.premarket_mode?.on);
@@ -532,7 +537,7 @@ function renderCalibration(c) {
       (c.sector_factor.adopt ? `「${c.sector_factor.variant}」通過門檻，即時排名已採用。` : `都未通過門檻（${c.sector_factor.rule}），即時排名維持原樣；手機版「高信心族群」分頁就是「只排高信心」的排法，可自行參考。`) : '') +
     (c.robust ? '穩健性檢查（換 3 個訓練期切點，全部通過才採用）：' + Object.values(c.robust).map(r =>
       `${r.split.slice(2)} 起測試：原本隔日 t ${r.base.lag1}、只排高信心 ${r.factor_conf_only.lag1}；盤前 國際 ${r.pre_intl.lag0} vs 合併 ${r.pre_combo.lag0}`).join('；') +
-      `。盤前排名${c.premarket_mode?.adopt ? '已改用國際隔夜' : '維持國際＋陸期合併'}。` : '') +
+      `。盤前排名${c.premarket_mode?.adopt ? '已改用國際隔夜' : '維持國際＋陸期合併'}；近期轉弱關聯降權${c.decay_weight?.adopt ? '已採用' : '未通過（維持原權重）'}；弱訊號日標示${c.weak_day?.adopt ? `已啟用（門檻：最大類股分數 < ${c.weak_day.threshold}）` : '未通過'}。` : '') +
     '數字為選出類股的平均 β 調整超額報酬（類股 − β × 加權指數，已去除大盤漲跌的影響）。價差 t 值的絕對值大於 2 才算統計上顯著；' +
     '「同日」只代表陸期和台股類股會同步漲跌，「隔日」才是能拿來交易的預測力。';
 

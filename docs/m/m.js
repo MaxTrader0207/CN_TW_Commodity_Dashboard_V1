@@ -89,6 +89,8 @@ function drawHome() {
   if (mk.tw_holiday) add(`今日台股休市（${mk.tw_holiday}）。`);
   if (mk.cn?.rolled?.length) add('主力合約今日換月：' + mk.cn.rolled.map(c => BOARD[c]?.name || c).join('、'));
   if (D.industry?.stale?.length) add(D.industry.stale.join('、') + '，新上市櫃股票可能沒有類股。');
+  const ss = D.signal_strength;
+  if (ss?.weak) add(`今日訊號偏弱（最大分數 ${ss.value} < ${ss.threshold}）：回測中這類日子同日連動明顯較弱（價差 ${ss.weak_avg}% vs 強訊號日 ${ss.strong_avg}%），排名請當參考；隔日預測不受影響。`);
   if (D.premarket_mode?.on) add(`盤前版排名只用「國際隔夜」分數（回測價差 t ${D.premarket_mode.intl_t}，合併版 ${D.premarket_mode.combo_t}）；陸期夜盤僅供參考。`);
   drawPred();
   drawSectors();

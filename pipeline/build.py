@@ -843,6 +843,21 @@ def score_sectors(board, industry, stocks):
     return out, bull, bear
 
 
+def signal_strength(cal, sectors):
+    """訊號強度 = 當天最大 |類股分數|（用未經盤前／可信度調整的原始分數，與校準時的門檻同一把尺）。
+    校準確認「弱訊號日的同日關係明顯較弱」時，低於門檻就在頁面標示"""
+    wd = (cal or {}).get("weak_day") or {}
+    raw = [s.get("score_combo", s.get("score_raw", s["score"])) for s in sectors]
+    v = max((abs(x) for x in raw), default=0.0)
+    th = wd.get("threshold")
+    rb = [r.get("weak_day") for r in ((cal or {}).get("robust") or {}).values() if r.get("weak_day")]
+    avg = lambda xs: round(sum(xs) / len(xs), 2) if xs else None  # noqa: E731
+    return {"value": round(v, 1), "threshold": th, "pct": wd.get("pct"), "on": bool(wd.get("adopt")),
+            "weak": bool(wd.get("adopt")) and th is not None and v < th,
+            "strong_avg": avg([r["lag0"]["strong_avg"] for r in rb if r["lag0"]["strong_avg"] is not None]),
+            "weak_avg": avg([r["lag0"]["weak_avg"] for r in rb if r["lag0"]["weak_avg"] is not None])}
+
+
 def apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks):
     """盤前版：校準回測顯示「只用國際隔夜」的預測力明顯較好時，排名改用國際隔夜分數；
     原本（國際＋陸期夜盤）的分數保留在 score_combo"""
@@ -1053,6 +1068,7 @@ def run(now):
     pm_on, bull, bear = apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks)
     factor_on, bull, bear = apply_sector_factor(cal, sectors, bull, bear)
     focus_out = build_focus(cal, board, sectors, session, now, stocks, industry)
+    strength = signal_strength(cal, sectors)
     chips = {}
     if not a.fixtures and tw_date:
         shown = {x["code"] for sc in sectors for x in sc["strong"] + sc["weak"]}
@@ -1086,6 +1102,7 @@ def run(now):
         "focus": focus_out,
         "sector_factor": factor_on,
         "premarket_mode": pm_on,
+        "signal_strength": strength,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號
