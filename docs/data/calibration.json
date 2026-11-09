@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-09T14:14+08:00",
+ "generated_at": "2026-11-09T14:19+08:00",
  "period": {
   "start": "2024-11-11",
   "end": "2026-11-09",
@@ -7894,14 +7894,117 @@
    "化學工業": "B",
    "紡織纖維": "B"
   },
-  "rule": "隔日價差 t 值比原本高 0.3 以上、且同日 t 值不低於原本 −0.3 才採用"
+  "rule": "隔日價差 t 值比原本高 0.3 以上、且同日 t 值不低於原本 −0.3 才採用；並且在 3 個不同訓練期切點都要通過",
+  "single_split": null
  },
  "premarket_mode": {
   "adopt": false,
   "mode": "combo",
   "intl_t": 2.36,
   "combo_t": 3.6,
-  "rule": "只用國際的多空價差 t 值比合併版高 0.3 以上、且方向命中 t 值不低於合併版 −0.3 才採用"
+  "rule": "只用國際的多空價差 t 值比合併版高 0.3 以上、且方向命中 t 值不低於合併版 −0.3 才採用；並且在 3 個不同訓練期切點都要通過",
+  "single_split": false
+ },
+ "robust": {
+  "0.5": {
+   "split": "2025-11-07",
+   "base": {
+    "lag0": 3.4,
+    "lag1": 1.35,
+    "dir0": 2.56
+   },
+   "factor_conf_only": {
+    "lag0": 3.05,
+    "lag1": 2.51,
+    "dir0": 3.91
+   },
+   "factor_discount": {
+    "lag0": 3.34,
+    "lag1": 1.93,
+    "dir0": 2.78
+   },
+   "factor_pred_boost": {
+    "lag0": 3.34,
+    "lag1": 1.93,
+    "dir0": 2.78
+   },
+   "pre_intl": {
+    "lag0": 2.79,
+    "lag1": 0.41,
+    "dir0": 3.39
+   },
+   "pre_combo": {
+    "lag0": 2.75,
+    "lag1": -0.98,
+    "dir0": 2.4
+   }
+  },
+  "0.6": {
+   "split": "2026-01-16",
+   "base": {
+    "lag0": 2.49,
+    "lag1": 2.81,
+    "dir0": 3.91
+   },
+   "factor_conf_only": {
+    "lag0": 2.81,
+    "lag1": 2.27,
+    "dir0": 4.34
+   },
+   "factor_discount": {
+    "lag0": 2.67,
+    "lag1": 2.84,
+    "dir0": 4.14
+   },
+   "factor_pred_boost": {
+    "lag0": 2.63,
+    "lag1": 2.95,
+    "dir0": 4.14
+   },
+   "pre_intl": {
+    "lag0": 2.36,
+    "lag1": 1.35,
+    "dir0": 3.51
+   },
+   "pre_combo": {
+    "lag0": 3.6,
+    "lag1": 0.76,
+    "dir0": 2.81
+   }
+  },
+  "0.7": {
+   "split": "2026-04-08",
+   "base": {
+    "lag0": 3.19,
+    "lag1": 1.81,
+    "dir0": 3.07
+   },
+   "factor_conf_only": {
+    "lag0": 2.4,
+    "lag1": 1.44,
+    "dir0": 2.31
+   },
+   "factor_discount": {
+    "lag0": 2.96,
+    "lag1": 1.79,
+    "dir0": 3.07
+   },
+   "factor_pred_boost": {
+    "lag0": 2.97,
+    "lag1": 1.98,
+    "dir0": 3.07
+   },
+   "pre_intl": {
+    "lag0": 2.4,
+    "lag1": 1.09,
+    "dir0": 2.84
+   },
+   "pre_combo": {
+    "lag0": 2.38,
+    "lag1": 1.44,
+    "dir0": 1.6
+   }
+  }
  },
  "quality": {
   "fdr_q": 0.05,
