@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-09T13:11+08:00",
+ "generated_at": "2026-11-09T13:42+08:00",
  "period": {
   "start": "2024-11-11",
   "end": "2026-11-06",
@@ -6152,7 +6152,7 @@
    },
    "ZM": {
     "symbol": "ZM=F",
-    "days": 499,
+    "days": 500,
     "follow": [
      {
       "cn": "M",
@@ -6577,6 +6577,96 @@
     "dir_t": 0.73
    }
   },
+  "factor_conf_only": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.165,
+    "bull_win": 0.48,
+    "bear_avg": -0.319,
+    "bear_win": 0.587,
+    "spread_avg": 0.377,
+    "spread_win": 0.613,
+    "spread_t": 2.44,
+    "dir_n": 1453,
+    "dir_avg": 0.25,
+    "dir_win": 0.536,
+    "dir_t": 4.3
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": 0.009,
+    "bull_win": 0.444,
+    "bear_avg": -0.2,
+    "bear_win": 0.567,
+    "spread_avg": 0.253,
+    "spread_win": 0.564,
+    "spread_t": 1.89,
+    "dir_n": 1492,
+    "dir_avg": 0.08,
+    "dir_win": 0.507,
+    "dir_t": 1.43
+   }
+  },
+  "factor_discount": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.122,
+    "bull_win": 0.475,
+    "bear_avg": -0.247,
+    "bear_win": 0.571,
+    "spread_avg": 0.29,
+    "spread_win": 0.536,
+    "spread_t": 2.38,
+    "dir_n": 1800,
+    "dir_avg": 0.196,
+    "dir_win": 0.531,
+    "dir_t": 3.99
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": -0.065,
+    "bull_win": 0.447,
+    "bear_avg": -0.202,
+    "bear_win": 0.574,
+    "spread_avg": 0.138,
+    "spread_win": 0.522,
+    "spread_t": 1.34,
+    "dir_n": 1847,
+    "dir_avg": 0.039,
+    "dir_win": 0.504,
+    "dir_t": 0.82
+   }
+  },
+  "factor_pred_boost": {
+   "lag0": {
+    "days": 186,
+    "bull_avg": 0.113,
+    "bull_win": 0.473,
+    "bear_avg": -0.257,
+    "bear_win": 0.569,
+    "spread_avg": 0.291,
+    "spread_win": 0.541,
+    "spread_t": 2.39,
+    "dir_n": 1801,
+    "dir_avg": 0.198,
+    "dir_win": 0.531,
+    "dir_t": 4.03
+   },
+   "lag1": {
+    "days": 191,
+    "bull_avg": -0.082,
+    "bull_win": 0.445,
+    "bear_avg": -0.201,
+    "bear_win": 0.578,
+    "spread_avg": 0.122,
+    "spread_win": 0.516,
+    "spread_t": 1.17,
+    "dir_n": 1848,
+    "dir_avg": 0.038,
+    "dir_win": 0.504,
+    "dir_t": 0.8
+   }
+  },
   "pre_intl": {
    "lag0": {
     "days": 189,
@@ -6667,6 +6757,22 @@
     "dir_t": -1.57
    }
   }
+ },
+ "sector_factor": {
+  "adopt": false,
+  "variant": null,
+  "base": "calibrated_spreads_z",
+  "train_conf": {
+   "電器電纜": "A",
+   "鋼鐵": "B",
+   "水泥": "B",
+   "油電燃氣": "B",
+   "造紙": "B",
+   "化學工業": "B",
+   "塑膠": "B",
+   "紡織纖維": "B"
+  },
+  "rule": "隔日價差 t 值比原本高 0.3 以上、且同日 t 值不低於原本 −0.3 才採用"
  },
  "focus": {
   "predictive": [
