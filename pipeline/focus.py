@@ -204,6 +204,9 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
             if session != "night" or c.get("chg_settled") is None:
                 continue
             d, ret, z = c.get("settled_date"), c.get("chg_settled"), c.get("z")
+        elif session == "day" and c.get("status") == "ok" and c.get("quote_date") == run_date and c.get("chg") is not None:
+            # 收盤版：今天日盤收盤的報價（日K 可能還沒有今天這根）
+            d, ret, z = run_date, c["chg"], c.get("z")
         else:
             rows = klines.get(p["code"]) or []
             rows = [r for r in rows if r[2] is not None and (r[0] <= run_date if session == "day" else r[0] < run_date)]

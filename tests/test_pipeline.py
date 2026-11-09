@@ -270,6 +270,11 @@ def test_predict_cards_direction_uses_valid_links_only():
     assert night[0]["signal_date"] == "2026-11-06" and night[0]["direction"] == -1, "盤前版用前一個陸期交易日；錫只觀察"
     day = F.predict_cards(cal, kl, [], "day", "2026-11-09", "2026-11-10", {})
     assert day[0]["signal_date"] == "2026-11-09" and day[0]["direction"] == 1
+    # 收盤版：日K 還沒有今天這根時，改用今天的收盤報價
+    kl2 = {"CU": kl["CU"][:2], "SN": kl["SN"]}
+    board = [{"code": "CU", "status": "ok", "quote_date": "2026-11-09", "chg": 0.9, "z": 1.2}]
+    day2 = F.predict_cards(cal, kl2, board, "day", "2026-11-09", "2026-11-10", {})
+    assert day2[0]["signal_date"] == "2026-11-09" and day2[0]["items"][0]["tier"] == "中"
 
 
 def test_sector_factor_and_breakdown():
