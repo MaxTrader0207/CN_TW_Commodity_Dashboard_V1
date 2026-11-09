@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T17:27+08:00",
+ "updated": "2026-11-10T06:17+08:00",
  "since": "2026-10-28",
  "index_last": "2026-11-09",
  "summary": {
@@ -154,6 +154,28 @@
   }
  },
  "rows": [
+  {
+   "key": "2026-11-10_night",
+   "run_at": "2026-11-10T06:17+08:00",
+   "session": "night",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "金融保險",
+    "電器電纜",
+    "橡膠"
+   ],
+   "bear": [
+    "油電燃氣",
+    "塑膠",
+    "航運"
+   ],
+   "same_date": null,
+   "next_date": null,
+   "same": null,
+   "next": null
+  },
   {
    "key": "2026-11-09_day",
    "run_at": "2026-11-09T17:27+08:00",
