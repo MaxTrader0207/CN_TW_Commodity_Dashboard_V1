@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-09T14:19+08:00",
+ "generated_at": "2026-11-09T15:59+08:00",
  "period": {
   "start": "2024-11-11",
   "end": "2026-11-09",
@@ -4947,7 +4947,7 @@
     "stable1": true,
     "verdict": "一致",
     "oos": {
-     "rho0_tr": 0.171,
+     "rho0_tr": 0.17,
      "t0_tr": 2.87,
      "rho0_te": 0.339,
      "t0_te": 4.88,
@@ -7913,6 +7913,37 @@
     "lag1": 1.35,
     "dir0": 2.56
    },
+   "weak_day": {
+    "threshold": 60.0,
+    "lag0": {
+     "weak_n": 49,
+     "weak_avg": 0.154,
+     "strong_n": 182,
+     "strong_avg": 0.411,
+     "weak_win": 0.551,
+     "strong_win": 0.626
+    },
+    "lag1": {
+     "weak_n": 52,
+     "weak_avg": 0.484,
+     "strong_n": 186,
+     "strong_avg": 0.043,
+     "weak_win": 0.596,
+     "strong_win": 0.495
+    }
+   },
+   "decay_half": {
+    "lag0": 2.96,
+    "lag1": 2.22,
+    "dir0": 2.75,
+    "n_links": 5
+   },
+   "decay_zero": {
+    "lag0": 2.64,
+    "lag1": 3.25,
+    "dir0": 3.8,
+    "n_links": 5
+   },
    "factor_conf_only": {
     "lag0": 3.05,
     "lag1": 2.51,
@@ -7945,6 +7976,37 @@
     "lag0": 2.49,
     "lag1": 2.81,
     "dir0": 3.91
+   },
+   "weak_day": {
+    "threshold": 73.6,
+    "lag0": {
+     "weak_n": 59,
+     "weak_avg": 0.049,
+     "strong_n": 119,
+     "strong_avg": 0.396,
+     "weak_win": 0.593,
+     "strong_win": 0.605
+    },
+    "lag1": {
+     "weak_n": 62,
+     "weak_avg": 0.288,
+     "strong_n": 122,
+     "strong_avg": 0.283,
+     "weak_win": 0.597,
+     "strong_win": 0.566
+    }
+   },
+   "decay_half": {
+    "lag0": 2.66,
+    "lag1": 2.72,
+    "dir0": 3.9,
+    "n_links": 4
+   },
+   "decay_zero": {
+    "lag0": 2.57,
+    "lag1": 2.54,
+    "dir0": 3.66,
+    "n_links": 4
    },
    "factor_conf_only": {
     "lag0": 2.81,
@@ -7979,6 +8041,37 @@
     "lag1": 1.81,
     "dir0": 3.07
    },
+   "weak_day": {
+    "threshold": 79.0,
+    "lag0": {
+     "weak_n": 41,
+     "weak_avg": 0.211,
+     "strong_n": 87,
+     "strong_avg": 0.749,
+     "weak_win": 0.61,
+     "strong_win": 0.621
+    },
+    "lag1": {
+     "weak_n": 42,
+     "weak_avg": 0.402,
+     "strong_n": 91,
+     "strong_avg": 0.238,
+     "weak_win": 0.667,
+     "strong_win": 0.527
+    }
+   },
+   "decay_half": {
+    "lag0": 3.13,
+    "lag1": 2.01,
+    "dir0": 3.24,
+    "n_links": 4
+   },
+   "decay_zero": {
+    "lag0": 3.01,
+    "lag1": 2.28,
+    "dir0": 3.07,
+    "n_links": 4
+   },
    "factor_conf_only": {
     "lag0": 2.4,
     "lag1": 1.44,
@@ -8005,6 +8098,18 @@
     "dir0": 1.6
    }
   }
+ },
+ "decay_weight": {
+  "adopt": false,
+  "variant": null,
+  "days": 120,
+  "rule": "同日或隔日 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過"
+ },
+ "weak_day": {
+  "adopt": true,
+  "pct": 30,
+  "threshold": 81.0,
+  "rule": "測試期強訊號日的同日多空價差，要在 3 個切點都比弱訊號日高 0.1 個百分點以上"
  },
  "quality": {
   "fdr_q": 0.05,
