@@ -1,37 +1,37 @@
 {
- "updated": "2026-11-10T06:17+08:00",
+ "updated": "2026-11-10T17:10+08:00",
  "since": "2026-10-28",
- "index_last": "2026-11-09",
+ "index_last": "2026-11-10",
  "summary": {
   "day": {
    "next": {
-    "n": 8,
-    "bull_avg": -0.353,
-    "bull_win": 0.333,
-    "bear_avg": 0.115,
-    "bear_win": 0.417,
-    "spread_avg": -0.372,
-    "spread_win": 0.25
+    "n": 9,
+    "bull_avg": -0.494,
+    "bull_win": 0.292,
+    "bear_avg": 0.27,
+    "bear_win": 0.407,
+    "spread_avg": -0.664,
+    "spread_win": 0.222
    },
    "same": {
-    "n": 9,
-    "bull_avg": -0.31,
-    "bull_win": 0.458,
-    "bear_avg": -0.541,
-    "bear_win": 0.556,
-    "spread_avg": 0.165,
-    "spread_win": 0.556
+    "n": 10,
+    "bull_avg": -0.352,
+    "bull_win": 0.44,
+    "bear_avg": -0.38,
+    "bear_win": 0.533,
+    "spread_avg": -0.093,
+    "spread_win": 0.5
    }
   },
   "night": {
    "next": {
-    "n": 4,
-    "bull_avg": -0.279,
-    "bull_win": 0.333,
-    "bear_avg": -1.737,
-    "bear_win": 0.583,
-    "spread_avg": 1.457,
-    "spread_win": 0.5
+    "n": 5,
+    "bull_avg": -0.53,
+    "bull_win": 0.267,
+    "bear_avg": -0.927,
+    "bear_win": 0.467,
+    "spread_avg": 0.397,
+    "spread_win": 0.4
    },
    "same": {
     "n": 0,
@@ -45,64 +45,69 @@
   },
   "all": {
    "next": {
-    "n": 12,
-    "bull_avg": -0.326,
-    "bull_win": 0.333,
-    "bear_avg": -0.503,
-    "bear_win": 0.472,
-    "spread_avg": 0.238,
-    "spread_win": 0.333
+    "n": 14,
+    "bull_avg": -0.508,
+    "bull_win": 0.282,
+    "bear_avg": -0.158,
+    "bear_win": 0.429,
+    "spread_avg": -0.285,
+    "spread_win": 0.286
    }
   },
   "excluded": 3,
   "breakdown": {
    "by_level": {
     "A": {
-     "n": 15,
-     "avg": 0.693,
-     "win": 0.4
+     "n": 19,
+     "avg": 0.38,
+     "win": 0.316
     },
     "B": {
-     "n": 38,
-     "avg": -0.1,
-     "win": 0.395
+     "n": 43,
+     "avg": -0.387,
+     "win": 0.372
     },
     "none": {
-     "n": 16,
-     "avg": 0.047,
-     "win": 0.438
+     "n": 19,
+     "avg": -0.198,
+     "win": 0.368
     }
    },
    "by_sector": {
     "塑膠": {
-     "n": 11,
-     "avg": 0.126,
-     "win": 0.364
+     "n": 13,
+     "avg": -0.62,
+     "win": 0.308
     },
     "油電燃氣": {
-     "n": 9,
-     "avg": 1.856,
-     "win": 0.556
+     "n": 11,
+     "avg": 1.491,
+     "win": 0.455
     },
     "航運": {
-     "n": 8,
-     "avg": -0.18,
-     "win": 0.375
+     "n": 9,
+     "avg": -0.389,
+     "win": 0.333
     },
     "鋼鐵": {
+     "n": 9,
+     "avg": -0.332,
+     "win": 0.333
+    },
+    "電器電纜": {
      "n": 8,
-     "avg": -0.415,
-     "win": 0.25
+     "avg": -1.148,
+     "win": 0.125
     },
     "水泥": {
      "n": 7,
      "avg": 0.091,
      "win": 0.571
     },
-    "電器電纜": {
-     "n": 6,
-     "avg": -1.051,
-     "win": 0.167
+    "紡織纖維": {
+     "n": 5,
+     "avg": -0.548,
+     "win": 0.4
     },
     "造紙": {
      "n": 5,
@@ -114,15 +119,10 @@
      "avg": -0.071,
      "win": 0.4
     },
-    "紡織纖維": {
-     "n": 4,
-     "avg": -0.269,
-     "win": 0.5
-    },
     "橡膠": {
-     "n": 3,
-     "avg": 0.946,
-     "win": 0.667
+     "n": 5,
+     "avg": 0.026,
+     "win": 0.4
     },
     "食品": {
      "n": 2,
@@ -133,21 +133,26 @@
      "n": 1,
      "avg": 0.197,
      "win": 1.0
+    },
+    "金融保險": {
+     "n": 1,
+     "avg": -1.806,
+     "win": 0.0
     }
    },
    "focus_rank": {
-    "n": 0,
-    "bull_avg": null,
-    "bull_win": null,
-    "bear_avg": null,
-    "bear_win": null,
-    "spread_avg": null,
-    "spread_win": null
+    "n": 2,
+    "bull_avg": -1.514,
+    "bull_win": 0.0,
+    "bear_avg": 1.912,
+    "bear_win": 0.167,
+    "spread_avg": -3.408,
+    "spread_win": 0.0
    },
    "cards": {
-    "n": 0,
-    "avg": null,
-    "win": null
+    "n": 3,
+    "avg": -1.009,
+    "win": 0.0
    },
    "backfilled": 12,
    "note": "數字 = 訊號方向 × 下一交易日 β 調整超額報酬（正值 = 方向對）"
@@ -172,8 +177,54 @@
     "航運"
    ],
    "same_date": null,
-   "next_date": null,
+   "next_date": "2026-11-10",
    "same": null,
+   "next": {
+    "bull": [
+     -1.806,
+     -1.44,
+     -1.353
+    ],
+    "bear": [
+     0.148,
+     4.722,
+     2.063
+    ],
+    "bull_avg": -1.5327862445098184,
+    "bear_avg": 2.311016535198041,
+    "spread": -3.8438027797078593
+   }
+  },
+  {
+   "key": "2026-11-10_day",
+   "run_at": "2026-11-10T17:10+08:00",
+   "session": "day",
+   "valid": true,
+   "invalid_reason": "",
+   "weights": "實測",
+   "bull": [
+    "橡膠"
+   ],
+   "bear": [
+    "油電燃氣",
+    "塑膠",
+    "紡織纖維"
+   ],
+   "same_date": "2026-11-10",
+   "next_date": null,
+   "same": {
+    "bull": [
+     -1.353
+    ],
+    "bear": [
+     0.148,
+     4.722,
+     -1.663
+    ],
+    "bull_avg": -1.352734270643869,
+    "bear_avg": 1.0690064742736667,
+    "spread": -2.4217407449175354
+   },
    "next": null
   },
   {
@@ -194,7 +245,7 @@
     "鋼鐵"
    ],
    "same_date": "2026-11-09",
-   "next_date": null,
+   "next_date": "2026-11-10",
    "same": {
     "bull": [
      0.098,
@@ -210,7 +261,21 @@
     "bear_avg": 1.4216013548217161,
     "spread": -2.4587216971976136
    },
-   "next": null
+   "next": {
+    "bull": [
+     -1.44,
+     -1.353,
+     -1.663
+    ],
+    "bear": [
+     0.148,
+     4.722,
+     -0.331
+    ],
+    "bull_avg": -1.485181761375723,
+    "bear_avg": 1.5129470963413196,
+    "spread": -2.9981288577170426
+   }
   },
   {
    "key": "2026-11-07_day",
