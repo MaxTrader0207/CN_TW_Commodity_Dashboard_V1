@@ -1146,13 +1146,26 @@ def main():
         v["open"] = open_i.get(sct)
     for sct, v in per_p.items():
         v["open"] = open_p.get(sct)
+    # 不同進場時間的衰減：越晚進場剩越少
+    open_curve = {}
+    for cut in ID.OPEN_CUTS:
+        try:
+            sa = ID.tw_segments(ID._load(ID.TW_FILE), betas_tr, cut)["after"]
+        except Exception:  # noqa: BLE001
+            continue
+        pc, pl = light_open_stats(by_pi_tr, sd_pi_tr, split, sa)
+        if pl["n"]:
+            open_curve[cut] = pl
+            for sct, v in per_i.items():
+                v.setdefault("open_curve", {})[cut] = pc.get(sct)
+    print("盤前亮燈後各進場時間到收盤（只用國際，樣本外）：", open_curve)
     print(f"盤前亮燈後 {OPEN_CUT} 進場到收盤（樣本外）：只用國際 {open_pool_i}｜{open_i}；合併 {open_pool_p}")
     lit_ok = all(r_["lights"]["lit"]["lag0"]["avg"] > r_["lights"]["unlit"]["lag0"]["avg"]
                  and r_["lights_pre"]["lit"]["lag0"]["avg"] > r_["lights_pre"]["unlit"]["lag0"]["avg"] for r_ in robust.values())
     lights = {"z": LIGHT_Z, "z_strong": LIGHT_Z_STRONG, "test_from": split, "robust_ok": lit_ok,
               "day": {"sd": score_sd(by_day), "stats": per_d, "pooled": pool_d},
               "pre": {"sd": score_sd(by_pre), "stats": per_p, "pooled": pool_p, "open": open_pool_p},
-              "pre_intl": {"sd": score_sd(by_pi), "stats": per_i, "pooled": pool_i, "open": open_pool_i},
+              "pre_intl": {"sd": score_sd(by_pi), "stats": per_i, "pooled": pool_i, "open": open_pool_i, "open_curve": open_curve},
               "open_cut": OPEN_CUT}
     print(f"狀態燈：亮燈日優於未亮日（3 個切點）{lit_ok}；收盤版 {pool_d['lit']}；盤前版 {pool_p['lit']['lag0']}")
     # 共振：3 個切點都是「共振後隔日」的命中率與平均報酬高於非共振，才保留這個標記

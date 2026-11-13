@@ -57,7 +57,8 @@ const UI = (() => {
   function evidence(s, night) {
     const st = s.light?.stats, box = el('div', 'u-ev');
     const one = (lab, m) => m?.n ? `${lab}方向對 ${hit(m.hit)}、平均 ${pct(m.avg)}（${m.n} 天）` : null;
-    const parts = night ? [one('整天（昨收→今收）', st?.lag0), st?.open?.n ? `其中 ${OPEN} 之後進場到收盤：方向對 ${hit(st.open.hit)}、平均 ${pct(st.open.avg)}（${st.open.n} 天）` : null]
+    const parts = night ? [one('整天（昨收→今收）', st?.lag0), st?.open_curve ? '開盤後才進場到收盤：' + Object.entries(st.open_curve).filter(([, m]) => m?.n).map(([t, m]) => `${t} 進場 ${hit(m.hit)}、${pct(m.avg)}`).join('｜')
+      : st?.open?.n ? `其中 ${OPEN} 之後進場到收盤：方向對 ${hit(st.open.hit)}、平均 ${pct(st.open.avg)}（${st.open.n} 天）` : null]
       : [one('同日', st?.lag0), one('隔日', st?.lag1)];
     const ok = parts.filter(Boolean);
     if (ok.length) { box.append(el('b', null, '這個類股過去亮燈時（樣本外）：'), txt(ok.join('；') + '。')); }
@@ -155,8 +156,10 @@ const UI = (() => {
       if (PS.open?.n) {
         const q = el('p', 'u-lead');
         q.append(el('b', null, '開盤後還剩多少：'), txt(`上面的命中率是用「昨收 → 今收」算的，包含開盤跳空，開盤前看到訊號的人買不到那一段。` +
-          `亮燈日整天平均 ${pct(PS.lit?.avg)}，其中 ${PS.open_cut} 之後進場到收盤還有 ${pct(PS.open.avg)}（方向對 ${hit(PS.open.hit)}、${PS.open.n} 次）` +
-          `。大部分反應在 ${PS.open_cut} 之前（開盤跳空加上開盤後半小時）就走完，不要用整天的數字估計實際能賺到的幅度。`));
+          `亮燈日整天平均 ${pct(PS.lit?.avg)}；開盤後才進場到收盤（樣本外 ${PS.open.n} 次）：` +
+          (PS.open_curve ? Object.entries(PS.open_curve).map(([t, m]) => `${t} 進場 ${pct(m.avg)}（對 ${hit(m.hit)}）`).join('、')
+            : `${PS.open_cut} 進場 ${pct(PS.open.avg)}（對 ${hit(PS.open.hit)}）`) +
+          `。開盤那一下就反應掉一大段，之後越晚進場剩越少；不要用整天的數字估計實際能賺到的幅度。類股指數在剛開盤時有些成分股還沒成交，09:05 的數字可能略為高估。`));
         box.append(q);
       }
     }

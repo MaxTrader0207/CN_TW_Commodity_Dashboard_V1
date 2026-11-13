@@ -727,7 +727,7 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         basis = "pre_intl" if sc.get("score") == "intl" and L.get("pre_intl") else "pre"
         scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only"),
                  "score": "intl" if basis == "pre_intl" else "combo", "open_cut": L.get("open_cut"),
-                 "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open")}
+                 "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open"), "open_curve": L[basis].get("open_curve")}
     return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN, "target": target,
             "lights": {"z": L.get("z", 1.0), "z_strong": L.get("z_strong", 2.0), "robust_ok": L.get("robust_ok"),
                        "test_from": L.get("test_from"), "pooled": mode.get("pooled"), "pre_scope": scope},
