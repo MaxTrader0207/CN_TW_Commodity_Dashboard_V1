@@ -247,7 +247,9 @@ const UI = (() => {
   function predBlock(box, d, opts = {}) {
     box.replaceChildren();
     const cards = d.focus?.cards || [];
-    if (!cards.length) return 0;
+    const hid = d.focus?.lights?.pre_scope?.cards_hidden || [];
+    const hidNote = hid.length ? el('p', 'u-note', `${hid.join('、')} 的國際預測卡不顯示：長期（近 2 年）有統計關係，但最近幾個月逐一檢驗沒有過關。每週重測，過關會自動恢復。`) : null;
+    if (!cards.length) { if (hidNote) box.append(hidNote); return 0; }
     const night = d.session === 'night';
     const head = el('div', 'u-head'); head.append(el('h2', null, night ? '盤前預測卡' : '明日預測卡'),
       el('span', 'u-when', '只用通過檢驗的預測關係'));
@@ -255,6 +257,7 @@ const UI = (() => {
     const grid = el('div', 'u-grid');
     cards.forEach(cd => grid.append(predCard(cd, d, opts)));
     box.append(grid);
+    if (hidNote) box.append(hidNote);
     return cards.length;
   }
 

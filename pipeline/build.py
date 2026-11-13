@@ -725,12 +725,13 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         ts = list((sc.get("tests") or {}).values())
         rng = lambda k: [f(t[k]["all"]["hit"] for t in ts) for f in (min, max)] if ts else None  # noqa: E731
         basis = "pre_intl" if sc.get("score") == "intl" and L.get("pre_intl") else "pre"
-        for cd in cards:        # 國際預測卡的類股若沒通過盤前檢驗：照樣列出，但標示近期未過關
-            if cd.get("kind") == "intl" and cd.get("sector") not in (sc.get("pre_sectors") or []):
-                cd["pre_weak"] = True
+        # 國際預測卡的類股若沒通過盤前檢驗（近幾個月、3 個切點）：不顯示，只在頁面留一行說明
+        ok = set(sc.get("pre_sectors") or [])
+        hidden = sorted({cd["sector"] for cd in cards if cd.get("kind") == "intl" and cd.get("sector") not in ok})
+        cards[:] = [cd for cd in cards if not (cd.get("kind") == "intl" and cd.get("sector") not in ok)]
         scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only"),
                  "score": "intl" if basis == "pre_intl" else "combo", "open_cut": L.get("open_cut"),
-                 "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open"), "open_curve": L[basis].get("open_curve")}
+                 "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open"), "open_curve": L[basis].get("open_curve"), "cards_hidden": hidden}
     return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN, "target": target,
             "lights": {"z": L.get("z", 1.0), "z_strong": L.get("z_strong", 2.0), "robust_ok": L.get("robust_ok"),
                        "test_from": L.get("test_from"), "pooled": mode.get("pooled"), "pre_scope": scope},
