@@ -122,7 +122,7 @@ def parse_tw5(j):
     return out
 
 
-def update_tw(session, today, holidays, days=130, max_fetch=8, sleep=3.0, log=print):
+def update_tw(session, today, holidays, days=130, max_fetch=8, sleep=4.0, log=print):
     """補抓最近 days 天內還沒有的交易日（每次最多 max_fetch 天，避免拖慢每日更新；舊日期慢慢往回補）。
     回傳 (本次補了幾天, 累積天數, 錯誤)"""
     bars = _load(TW_FILE)
@@ -146,8 +146,9 @@ def update_tw(session, today, holidays, days=130, max_fetch=8, sleep=3.0, log=pr
                 bars[d.isoformat()] = {}        # 查無資料（非交易日或太久以前）：記空的，下次不再重試
         except Exception as e:  # noqa: BLE001
             err, fails = str(e)[:100], fails + 1
-            if fails >= 3:
+            if fails >= 5:
                 break
+            time.sleep(25)              # 證交所連續查詢太快會斷線：等久一點再繼續
         time.sleep(sleep)
     cut = (today - timedelta(days=KEEP_DAYS)).isoformat()
     bars = {k: v for k, v in bars.items() if k >= cut}

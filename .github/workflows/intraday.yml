@@ -9,6 +9,11 @@ on:
         type: choice
         options: ["20", "40", "80", "140"]
         default: "40"
+      tw_days:
+        description: "往回補到幾天前"
+        type: choice
+        options: ["130", "280", "400"]
+        default: "130"
 
 permissions:
   contents: write
@@ -20,7 +25,7 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -37,7 +42,8 @@ jobs:
         env:
           PYTHONUNBUFFERED: "1"
           MAX_TW: ${{ github.event.inputs.max_tw }}
-        run: python pipeline/intraday.py --max-tw "$MAX_TW"
+          TW_DAYS: ${{ github.event.inputs.tw_days }}
+        run: python pipeline/intraday.py --max-tw "$MAX_TW" --tw-days "$TW_DAYS"
       - name: Save to data branch
         if: always()
         run: |
