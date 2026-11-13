@@ -727,6 +727,11 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         basis = "pre_intl" if sc.get("score") == "intl" and L.get("pre_intl") else "pre"
         # 國際預測卡的類股若沒通過盤前檢驗（近幾個月、3 個切點）：不顯示，只在頁面留一行說明
         ok = set(sc.get("pre_sectors") or [])
+        for s in sectors:       # 盤前亮燈類股：附上亮燈日個股的實測（開盤買到收盤）
+            b = ((cal or {}).get("basket") or {}).get(s["name"])
+            if b and s["name"] in ok:
+                s["basket"] = {"from": b["from"], "lit_days": b["lit_days"], "all": b["all"],
+                               "stocks": [{"code": c, "name": (stocks.get(c) or {}).get("name"), **r} for c, r in b["stocks"].items()]}
         hidden = sorted({cd["sector"] for cd in cards if cd.get("kind") == "intl" and cd.get("sector") not in ok})
         cards[:] = [cd for cd in cards if not (cd.get("kind") == "intl" and cd.get("sector") not in ok)]
         scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only"),

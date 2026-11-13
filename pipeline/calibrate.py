@@ -758,6 +758,58 @@ def spread_items(spr_ret, d_end=None):
 YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{}?range={}&interval=1d"
 
 
+STOCK_OC = {}        # {代號: {日期: 開盤 → 收盤 漲跌%}}，fetch_stock 順便記下（檢驗「開盤買、收盤賣」用）
+
+
+def _open_close(res):
+    """Yahoo chart 結果 → {日期: (收盤 ÷ 開盤 − 1) × 100}（未還原價，同一天內不受除權息影響）"""
+    q = ((res.get("indicators") or {}).get("quote") or [{}])[0]
+    out = {}
+    for t, o, c in zip(res.get("timestamp") or [], q.get("open") or [], q.get("close") or []):
+        if o and c:
+            r = (c / o - 1) * 100
+            if abs(r) < 11:
+                out[datetime.fromtimestamp(t, TPE).date().isoformat()] = round(r, 3)
+    return out
+
+
+def fetch_index_oc(session, symbol="^TWII", rng="2y"):
+    """加權指數每天的 開盤 → 收盤 漲跌%"""
+    r = session.get(YAHOO.format(symbol, rng), timeout=25)
+    res = ((r.json().get("chart") or {}).get("result") or [None])[0]
+    if not res:
+        raise ValueError(f"{symbol} 無資料（HTTP {r.status_code}）")
+    return _open_close(res)
+
+
+def basket_study(by, sd, d0, sectors, industry, res_cc, res_oc):
+    """盤前亮燈日（d0 之後）類股內個股的表現：方向 × 個股超額報酬。
+      day 昨收 → 今收（含開盤跳空，買不到）；oc 開盤 → 收盤（開盤買進吃得到的部分）
+    不挑股：列出類股內所有有資料的個股，另算全部等權平均。"""
+    out = {}
+    for sct in sectors:
+        m = by.get(sct)
+        if not m or sct not in sd:
+            continue
+        lit = {d: (1 if v > 0 else -1) for d, (v, _a, _b) in m.items() if d >= d0 and abs(v) >= LIGHT_Z * sd[sct]}
+        codes = sorted(c for c in res_oc if industry.get(c) == sct and c in res_cc)
+        rows, eq = {}, {"day": {}, "oc": {}}
+        for c in codes:
+            row = {}
+            for k, src in (("day", res_cc[c]), ("oc", res_oc[c])):
+                xs = []
+                for d, dr in lit.items():
+                    if d in src:
+                        xs.append(dr * src[d])
+                        eq[k].setdefault(d, []).append(dr * src[d])
+                row[k] = _aggt(xs)
+            rows[c] = row
+        if rows:
+            out[sct] = {"from": d0, "lit_days": len(lit), "stocks": rows,
+                        "all": {k: _aggt([sum(v) / len(v) for v in eq[k].values()]) for k in eq}}
+    return out
+
+
 def fetch_stock(session, code, rng="2y"):
     """Yahoo 日線（還原權息收盤）：{date: close}；先試上市 .TW 再試上櫃 .TWO"""
     import time as _t
@@ -778,6 +830,7 @@ def fetch_stock(session, code, rng="2y"):
                 if c:
                     out[(datetime.fromtimestamp(t, TPE)).date().isoformat()] = float(c)
             if len(out) > 50:
+                STOCK_OC[code] = _open_close(res)
                 return out, suf
             last_err = f"{suf} 筆數過少"
         except Exception as e:  # noqa: BLE001
@@ -987,6 +1040,20 @@ def main():
             print(f"  ⚠ 個股 {code} 日線失敗：{e}")
         import time as _t
         _t.sleep(0.4)
+    # 個股「開盤 → 收盤」的超額報酬（扣掉 β × 加權指數同一段）：檢驗盤前訊號在個股上開盤後還吃得到多少
+    stock_oc = {}
+    if off is not None:
+        stock_oc = off.get("stock_oc") or {}
+    else:
+        try:
+            twii_oc = fetch_index_oc(s)
+            for code, oc in STOCK_OC.items():
+                beta = (stock_meta.get(code) or {}).get("beta")
+                if beta is not None:
+                    stock_oc[code] = {d: round(v - beta * twii_oc[d], 3) for d, v in oc.items() if d in twii_oc}
+        except Exception as e:  # noqa: BLE001
+            print("⚠ 加權指數開收盤抓取失敗，略過個股開盤後檢驗：", e)
+    print(f"個股開盤→收盤：{len(stock_oc)} 檔")
     tw_stock_dates = sorted({d for v in closes_cache.values() for d in v})
     for item_code, lst in BENEFICIARIES.items():
         rows = []
@@ -1177,6 +1244,15 @@ def main():
             for sct, v in per_i.items():
                 v.setdefault("open_curve", {})[cut] = pc.get(sct)
     print("盤前亮燈後各進場時間到收盤（只用國際，樣本外）：", open_curve)
+    try:
+        industry_map = json.loads((Path(__file__).parent / "industry_cache.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        industry_map = {}
+    basket = basket_study(by_pi_tr, sd_pi_tr, split, sorted(_ps), industry_map, closes_cache, stock_oc)
+    for sct, b in basket.items():
+        print(f"盤前亮燈日個股（{sct}，{b['from']} 起 {b['lit_days']} 個亮燈日）：等權 整天 {b['all']['day']}｜開盤→收盤 {b['all']['oc']}")
+        for c, r in b["stocks"].items():
+            print(f"    {c} 整天 {r['day']}｜開盤→收盤 {r['oc']}")
     print(f"盤前亮燈後 {OPEN_CUT} 進場到收盤（樣本外）：只用國際 {open_pool_i}｜{open_i}；合併 {open_pool_p}")
     lit_ok = all(r_["lights"]["lit"]["lag0"]["avg"] > r_["lights"]["unlit"]["lag0"]["avg"]
                  and r_["lights_pre"]["lit"]["lag0"]["avg"] > r_["lights_pre"]["unlit"]["lag0"]["avg"] for r_ in robust.values())
@@ -1200,7 +1276,7 @@ def main():
 
     # 保存本次輸入（陸期日K、個股殘差報酬、國際日線），方便本機重現與除錯
     if off is None:
-        inp = {"klines": klines, "stock_res": closes_cache, "intl": intl_closes,
+        inp = {"klines": klines, "stock_res": closes_cache, "stock_oc": stock_oc, "intl": intl_closes,
                "pairs": {c: {d: list(v) for d, v in m.items()} for c, m in pairs_by.items()}}
         with gzip.open(INP, "wt", encoding="utf-8") as f:
             json.dump(inp, f, ensure_ascii=False)
@@ -1249,6 +1325,7 @@ def main():
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "premarket_mode": premarket_mode,
         "premarket_scope": premarket_scope,
+        "basket": basket,
         "robust": robust,
         "decay_weight": decay_cfg,
         "ridge": ridge,

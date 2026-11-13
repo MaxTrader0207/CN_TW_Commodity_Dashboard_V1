@@ -124,6 +124,25 @@ const UI = (() => {
       sens.forEach(x => det.append(sensRow(x, board)));
       card.append(det);
     }
+    const B = s.basket;
+    if (B?.stocks?.length) {   // 盤前亮燈日，類股內個股「開盤買、收盤賣」的實測（樣本外）
+      const det = el('details', 'u-more'); det.open = true;
+      det.append(el('summary', null, `亮燈日個股實測（${B.stocks.length} 檔，${B.lit_days} 個亮燈日）`));
+      const f = m => m?.n ? `對 ${hit(m.hit)}、${pct(m.avg)}` : '—';
+      const rows = [...B.stocks].sort((a, b) => (b.oc?.avg ?? -9) - (a.oc?.avg ?? -9));
+      const mk = (title, code, m, strong) => {
+        const r = el('div', 'u-row'), l = el('div', 'l');
+        const t = el('div', 't', title); if (code) t.append(el('span', null, code));
+        l.append(t, el('div', 's', `整天（含跳空）${f(m.day)}` + (m.oc?.t != null ? `・開盤後 t ${tval(m.oc.t)}` : '')));
+        const rr = el('div', 'r ' + cls(m.oc?.avg), m.oc?.n ? pct(m.oc.avg) : '—'); rr.append(el('small', null, m.oc?.n ? `開盤→收盤・對 ${hit(m.oc.hit)}` : '開盤→收盤'));
+        if (strong) t.style.fontWeight = '800';
+        r.append(l, rr); return r;
+      };
+      det.append(mk('全部等權平均', '', B.all, true));
+      rows.forEach(x => det.append(mk(x.name || x.code, x.code, x)));
+      det.append(el('p', 'u-note', '右邊是「照亮燈方向，開盤買（或賣）到收盤」扣掉大盤後的平均報酬，未扣交易成本。排序是事後結果，不代表之後也是這個順序；每檔樣本只有幾十次，單看一檔很容易是運氣。'));
+      card.append(det);
+    }
     return card;
   }
   // 整塊：標題、定位說明、整體證據、停損提示、亮燈的在前
