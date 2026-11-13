@@ -526,3 +526,11 @@ def test_apply_lights_intl_basis_and_segments():
                            "13:30": {"加權指數": 101, "鋼鐵": 104.03}}}
     sg = ID.tw_segments(bars, {"鋼鐵": 1.0}, "09:30")
     assert abs(sg["gap"]["鋼鐵"]["2026-11-12"] - 2.0) < 1e-6 and abs(sg["after"]["鋼鐵"]["2026-11-12"] - 1.0) < 1e-6
+
+
+def test_parse_tw5_keeps_open_extra():
+    import intraday as ID
+    j = {"stat": "OK", "fields": ["時間", "發行量加權股價指數"],
+         "data": [["09:00:00", "100"], ["09:00:05", "100.5"], ["09:05:00", "101"], ["09:07:00", "101.5"], ["09:15:00", "102"],
+                  ["09:30:00", "103"], ["13:30:00", "104"]]}
+    assert sorted(ID.parse_tw5(j)) == ["09:00", "09:05", "09:15", "09:30", "13:30"]

@@ -100,15 +100,19 @@ def update_cn(session, codes, log=print):
 
 
 # ───────────── 台股類股指數（每 5 秒 → 取每 30 分鐘）─────────────
+OPEN_EXTRA = ("09:05:00", "09:10:00", "09:15:00")     # 開盤後的細部時間點：檢驗「開盤後多快進場還吃得到」
+OPEN_MARK = "09:05"                                    # 舊資料沒有這一筆 → 需要重抓
+
+
 def parse_tw5(j):
-    """證交所 MI_5MINS_INDEX → {"HH:MM": {類股: 指數}}，只留整點與半點（09:00～13:30）"""
+    """證交所 MI_5MINS_INDEX → {"HH:MM": {類股: 指數}}，留整點與半點（09:00～13:30），外加開盤後 09:05／09:10／09:15"""
     if j.get("stat") != "OK" or not j.get("data"):
         return {}
     names = [None] + [H.index_name(f) for f in j["fields"][1:]]
     out = {}
     for row in j["data"]:
         t = str(row[0]).strip()
-        if not (t.endswith(":00:00") or t.endswith(":30:00")):
+        if not (t.endswith(":00:00") or t.endswith(":30:00") or t[:8] in OPEN_EXTRA):
             continue
         vals = {}
         for n, v in zip(names[1:], row[1:]):
@@ -129,8 +133,8 @@ def update_tw(session, today, holidays, days=130, max_fetch=8, sleep=4.0, log=pr
     todo, d = [], today
     while (today - d).days <= days:
         k = d.isoformat()
-        if H.is_tw_trading_day(d, holidays) and k not in bars:
-            todo.append(d)
+        if H.is_tw_trading_day(d, holidays) and (k not in bars or (bars[k] and OPEN_MARK not in bars[k])):
+            todo.append(d)                      # 沒抓過，或是舊格式（缺開盤後細部時間點）
         d -= timedelta(days=1)
     got, err, fails = 0, "", 0
     for d in todo[:max_fetch]:          # 由近到遠
@@ -142,7 +146,7 @@ def update_tw(session, today, holidays, days=130, max_fetch=8, sleep=4.0, log=pr
                 got += 1
             elif d == today:
                 err = "今天的資料尚未公布"
-            else:
+            elif not bars.get(d.isoformat()):
                 bars[d.isoformat()] = {}        # 查無資料（非交易日或太久以前）：記空的，下次不再重試
         except Exception as e:  # noqa: BLE001
             err, fails = str(e)[:100], fails + 1
@@ -223,7 +227,7 @@ def _agg(xs):
             "t": round(m / (sd / math.sqrt(n)), 2) if sd else None}
 
 
-OPEN_CUTS = ("09:30", "10:00")     # 「開盤後」的進場時間點（證交所指數 09:00 那一筆是前一天收盤）
+OPEN_CUTS = ("09:05", "09:10", "09:15", "09:30", "10:00")     # 「開盤後」的進場時間點（證交所指數 09:00 那一筆是前一天收盤）
 
 
 def tw_segments(tw_bars, betas, cut="09:30", taiex="加權指數"):
