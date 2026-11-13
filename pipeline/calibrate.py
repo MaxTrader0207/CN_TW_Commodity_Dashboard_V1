@@ -1047,8 +1047,8 @@ def main():
     night_tests = night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series) if night_series else {}
     premarket_scope = premarket_scope_decision(night_tests)
     print(f"盤前版亮燈範圍：{premarket_scope['mode']}（{premarket_scope.get('reason') or ''}"
-          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}、"
-          f"分數用 {premarket_scope.get('score')}；盤前亮燈類股 {premarket_scope.get('pre_sectors')}）")
+          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}；"
+          f"盤前亮燈類股 {premarket_scope.get('pre_sectors')}）")
     pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
                  for r_ in robust.values())
     premarket_mode.update(adopt=False, passed=pm_all, mode="combo", single_split=pm_adopt,
