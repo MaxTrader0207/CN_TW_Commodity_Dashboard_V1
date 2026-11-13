@@ -707,9 +707,15 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
     L = (cal or {}).get("lights") or {}
     mode = L.get("pre" if session == "night" else "day") or {}
     reso = (cal or {}).get("resonance") or {}
+    sc = (cal or {}).get("premarket_scope") or {}
+    scope = None
+    if session == "night" and sc.get("adopt"):
+        ts = list((sc.get("tests") or {}).values())
+        rng = lambda k: [f(t[k]["all"]["hit"] for t in ts) for f in (min, max)] if ts else None  # noqa: E731
+        scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only")}
     return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN, "target": target,
             "lights": {"z": L.get("z", 1.0), "z_strong": L.get("z_strong", 2.0), "robust_ok": L.get("robust_ok"),
-                       "test_from": L.get("test_from"), "pooled": mode.get("pooled")},
+                       "test_from": L.get("test_from"), "pooled": mode.get("pooled"), "pre_scope": scope},
             "resonance": {"on": bool(reso.get("adopt")), "res": reso.get("res"), "non": reso.get("non")},
             "levels": {"A": "同日＋隔日都有實測支持（有預測力）", "B": "只有同日關係（同步反映，預測力弱）"}}
 

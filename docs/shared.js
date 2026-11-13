@@ -78,6 +78,14 @@ const UI = (() => {
   function lightCard(s, d, opts = {}) {
     const night = d.session === 'night', L = s.light || {}, board = opts.board || {};
     const [label, c] = STATE[L.state ?? 0];
+    if (L.pre_off) {   // 每週校準實測：這個類股在開盤前沒有預測力 → 盤前不亮燈，只留參考分數
+      const card = el('div', 'u-light dim u-off');
+      card.dataset.sector = s.name;
+      const h = el('div', 'u-lh');
+      h.append(el('span', 'u-name', s.name), el('span', 'u-state', '盤前不亮燈'), el('span', 'u-score flat', sc(s.score)));
+      card.append(h, el('div', 'u-sub', '開盤前沒有預測力（實測）：這個類股只對得到陸期商品，夜盤走勢對台股當天的方向沒有參考價值。請等收盤後看「今日回顧」。'));
+      return card;
+    }
     const card = el('div', `u-light s-${c}` + (L.weak_oos && L.state ? ' dim' : ''));
     card.dataset.sector = s.name;
     const h = el('div', 'u-lh');
@@ -131,14 +139,30 @@ const UI = (() => {
         (night ? '' : `隔日：亮燈 ${hit(P.lit.lag1?.hit)}、${pct(P.lit.lag1?.avg)}，優勢不明顯。`)));
       box.append(p);
     }
+    const PS = night && f.lights?.pre_scope;
+    if (PS) {
+      const r = a => !a ? '—' : a[0] === a[1] ? hit(a[0]) : `${hit(a[0])}～${hit(a[1])}`;
+      const p = el('p', 'u-lead');
+      p.append(el('b', null, `開盤前只有 ${(PS.pre_sectors || []).join('、')} 會亮燈：`),
+        txt(`用實際的陸期夜盤資料檢驗（至少 ${PS.days} 個交易日、3 個切點），有國際商品可對應的類股，當天方向對 ${r(PS.intl_hit)}；` +
+          `只靠陸期夜盤的類股 ${r(PS.cn_hit)}，跟丟銅板差不多，所以盤前不亮燈。每週重新檢驗，證據改變會自動調整。`));
+      box.append(p);
+    }
     const g = d.gates || {};
     for (const k of night ? ['pre'] : ['day_same', 'day_next']) { const n = gateNote(g[k], k); if (n) box.append(n); }
     const lit = list.filter(s => s.light.state);
     if (!lit.length) box.append(el('div', 'u-gate', `今天沒有類股亮燈：所有類股的訊號都在平常的幅度內，${night ? '盤前沒有特別偏多或偏空的族群。' : '陸期今天對台股類股沒有特別明顯的方向。'}`));
     const grid = el('div', 'u-grid');
     const demoted = g[night ? 'pre' : 'day_next']?.state === 'demoted' && night;
-    list.forEach(s => { const c = lightCard(s, d, opts); if (demoted) c.classList.add('dim'); grid.append(c); });
+    const offs = list.filter(s => s.light.pre_off);
+    list.filter(s => !s.light.pre_off).forEach(s => { const c = lightCard(s, d, opts); if (demoted) c.classList.add('dim'); grid.append(c); });
     box.append(grid);
+    if (offs.length) {
+      const det = el('details', 'u-others'); det.append(el('summary', null, `盤前不亮燈的類股（${offs.length}，開盤前沒有預測力，收盤後才看）`));
+      const g2 = el('div', 'u-grid'); g2.style.marginTop = '10px';
+      offs.forEach(s => g2.append(lightCard(s, d, opts)));
+      det.append(g2); box.append(det);
+    }
     if (!night && f.resonance?.on && f.resonance.res?.n) {
       box.append(el('p', 'u-note', `「與陸期同向」之後的隔日：方向延續 ${hit(f.resonance.res.hit)}（反向時 ${hit(f.resonance.non.hit)}），差距很小，只供參考。`));
     }
@@ -148,7 +172,7 @@ const UI = (() => {
       det.append(el('p', 'u-note', others.map(s => `${s.name} ${sc(s.score)}`).join('、')));
       box.append(det);
     }
-    return { lit: lit.length, total: list.length };
+    return { lit: lit.length, total: list.length - offs.length, off: offs.length };
   }
 
   // ── 預測卡 ──

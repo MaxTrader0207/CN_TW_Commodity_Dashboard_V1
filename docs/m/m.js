@@ -191,6 +191,9 @@ async function drawVerify() {
     });
     box.append(el('p', 'note', `狀態燈的樣本外表現：每格 = 方向命中率・訊號方向的平均超額報酬。換 3 個訓練／測試切點，亮燈日都優於未亮日才採用（目前：${CAL.lights?.robust_ok ? '通過' : '未通過'}）。同日是回顧；盤前版的「當天」才是開盤前可用的資訊；隔日優勢很小。`));
     box.append(el('p', 'note', `試過但沒採用（3 個切點都要過關）：類股迴歸式 ${CAL.ridge?.passed ? '通過（待確認）' : '未通過'}、近期轉弱降權 ${CAL.decay_weight?.adopt ? '已採用' : '未通過'}、盤前只用國際 ${CAL.premarket_mode?.passed ? '通過（待確認）' : '未通過'}、共振標記 ${CAL.resonance?.adopt ? '保留' : '未通過，已移除'}。`));
+    const S = CAL.premarket_scope, ts = Object.values(S?.tests || {});
+    if (S) box.append(el('p', 'note', `盤前版亮燈範圍（用實際夜盤資料、3 個切點檢驗）：${S.adopt ? '只有 ' + (S.pre_sectors || []).join('、') + ' 在盤前亮燈' : ts.length ? '未過關，全部類股照常亮燈' : '夜盤資料還不夠'}。` +
+      (ts.length ? '當天方向命中：' + ts.map(t => `只靠陸期夜盤 ${Math.round(t.cn_only.all.hit * 100)}%、只用國際隔夜 ${Math.round(t.intl_only.all.hit * 100)}%`).join('；') + '。' : '')));
   }
   try { HEAT ??= await getJSON('../data/score_history.json'); drawHeat(); } catch (e) { $('#heat-note').textContent = '尚無分數歷史'; }
 }

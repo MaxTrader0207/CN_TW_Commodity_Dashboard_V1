@@ -132,6 +132,15 @@ const pp = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';   /
 const wr = v => v == null ? '—' : Math.round(v * 100) + '%';
 const SESS = { day: '日盤版', night: '夜盤版' };
 
+// 盤前版亮燈範圍（每週用實際夜盤資料檢驗）
+function scopeNote(c) {
+  const S = c.premarket_scope; if (!S) return '';
+  const ts = Object.values(S.tests || {});
+  if (!ts.length) return ' 盤前版亮燈範圍：夜盤資料還不夠，暫時全部類股都亮燈。';
+  const f = x => `${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}（t ${x.t ?? '—'}）`;
+  return ` 盤前版亮燈範圍（用實際夜盤資料、3 個切點檢驗）：${S.adopt ? '已切換為只有 ' + (S.pre_sectors || []).join('、') + ' 在盤前亮燈' : '未過關，全部類股照常亮燈'}。` +
+    '各切點當天方向命中：' + ts.map(t => `只靠陸期夜盤 ${f(t.cn_only.all)}、只用國際隔夜 ${f(t.intl_only.all)}`).join('；') + '。';
+}
 function kpiBox(k, v, s, vcls) {
   const b = el('div', 'kpi'); b.append(el('div', 'k', k), el('div', 'v ' + (vcls || ''), v));
   if (s) b.append(el('div', 's', s));
@@ -281,7 +290,7 @@ function renderCalibration(c) {
     (R.length ? '試過但沒採用的做法（3 個切點都要過關）：' +
       `類股迴歸式 ${c.ridge?.passed ? '通過（待人工確認）' : '未通過'}（同日／隔日 t：${R.map(r => `${r.ridge?.lag0}／${r.ridge?.lag1} 對 ${r.base.lag0}／${r.base.lag1}`).join('；')}）；` +
       `近期轉弱關聯降權 ${c.decay_weight?.adopt ? '已採用' : '未通過'}；盤前只用國際隔夜 ${c.premarket_mode?.passed ? '通過（待人工確認）' : '未通過'}；` +
-      `共振標記 ${c.resonance?.adopt ? '保留' : '未通過，已移除'}。` : '');
+      `共振標記 ${c.resonance?.adopt ? '保留' : '未通過，已移除'}。` : '') + scopeNote(c);
 
   const counts = c.counts || {};
   $('#cal-summary').textContent = `關聯實測表（${c.period.start}～${c.period.end}，${c.period.tw_days} 個交易日）`;

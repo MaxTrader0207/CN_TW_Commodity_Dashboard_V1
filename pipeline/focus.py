@@ -279,6 +279,9 @@ def apply_lights(cal, sectors, session):
     mode = L.get("pre" if session == "night" else "day") or {}
     sd, stats = mode.get("sd") or {}, mode.get("stats") or {}
     z_on, z_strong = L.get("z", 1.0), L.get("z_strong", 2.0)
+    # 盤前版的亮燈範圍：每週校準用實際夜盤資料檢驗，過關時只有對得到國際商品的類股在盤前亮燈
+    scope = (cal or {}).get("premarket_scope") or {}
+    pre_only = set(scope.get("pre_sectors") or []) if session == "night" and scope.get("adopt") else None
     order = []
     for s in sectors:
         s["light"] = None
@@ -286,6 +289,11 @@ def apply_lights(cal, sectors, session):
             continue
         d = sd.get(s["name"])
         z = s["score"] / d if d else None
+        if pre_only is not None and s["name"] not in pre_only:
+            s["light"] = {"z": None if z is None else round(z, 2), "state": 0, "sd": d, "strong": False, "stats": None,
+                          "weak_oos": False, "pre_off": True}
+            order.append((1e6, s["name"]))
+            continue
         state = 0 if z is None or abs(z) < z_on else (1 if z > 0 else -1)
         st = stats.get(s["name"])
         key = (st or {}).get("lag0") or {}

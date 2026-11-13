@@ -375,6 +375,72 @@ def resonance_stats(by, d0):
     return {"res": _agg(res), "non": _agg(non)}
 
 
+NIGHT_MIN_DAYS = 80      # 夜盤檢驗：每個切點的測試期至少要有這麼多個台股交易日
+NIGHT_FRACS = (0.6, 0.7, 0.8)
+
+
+def _aggt(xs):
+    a = _agg(xs)
+    a["t"] = round(tstat(xs), 2) if len(xs) > 2 else None
+    return a
+
+
+def _dir_stats(by, d0, sectors=None):
+    """d0 之後、指定類股的「分數方向 × 當天超額報酬」：全部（|分數| ≥ 1）與亮燈（達到這段期間自己幅度的 LIGHT_Z 倍）"""
+    allx, lit = [], []
+    for sct, m in by.items():
+        if sectors is not None and sct not in sectors:
+            continue
+        rows = [(v, r0) for d, (v, r0, _r1) in m.items() if d >= d0 and r0 is not None and abs(v) >= 1]
+        if len(rows) < 20:
+            continue
+        sd = math.sqrt(sum(v * v for v, _ in rows) / len(rows))
+        for v, r0 in rows:
+            x = (1 if v > 0 else -1) * r0
+            allx.append(x)
+            if abs(v) >= LIGHT_Z * sd:
+                lit.append(x)
+    return {"all": _aggt(allx), "lit": _aggt(lit)}
+
+
+def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp):
+    """用真正的陸期夜盤資料，檢驗盤前版對台股當天的預測力（權重只用切點 sp 之前估計的）：
+      cn_only    沒有國際商品可對應的類股：只靠陸期夜盤的分數
+      intl_only  有國際商品的類股：只用國際隔夜的分數
+      intl_combo 有國際商品的類股：國際隔夜＋陸期夜盤合併的分數"""
+    days = sorted({d for m in night_series.values() for d in m})
+    if not days:
+        return None
+    d0 = max(sp, days[0])
+    intl_secs = {l["sector"] for ls in il.values() for l in ls}
+    by_n = sector_records(items, night_series, ex, tw_dates, lv, zn)
+    by_i = sector_records(intl_items, intl_series, ex, tw_dates, il, zpre)
+    by_c = sector_records(intl_items + items, {**night_series, **intl_series}, ex, tw_dates, {**lv, **il}, {**zn, **zpre})
+    cn_secs = {s for s in by_n if s not in intl_secs}
+    return {"from": d0, "days": sum(1 for d in days if d >= d0), "sectors_intl": sorted(intl_secs), "sectors_cn": sorted(cn_secs),
+            "cn_only": _dir_stats(by_n, d0, cn_secs), "intl_only": _dir_stats(by_i, d0, intl_secs),
+            "intl_combo": _dir_stats(by_c, d0, intl_secs)}
+
+
+def premarket_scope_decision(tests):
+    """盤前版該讓哪些類股亮燈。三個切點（三組權重）都符合才切換：
+      1. 只靠陸期夜盤的類股：方向報酬的 t 值不到 2（看不到預測力）→ 盤前不亮燈
+      2. 有國際商品的類股：只用國際隔夜的 t 值達 2（確實有預測力）→ 盤前照常亮燈
+    切換後這些類股的分數算法不變（國際隔夜＋陸期夜盤），只是其餘類股盤前不亮燈；之後證據改變會自動切回。"""
+    rows = list(tests.values())
+    rule = (f"每個切點的測試期至少 {NIGHT_MIN_DAYS} 天夜盤資料；3 個切點都是：只靠陸期夜盤的類股 t 值 < 2、"
+            "有國際商品的類股只用國際隔夜 t 值 ≥ 2")
+    if len(rows) < len(NIGHT_FRACS) or any(r["days"] < NIGHT_MIN_DAYS for r in rows):
+        return {"adopt": False, "mode": "all", "rule": rule, "reason": "夜盤資料還不夠", "tests": tests}
+    t = lambda x: x["t"] if x["t"] is not None else 0  # noqa: E731
+    cn_weak = all(t(r["cn_only"]["all"]) < 2 and t(r["cn_only"]["lit"]) < 2 for r in rows)
+    intl_ok = all(t(r["intl_only"]["all"]) >= 2 for r in rows)
+    adopt = cn_weak and intl_ok
+    return {"adopt": adopt, "mode": "intl_only" if adopt else "all",
+            "pre_sectors": sorted(set.intersection(*[set(r["sectors_intl"]) for r in rows])) if adopt else None, "days": min(r["days"] for r in rows),
+            "cn_weak": cn_weak, "intl_ok": intl_ok, "rule": rule, "tests": tests}
+
+
 ROBUST_FRACS = (0.5, 0.6, 0.7)   # 採用新計分方式前，用 3 個不同的訓練／測試切點檢查，全部通過才採用
 
 
@@ -423,6 +489,28 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
         R = row["ridge"]
         print(f"    迴歸式：同日 t {R['lag0']} 隔日 t {R['lag1']}（原 {row['base']['lag0']}／{row['base']['lag1']}）｜"
               f"亮燈 同日 {R['lights']['lit']['lag0']} 隔日 {R['lights']['lit']['lag1']}｜計分類股 {R['sectors']}")
+    return out
+
+
+def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series):
+    """盤前版的夜盤實測，換 3 個切點。夜盤資料只有近幾個月，切點比 ROBUST_FRACS 晚（訓練期夠長才估得出國際商品的關聯）。"""
+    intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
+    zn = {c: H.rolling_sigma(v) for c, v in night_series.items()}
+    out = {}
+    for frac in NIGHT_FRACS:
+        sp = tw_dates[int(len(tw_dates) * frac)]
+        ex = H.excess_returns(idx_ret, H.estimate_betas(idx_ret, d_end=sp))
+        sp_items, _ = spread_items(spr_ret, d_end=sp)
+        items = commodity_items() + sp_items
+        _pr, _dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
+        _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
+        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp)
+        if N is None:
+            continue
+        out[str(frac)] = N
+        print(f"  夜盤實測 切點 {sp}（{N['from']} 起 {N['days']} 天）：只靠陸期夜盤的類股 {N['cn_only']['all']}｜亮燈 {N['cn_only']['lit']}")
+        print(f"      有國際商品的類股 {N['sectors_intl']}：只用國際 {N['intl_only']['all']}｜亮燈 {N['intl_only']['lit']}"
+              f"｜國際＋夜盤 {N['intl_combo']['all']}｜亮燈 {N['intl_combo']['lit']}")
     return out
 
 
@@ -947,7 +1035,20 @@ def main():
                       "rule": "只用國際的多空價差 t 值比合併版高 0.3 以上、且方向命中 t 值不低於合併版 −0.3 才採用"}
     print(f"盤前版排名改用國際隔夜：{pm_adopt}（價差 t {premarket_mode['intl_t']} vs {premarket_mode['combo_t']}）")
     # 穩健性：3 個切點都通過才採用（盤前排名、可信度調整）
+    # 真正的陸期夜盤漲跌（由每日更新累積的分鐘線算出），用來檢驗盤前版；沒有資料時略過
+    try:
+        import intraday as ID
+        night_series = ID.cn_moves(ID._load(ID.CN_FILE), tw_dates)["night"]
+        night_series = {c: m for c, m in night_series.items() if c in cmd_ret and len(m) >= 30}
+    except Exception as e:  # noqa: BLE001
+        night_series = {}
+        print("⚠ 夜盤資料讀取失敗：", e)
     robust = robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, cn_shift)
+    night_tests = night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series) if night_series else {}
+    premarket_scope = premarket_scope_decision(night_tests)
+    print(f"盤前版亮燈範圍：{premarket_scope['mode']}（{premarket_scope.get('reason') or ''}"
+          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}、"
+          f"分數用 {premarket_scope.get('score')}；盤前亮燈類股 {premarket_scope.get('pre_sectors')}）")
     pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
                  for r_ in robust.values())
     premarket_mode.update(adopt=False, passed=pm_all, mode="combo", single_split=pm_adopt,
@@ -1048,6 +1149,7 @@ def main():
                  "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
         "premarket_mode": premarket_mode,
+        "premarket_scope": premarket_scope,
         "robust": robust,
         "decay_weight": decay_cfg,
         "ridge": ridge,

@@ -472,3 +472,37 @@ def test_intraday_night_spans_weekend():
     mv = ID.cn_moves(cn, ["2026-11-16"])
     assert mv["night"]["X"]["2026-11-16"] == pytest.approx(2.0), "週五夜盤（含週六凌晨）對應週一"
     assert mv["10:30"]["X"]["2026-11-16"] == pytest.approx(3.0)
+
+
+def test_premarket_scope_decision():
+    import calibrate as C
+    a = lambda t, hit=0.5, avg=0.1: {"n": 300, "hit": hit, "avg": avg, "t": t}  # noqa: E731
+    def row(cn_t, intl_t, days=120):
+        return {"days": days, "from": "2026-03-04", "sectors_intl": ["油電燃氣", "電器電纜"], "sectors_cn": ["鋼鐵"],
+                "cn_only": {"all": a(cn_t), "lit": a(cn_t)}, "intl_only": {"all": a(intl_t), "lit": a(intl_t)},
+                "intl_combo": {"all": a(2.0), "lit": a(2.0)}}
+    ok = C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 2.5), "0.8": row(-0.3, 2.1)})
+    assert ok["adopt"] and ok["mode"] == "intl_only" and ok["pre_sectors"] == ["油電燃氣", "電器電纜"]
+    # 任何一個切點：陸期夜盤有預測力，或國際不夠顯著 → 不切換
+    assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(2.3, 2.5), "0.8": row(0.1, 2.1)})["adopt"]
+    assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 1.5), "0.8": row(0.1, 2.1)})["adopt"]
+    # 資料不夠、切點不足 → 不切換
+    assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 2.5), "0.8": row(0.1, 2.1, days=40)})["adopt"]
+    assert not C.premarket_scope_decision({})["adopt"]
+
+
+def test_apply_lights_pre_scope():
+    import focus as F
+    cal = {"lights": {"z": 1.0, "z_strong": 2.0, "pre": {"sd": {"鋼鐵": 10, "油電燃氣": 10}, "stats": {}},
+                      "day": {"sd": {"鋼鐵": 10, "油電燃氣": 10}, "stats": {}}},
+           "premarket_scope": {"adopt": True, "pre_sectors": ["油電燃氣"]}}
+    mk = lambda: [{"name": "鋼鐵", "score": 30, "confidence": {"level": "B"}},  # noqa: E731
+                  {"name": "油電燃氣", "score": -15, "confidence": {"level": "A"}}]
+    s = mk(); order = F.apply_lights(cal, s, "night")
+    assert s[0]["light"]["pre_off"] and s[0]["light"]["state"] == 0 and not s[0]["light"]["strong"]
+    assert s[1]["light"]["state"] == -1 and not s[1]["light"].get("pre_off") and order == ["油電燃氣", "鋼鐵"]
+    s = mk(); F.apply_lights(cal, s, "day")           # 收盤版不受影響
+    assert s[0]["light"]["state"] == 1 and not s[0]["light"].get("pre_off")
+    cal["premarket_scope"]["adopt"] = False
+    s = mk(); F.apply_lights(cal, s, "night")         # 沒過關：照常亮燈
+    assert s[0]["light"]["state"] == 1
