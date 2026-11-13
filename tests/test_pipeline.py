@@ -429,3 +429,46 @@ def test_alert_deploy_only_classification():
     assert A.deploy_only({}, [{"name": "build", **ok}, {"name": "deploy / deploy", **bad}])
     assert not A.deploy_only({}, [{"name": "build", **bad}, {"name": "deploy / deploy", "conclusion": "skipped"}])
     assert not A.deploy_only({}, [{"name": "build", **ok}])
+
+
+# ───────── 盤中／夜盤資料蒐集 ─────────
+def test_intraday_parsers():
+    import intraday as ID
+    txt = 'var _CU0_30=([{"d":"2026-11-12 10:30:00","o":"1","h":"1","l":"1","c":"86550.000","v":"1","p":"1"},{"d":"bad"}]);'
+    assert ID.parse_minline(txt) == {"2026-11-12 10:30": 86550.0}
+    j = {"stat": "OK", "fields": ["時間", "發行量加權股價指數", "水泥類指數", "未含金融保險股指數"],
+         "data": [["09:00:00", "23,000.50", "150.2", "1"], ["09:00:05", "23,001", "150.3", "1"], ["13:30:00", "23,100.00", "151.0", "1"]]}
+    assert ID.parse_tw5(j) == {"09:00": {TAIEX_N: 23000.5, "水泥": 150.2}, "13:30": {TAIEX_N: 23100.0, "水泥": 151.0}}
+    assert ID.parse_tw5({"stat": "很抱歉，沒有符合條件的資料!"}) == {}
+
+
+TAIEX_N = H.TAIEX
+
+
+def test_intraday_moves_and_study():
+    import intraday as ID
+    days = [(date(2026, 3, 2) + timedelta(days=i)).isoformat() for i in range(70)]
+    cn, tw = {"X": {}}, {}
+    for i, d in enumerate(days):
+        up = i % 2 == 0
+        cn["X"][f"{d} 15:00"] = 100.0                       # 日盤收盤
+        cn["X"][f"{d} 23:00"] = 101.0 if up else 99.0        # 夜盤（屬於隔天的資訊）
+        if i:
+            pu = (i - 1) % 2 == 0                            # 前一晚夜盤的方向 → 今天早盤延續、台股午盤跟上
+            cn["X"][f"{d} 10:30"] = 102.0 if pu else 98.0
+            tw[d] = {"10:30": {TAIEX_N: 100.0, "甲": 100.0}, "13:30": {TAIEX_N: 100.0, "甲": 101.0 if pu else 99.0}}
+    mv = ID.cn_moves(cn, sorted(tw))
+    d2 = days[2]
+    assert mv["night"]["X"][d2] == pytest.approx(-1.0) and mv["10:30"]["X"][d2] == pytest.approx(-2.0)
+    assert d2 not in mv["12:00"].get("X", {}) or mv["12:00"]["X"][d2] == pytest.approx(-2.0)
+    st = ID.study(cn, tw, {"X": [{"sector": "甲", "w": 0.5}]}, {"甲": 1.0})
+    assert st["ready"] and st["tests"]["10:30"]["hit"] == 1.0 and st["tests"]["10:30"]["days"] == 69
+    assert ID.study(cn, dict(list(tw.items())[:10]), {}, {})["ready"] is False
+
+
+def test_intraday_night_spans_weekend():
+    import intraday as ID
+    cn = {"X": {"2026-11-13 15:00": 100.0, "2026-11-13 23:00": 101.0, "2026-11-14 01:00": 102.0, "2026-11-16 10:30": 103.0}}
+    mv = ID.cn_moves(cn, ["2026-11-16"])
+    assert mv["night"]["X"]["2026-11-16"] == pytest.approx(2.0), "週五夜盤（含週六凌晨）對應週一"
+    assert mv["10:30"]["X"]["2026-11-16"] == pytest.approx(3.0)

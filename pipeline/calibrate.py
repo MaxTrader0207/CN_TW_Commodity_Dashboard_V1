@@ -1013,6 +1013,14 @@ def main():
                                           excess, closes_cache, stocks, {code: cn for code, _s, _n, cn, _l in INTL}, split)
     for r_ in focus_pred:
         print(f"  [隔日預測] {r_['name']}→{r_['sector']} t1={r_['t1']} 命中 {r_['all']} 樣本外 {r_['test']}")
+    # 盤中／夜盤資料的初步檢驗（資料由每日更新累積；不足 40 天時只記錄天數）
+    try:
+        import intraday as ID
+        intraday_study = ID.study(ID._load(ID.CN_FILE), ID._load(ID.TW_FILE), live, betas, daily_excess=excess)
+        print(f"盤中資料：台股 {intraday_study['tw_days']} 天，{'初步檢驗 ' + json.dumps(intraday_study['tests'], ensure_ascii=False) if intraday_study['ready'] else '還不夠 ' + str(ID.MIN_STUDY_DAYS) + ' 天，先累積'}")
+    except Exception as e:  # noqa: BLE001
+        intraday_study = {"ready": False, "error": str(e)[:120]}
+        print("⚠ 盤中資料檢驗失敗：", e)
     eff = {(c, sct): (r, t, st) for c, sct, r, t, st in roll_effect}
     changed = [(p["name"], p["sector"], eff[(p["code"], p["sector"])], (p["rho0"], p["t0"], p["status"]))
                for p in pairs if (p["code"], p["sector"]) in eff and eff[(p["code"], p["sector"])][2] != p["status"]]
@@ -1045,6 +1053,7 @@ def main():
         "ridge": ridge,
         "lights": lights,
         "resonance": resonance,
+        "intraday": intraday_study,
         "quality": {"fdr_q": FDR_Q, "decay_days": DECAY_DAYS},
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
         # 詳細面板只顯示最近 3 次換月；完整紀錄在 calibration_detail.json

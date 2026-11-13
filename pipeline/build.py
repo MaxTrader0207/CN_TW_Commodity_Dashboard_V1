@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mapping import BENEFICIARIES, COMMODITIES, INDUSTRY_CODE, INTL, SPREADS  # noqa: E402
 import focus  # noqa: E402
 import history  # noqa: E402
+import intraday  # noqa: E402
 import track  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -902,6 +903,24 @@ def run(now):
             update_score_history(payload, skip=cn["stale"] or not tw_open_today)
         except Exception as e:  # noqa: BLE001
             print("⚠ 分數歷史更新失敗：", e)
+    if not a.fixtures:
+        # 盤中與夜盤資料蒐集（只累積，不影響計分）：收盤版更新分鐘線與台股盤中指數；盤前版記下實際用的夜盤漲跌
+        try:
+            if session == "night":
+                if not cn["stale"]:
+                    n = intraday.save_night_snapshot(payload["run_date"], board)
+                    record("intraday", "盤中／夜盤資料蒐集（夜盤漲跌）", "pipeline/cache/intraday/night_snap.json",
+                           "累積後檢驗夜盤對台股當天的預測力（目前不計分）", "ok", n, payload["run_date"])
+            else:
+                codes_i = ver["need"] if ver else {c[1] for c in COMMODITIES}
+                r = intraday.update(src.s, codes_i, today, HOLIDAYS)
+                bad = r["cn_ok"] == 0
+                record("intraday", "盤中／夜盤資料蒐集（陸期分鐘線、台股盤中類股指數）", intraday.MIN_URL.format("XX", 30),
+                       "累積後檢驗陸期早盤對台股午盤的領先關係（目前不計分）",
+                       "warn" if bad or r["errors"] else "ok", r["cn_ok"], r["cn_newest"][:10] if r["cn_newest"] else None,
+                       f"陸期 {r['cn_days']} 天、台股 {r['tw_days']} 天" + ("；" + "；".join(r["errors"]) if r["errors"] else ""))
+        except Exception as e:  # noqa: BLE001
+            record("intraday", "盤中／夜盤資料蒐集", "pipeline/cache/intraday/", "累積後檢驗（目前不計分）", "warn", note=str(e)[:160])
     if KLINE_DUMP:
         want = [c["code"] for c in board]
         short = [c["name"] for c in board if len(KLINE_DUMP.get(c["code"]) or []) < 100]

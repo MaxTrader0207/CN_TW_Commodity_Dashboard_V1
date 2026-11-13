@@ -1,0 +1,44 @@
+name: Intraday backfill
+
+# 手動補抓盤中資料（陸期分鐘線、台股盤中類股指數）。平常由每日收盤版順便累積，這裡用來一次補較多天的歷史。
+on:
+  workflow_dispatch:
+    inputs:
+      max_tw:
+        description: "這次最多補幾個交易日的台股盤中指數"
+        type: choice
+        options: ["20", "40", "80", "140"]
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install --require-hashes -r requirements.txt
+      - name: Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Restore data branch
+        run: python pipeline/datastore.py restore
+      - name: Fetch
+        env:
+          PYTHONUNBUFFERED: "1"
+          MAX_TW: ${{ github.event.inputs.max_tw }}
+        run: python pipeline/intraday.py --max-tw "$MAX_TW"
+      - name: Save to data branch
+        if: always()
+        run: |
+          python pipeline/datastore.py save "cache: 盤中資料 $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
