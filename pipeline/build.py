@@ -3,8 +3,8 @@
 流程：
  1. 新浪期貨抓上期所(含INE)／大商所／鄭商所主力連續合約，算漲跌幅（對昨結算）
  2. 證交所／櫃買中心 OpenAPI 抓上市櫃個股收盤與產業別
- 3. 依 mapping.py 關聯權重，計算各三竹類股的「陸期助攻分數」
- 4. 取分數最高 3 類股為多頭、最低 3 類股為空頭，列出各類股前5強／前5弱個股
+ 3. 依校準檔的實測權重，計算各三竹類股的「陸期助攻分數」
+ 4. 有實測支持的類股各給一個狀態燈（偏多／偏空／中性）：分數相對於該類股自己的歷史夠異常才亮
  5. 輸出 docs/data/latest.json 與歷史檔，供 GitHub Pages 儀表板讀取
 
 用法：python pipeline/build.py [--session day|night] [--fixtures DIR]
@@ -31,9 +31,7 @@ DATA_DIR = ROOT / "docs" / "data"
 CACHE_FILE = ROOT / "pipeline" / "industry_cache.json"
 TPE = timezone(timedelta(hours=8))
 
-MIN_LOTS = 100          # 個股排行的最低成交量（張），過濾冷門股
-TOP_N_SECTORS = 3
-TOP_N_STOCKS = 5
+TOP_N_SECTORS = 3       # 只用於命中率帳本的舊排法（多空前 3），頁面已改用狀態燈
 LIMIT_BONUS = 1.5       # 漲跌停商品訊號放大倍數
 HISTORY_KEEP = 90
 
@@ -178,19 +176,18 @@ def load_links():
 NORM = os.environ.get("NORM", "z")   # z：漲跌 ÷ 20 日波動度；limit：漲跌 ÷ 漲跌停幅度（舊）
 
 
-PAST_RET = {}     # 各商品今天以前最近 19 個交易日的漲跌（多日動能用）
 KLINE_DUMP = {}   # 詳細面板用的日K摘要 → docs/data/klines.json
-MOMENTUM = {"adopt": False}   # 校準檔決定是否把 5 日動能加進即時計分
 
 
-def live_sigmas(src):
+def live_sigmas(src, need=None):
     """抓各商品日K，用最近 20 個交易日（不含今天）的漲跌估計穩健波動度；同時回傳每日 (收盤, 前結算) 給價差用。
-    換月日用快取的換月對照修正；快取之後才發生的換月由穩健估計吸收。"""
+    換月日用快取的換月對照修正；快取之後才發生的換月由穩健估計吸收。
+    need：只抓這些代碼（有實測支持的商品與其價差用到的腿）；None = 全部"""
     roll = json.loads(history.ROLL_JSON.read_text(encoding="utf-8")) if history.ROLL_JSON.exists() else {}
     sig, pairs_by, ok, err = {}, {}, 0, ""
-    PAST_RET.clear()
     today = datetime.now(TPE).date().isoformat()
-    for _, code, _, limit, _ in COMMODITIES:
+    todo = [c for c in COMMODITIES if need is None or c[1] in need]
+    for _, code, _, limit, _ in todo:
         try:
             rows = history.fetch_kline(src.s, code)
             pairs = history.naive_pairs(rows[-140:])
@@ -201,7 +198,6 @@ def live_sigmas(src):
             pairs_by[code] = pairs
             ret, _ = history.pairs_returns(pairs, limit)
             sd = history.robust_sigma([ret[d] for d in sorted(ret)[-history.Z_WINDOW:]])
-            PAST_RET[code] = [ret[d] for d in sorted(ret)[-19:]]
             # 詳細面板用：最近 120 天 收盤、換月修正後漲跌、當日 z（以當天以前 20 日波動度計算）
             rs = history.rolling_sigma(ret)
             close = {r["d"]: float(r["c"]) for r in rows}
@@ -215,7 +211,8 @@ def live_sigmas(src):
             err = str(e)[:120]
         time.sleep(0.1)
     record("sina_kline", "新浪財經 陸期日K（20 日波動度）", history.KLINE_URL.format("XX"), "漲跌 ÷ 波動度（z 分數）",
-           "ok" if ok == len(COMMODITIES) else "warn" if ok else "fail", ok, None, err if ok < len(COMMODITIES) else "")
+           "ok" if ok == len(todo) else "warn" if ok else "fail", ok, None,
+           (err if ok < len(todo) else "") + (f"｜只抓有實測支持的 {len(todo)} 個商品" if need is not None else ""))
     return sig, pairs_by
 
 
@@ -248,16 +245,8 @@ def commodity_board(src, links_by_code, sigmas=None):
             at_limit = "up" if chg >= limit - 0.1 else "down" if chg <= -(limit - 0.1) else None
             sd = (sigmas or {}).get(code)
             if NORM == "z" and sd:
-                past = PAST_RET.get(code, [])
-                m5 = (sum(past[-4:]) + chg) / (sd * 5 ** 0.5) if len(past) >= 4 else None
-                m20 = (sum(past[-19:]) + chg) / (sd * 20 ** 0.5) if len(past) >= 19 else None
-                if MOMENTUM.get("adopt") and m5 is not None:
-                    zc = history.combo_z(chg / sd, m5, MOMENTUM.get("combo_w", history.MOM_COMBO_W))
-                    sig = max(-1.0, min(1.0, zc / history.Z_FULL)) * (LIMIT_BONUS if at_limit else 1)
-                else:
-                    sig = history.z_signal(chg, sd, limit, True)
-                item.update(sigma=round(sd, 3), z=round(chg / sd, 2), norm="z",
-                            m5=None if m5 is None else round(m5, 2), m20=None if m20 is None else round(m20, 2))
+                sig = history.z_signal(chg, sd, limit, True)
+                item.update(sigma=round(sd, 3), z=round(chg / sd, 2), norm="z")
             else:
                 sig = max(-1.0, min(1.0, chg / limit))
                 if at_limit:
@@ -270,7 +259,7 @@ def commodity_board(src, links_by_code, sigmas=None):
     return board
 
 
-def spread_board(board, links_by_code, cal, pairs_by=None):
+def spread_board(board, links_by_code, cal, pairs_by=None, only=None):
     """價差（加工利潤）：Δ價差 ÷ 產品前一日結算價 × 100；訊號以最近 20 日波動度的 2σ 為滿格
     （抓不到日K時退回校準檔的長期 σ）"""
     q = {c["code"]: c for c in board if c["status"] == "ok"}
@@ -278,7 +267,9 @@ def spread_board(board, links_by_code, cal, pairs_by=None):
     limits = {code: limit for _, code, _, limit, _ in COMMODITIES}
     out = []
     for code, name, legs, links in SPREADS:
-        item = {"ex": "價差", "code": code, "name": name, "kind": "spread",
+        if only is not None and code not in only:     # 沒有實測支持的價差不再計算與顯示
+            continue
+        item = {"ex": "價差", "code": code, "name": name, "kind": "spread", "verified": True,
                 "legs": [{"code": c, "coef": k} for c, k in legs],
                 "links": links_by_code.get(code, []),
                 "manual": [{"sector": s, "w": w} for s, w, _ in links]}
@@ -308,11 +299,11 @@ def spread_board(board, links_by_code, cal, pairs_by=None):
                     z=round(chg / sd, 2))
         out.append(item)
     ok = sum(i["status"] == "ok" for i in out)
-    print(f"價差：{ok}/{len(out)} 個可計算" + ("" if sig_tab else "（尚無校準 σ，暫不計分）"))
+    print(f"價差：{ok}/{len(out)} 個可計算（共 {len(SPREADS)} 個，其餘沒有實測支持）" + ("" if sig_tab else "（尚無校準 σ，暫不計分）"))
     return out
 
 
-def intl_board(session, board, cal, premarket=False):
+def intl_board(session, board, cal, premarket=False, only=None):
     """國際期貨（Yahoo 日線）。
     - 交叉確認：最新價（可能仍在交易中）vs 前一個交易日收盤，與對應陸期比對方向（同向／背離）。
     - 盤前計分（premarket=True，夜盤版 08:10）：用「最後一根已收盤」的美國日線（每根於紐約 17:00 收盤），
@@ -322,8 +313,9 @@ def intl_board(session, board, cal, premarket=False):
     by_code = {c["code"]: c for c in board}
     now_utc = datetime.now(timezone.utc)
     out, ok, err, scored = [], 0, "", 0
-    for code, sym, name, cn, links in INTL:
-        item = {"ex": "國際", "code": code, "name": name, "kind": "intl", "symbol": sym, "links": [],
+    todo = [x for x in INTL if only is None or x[0] in only]     # 只抓有實測支持的國際商品
+    for code, sym, name, cn, links in todo:
+        item = {"ex": "國際", "code": code, "name": name, "kind": "intl", "symbol": sym, "links": [], "verified": True,
                 "cn": cn, "ref_links": [{"sector": sct, "w": w, "why": why,
                                          "status": (status.get((code, sct)) or {}).get("status"),
                                          "rho": (status.get((code, sct)) or {}).get("rho0"),
@@ -374,152 +366,9 @@ def intl_board(session, board, cal, premarket=False):
         time.sleep(0.2)
     record("yahoo_intl", "Yahoo 國際期貨" + ("（盤前計分＋交叉確認）" if premarket else "（交叉確認）"),
            history.YAHOO.format("XX=F", "6mo"), "隔夜美盤 → 台股" if premarket else "國際價格 vs 陸期方向",
-           "ok" if ok == len(INTL) else "warn" if ok else "fail", ok, None,
-           (err if ok < len(INTL) else "") + (f"｜{scored} 項計入盤前分數" if premarket else ""))
-    print(f"國際：{ok}/{len(INTL)}" + (f"，盤前計分 {scored} 項" if premarket else ""))
-    return out
-
-
-# ───────────────────────── 籌碼面 ─────────────────────────
-T86_URL = "https://www.twse.com.tw/rwd/zh/fund/T86?date={}&selectType=ALLBUT0999&response=json"
-TPEX_INSTI_URL = "https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=AL&date={}&response=json"
-MARGN_URL = "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={}&selectType=ALL&response=json"
-TPEX_MARGIN_URL = "https://www.tpex.org.tw/www/zh-tw/margin/balance?date={}&response=json"
-MI_INDEX_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date={}&type=ALLBUT0999&response=json"
-VOL_HIST = ROOT / "pipeline" / "cache" / "vol_hist.json"
-
-
-def _lots(x):
-    v = num(x)
-    return None if v is None else round(v / 1000)
-
-
-def _fetch_json(src, url):
-    r = src._get(url)
-    try:
-        return r.json()
-    except ValueError:
-        raise ValueError(f"非 JSON：{r.text[:80]!r}")
-
-
-def load_insti(src, d):
-    """三大法人買賣超（張）：{代號: {f 外資, t 投信, d 自營, sum 合計}}"""
-    out = {}
-    j = _fetch_json(src, T86_URL.format(d.replace("-", "")))
-    if j.get("stat") != "OK":
-        raise ValueError(f"證交所 T86：{j.get('stat')}")
-    f = {k: i for i, k in enumerate(j["fields"])}
-    for r in j["data"]:
-        fx = (_lots(r[f["外陸資買賣超股數(不含外資自營商)"]]) or 0) + (_lots(r[f["外資自營商買賣超股數"]]) or 0)
-        out[r[0].strip()] = {"f": fx, "t": _lots(r[f["投信買賣超股數"]]), "d": _lots(r[f["自營商買賣超股數"]]),
-                             "sum": _lots(r[f["三大法人買賣超股數"]])}
-    n_twse = len(out)
-    j = _fetch_json(src, TPEX_INSTI_URL.format(d.replace("-", "%2F")))
-    rows = (j.get("tables") or [{}])[0].get("data") or []
-    for r in rows:
-        out[r[0].strip()] = {"f": _lots(r[10]), "t": _lots(r[13]), "d": _lots(r[22]), "sum": _lots(r[23])}
-    return out, n_twse, len(rows)
-
-
-def load_margin(src, d):
-    """融資、融券餘額增減（張）：{代號: {mg 融資增減, st 融券增減, mgb 融資餘額, stb 融券餘額}}"""
-    out = {}
-    j = _fetch_json(src, MARGN_URL.format(d.replace("-", "")))
-    for tb in j.get("tables", []):
-        if "融資融券彙總" not in (tb.get("title") or ""):
-            continue
-        for r in tb.get("data", []):
-            a, b, c, e = num(r[5]), num(r[6]), num(r[11]), num(r[12])
-            if b is not None:
-                out[r[0].strip()] = {"mg": None if a is None else round(b - a), "st": None if c is None or e is None else round(e - c),
-                                     "mgb": round(b), "stb": None if e is None else round(e)}
-    n_twse = len(out)
-    j = _fetch_json(src, TPEX_MARGIN_URL.format(d.replace("-", "%2F")))
-    rows = (j.get("tables") or [{}])[0].get("data") or []
-    for r in rows:
-        a, b, c, e = num(r[2]), num(r[6]), num(r[10]), num(r[14])
-        if b is not None:
-            out[r[0].strip()] = {"mg": None if a is None else round(b - a), "st": None if c is None or e is None else round(e - c),
-                                 "mgb": round(b), "stb": None if e is None else round(e)}
-    return out, n_twse, len(rows)
-
-
-def update_vol_hist(src, stocks, industry, tw_date, keep=10):
-    """成交量歷史（張）：今天的寫入快取；上市股缺少的前幾個交易日用證交所 MI_INDEX 回補（上櫃無歷史端點，逐日累積）"""
-    hist = json.loads(VOL_HIST.read_text(encoding="utf-8")) if VOL_HIST.exists() else {}
-    hist[tw_date] = {c: s["lots"] for c, s in stocks.items() if c in industry}
-    # 回補前 5 個交易日（只回補上市）
-    d = date.fromisoformat(tw_date)
-    need, back = [], d
-    while len(need) < 5:
-        back -= timedelta(days=1)
-        if history.is_tw_trading_day(back, HOLIDAYS):
-            need.append(back.isoformat())
-        if (d - back).days > 20:
-            break
-    filled = 0
-    for k in need:
-        if k in hist and len(hist[k]) > 500:
-            continue
-        try:
-            j = _fetch_json(src, MI_INDEX_URL.format(k.replace("-", "")))
-            for tb in j.get("tables", []):
-                if "每日收盤行情" not in (tb.get("title") or ""):
-                    continue
-                f = {x: i for i, x in enumerate(tb["fields"])}
-                row = hist.setdefault(k, {})
-                for r in tb["data"]:
-                    c = r[f["證券代號"]].strip()
-                    if c in industry:
-                        row[c] = _lots(r[f["成交股數"]])
-                filled += 1
-            time.sleep(1.0)
-        except Exception as e:  # noqa: BLE001
-            print(f"  ⚠ 成交量回補 {k} 失敗：{e}")
-    hist = {k: hist[k] for k in sorted(hist)[-keep:]}
-    VOL_HIST.parent.mkdir(parents=True, exist_ok=True)
-    VOL_HIST.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    return hist, filled
-
-
-def volume_ratio(hist, code, tw_date):
-    prev = [hist[k].get(code) for k in sorted(hist) if k < tw_date][-5:]
-    prev = [v for v in prev if v]
-    today = (hist.get(tw_date) or {}).get(code)
-    if len(prev) < 3 or not today:
-        return None
-    return round(today / (sum(prev) / len(prev)), 2)
-
-
-def build_chips(src, stocks, industry, tw_date, codes):
-    """顯示中的個股：法人買賣超、量比、融資券增減"""
-    insti, margin, hist = {}, {}, {}
-    try:
-        insti, n1, n2 = load_insti(src, tw_date)
-        record("insti", "三大法人買賣超（證交所 T86＋櫃買）", T86_URL.format("YYYYMMDD"), "個股籌碼：外資、投信、自營",
-               "ok" if n1 and n2 else "warn", len(insti), tw_date, "" if n1 and n2 else f"上市 {n1}／上櫃 {n2} 筆")
-    except Exception as e:  # noqa: BLE001
-        record("insti", "三大法人買賣超（證交所 T86＋櫃買）", T86_URL.format("YYYYMMDD"), "個股籌碼：外資、投信、自營",
-               "fail", note=str(e)[:160])
-    try:
-        margin, n1, n2 = load_margin(src, tw_date)
-        record("margin", "融資融券（證交所＋櫃買）", MARGN_URL.format("YYYYMMDD"), "個股融資、融券增減",
-               "ok" if n1 and n2 else "warn", len(margin), tw_date, "" if n1 and n2 else f"上市 {n1}／上櫃 {n2} 筆")
-    except Exception as e:  # noqa: BLE001
-        record("margin", "融資融券（證交所＋櫃買）", MARGN_URL.format("YYYYMMDD"), "個股融資、融券增減",
-               "fail", note=str(e)[:160])
-    try:
-        hist, filled = update_vol_hist(src, stocks, industry, tw_date)
-        record("volhist", "成交量歷史（量比用）", "pipeline/cache/vol_hist.json", "量比 = 今日量 ÷ 前 5 日均量",
-               "ok", len(hist), tw_date, f"本次回補 {filled} 天" if filled else "")
-    except Exception as e:  # noqa: BLE001
-        record("volhist", "成交量歷史（量比用）", "pipeline/cache/vol_hist.json", "量比", "fail", note=str(e)[:160])
-    out = {}
-    for c in codes:
-        i, m = insti.get(c) or {}, margin.get(c) or {}
-        out[c] = {"inst": i.get("sum"), "f": i.get("f"), "t": i.get("t"), "d": i.get("d"),
-                  "vr": volume_ratio(hist, c, tw_date) if hist else None,
-                  "mg": m.get("mg"), "st": m.get("st"), "mgb": m.get("mgb"), "stb": m.get("stb")}
+           "ok" if ok == len(todo) else "warn" if ok else "fail", ok, None,
+           (err if ok < len(todo) else "") + (f"｜{scored} 項計入盤前分數" if premarket else ""))
+    print(f"國際：{ok}/{len(todo)}（共 {len(INTL)} 個，其餘沒有實測支持）" + (f"，盤前計分 {scored} 項" if premarket else ""))
     return out
 
 
@@ -777,9 +626,9 @@ def load_quotes(src, now):
             stale = bool(d and d < expect)
             if stale:
                 note = f"資料日早於應有的 {expect}（尚未公布或休市）" + (f"；{note}" if note else "")
-            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "warn" if stale else "ok", n, d, note)
+            record(sid, name, url, f"{mkt}個股漲跌 → 類股與個股的實際表現", "warn" if stale else "ok", n, d, note)
         except Exception as e:  # noqa: BLE001
-            record(sid, name, url, f"{mkt}個股漲跌 → 前5強／前5弱", "fail", note=str(e)[:160])
+            record(sid, name, url, f"{mkt}個股漲跌 → 類股與個股的實際表現", "fail", note=str(e)[:160])
     dates = [d for d in dates if d]
     if not stocks:
         raise RuntimeError("上市櫃行情皆取得失敗")
@@ -787,13 +636,6 @@ def load_quotes(src, now):
 
 
 # ───────────────────────── 評分 ─────────────────────────
-def rank_stocks(members, reverse, n=TOP_N_STOCKS):
-    """依漲跌幅排序；流動性足夠的個股不足 n 檔時才放寬成交量門檻。"""
-    liquid = [s for s in members if s["lots"] >= MIN_LOTS]
-    pool = liquid if len(liquid) >= n else members
-    return sorted(pool, key=lambda s: s["chg_pct"], reverse=reverse)[:n]
-
-
 def norm(den):
     """以權重和的平方根正規化：多項商品同向時分數較高（廣度），
     單一弱關聯商品(分母<1)不會被放大。"""
@@ -825,7 +667,6 @@ def score_sectors(board, industry, stocks):
         for d in sec["drivers"]:
             d["contrib"] = round(d.pop("_raw") / norm(sec["den"]) * 100, 1)
         sec["drivers"].sort(key=lambda d: abs(d["contrib"]), reverse=True)
-        strong = rank_stocks(members, True, min(TOP_N_STOCKS, (len(members) + 1) // 2))
         avg = round(sum(m["chg_pct"] for m in members) / len(members), 2) if members else None
         out.append({
             "name": sec["name"], "score": score, "drivers": sec["drivers"],
@@ -833,64 +674,11 @@ def score_sectors(board, industry, stocks):
             "tw_up": sum(m["chg_pct"] > 0 for m in members),
             "tw_down": sum(m["chg_pct"] < 0 for m in members),
             "resonance": bool(avg is not None and score and (avg > 0) == (score > 0) and avg != 0),
-            "strong": strong,
-            "weak": rank_stocks([m for m in members if m["code"] not in {x["code"] for x in strong}],
-                                False, TOP_N_STOCKS),
         })
     out.sort(key=lambda s: s["score"], reverse=True)
     bull = [s["name"] for s in out if s["score"] > 0][:TOP_N_SECTORS]
     bear = [s["name"] for s in sorted(out, key=lambda s: s["score"]) if s["score"] < 0][:TOP_N_SECTORS]
     return out, bull, bear
-
-
-def signal_strength(cal, sectors):
-    """訊號強度 = 當天最大 |類股分數|（用未經盤前／可信度調整的原始分數，與校準時的門檻同一把尺）。
-    校準確認「弱訊號日的同日關係明顯較弱」時，低於門檻就在頁面標示"""
-    wd = (cal or {}).get("weak_day") or {}
-    raw = [s.get("score_combo", s.get("score_raw", s["score"])) for s in sectors]
-    v = max((abs(x) for x in raw), default=0.0)
-    th = wd.get("threshold")
-    rb = [r.get("weak_day") for r in ((cal or {}).get("robust") or {}).values() if r.get("weak_day")]
-    avg = lambda xs: round(sum(xs) / len(xs), 2) if xs else None  # noqa: E731
-    return {"value": round(v, 1), "threshold": th, "pct": wd.get("pct"), "on": bool(wd.get("adopt")),
-            "weak": bool(wd.get("adopt")) and th is not None and v < th,
-            "strong_avg": avg([r["lag0"]["strong_avg"] for r in rb if r["lag0"]["strong_avg"] is not None]),
-            "weak_avg": avg([r["lag0"]["weak_avg"] for r in rb if r["lag0"]["weak_avg"] is not None])}
-
-
-def apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks):
-    """盤前版：校準回測顯示「只用國際隔夜」的預測力明顯較好時，排名改用國際隔夜分數；
-    原本（國際＋陸期夜盤）的分數保留在 score_combo"""
-    pm = (cal or {}).get("premarket_mode") or {}
-    if session != "night" or not pm.get("adopt"):
-        return {"on": False}, bull, bear
-    intl = [c for c in board if c.get("kind") == "intl" and c.get("links")]
-    if not intl:
-        return {"on": False, "reason": "沒有可計分的國際商品"}, bull, bear
-    sec_i, _, _ = score_sectors(intl, industry, stocks)
-    si = {s["name"]: s["score"] for s in sec_i}
-    for s in sectors:
-        s["score_combo"] = s["score"]
-        s["score"] = si.get(s["name"], 0.0)
-    sectors.sort(key=lambda s: s["score"], reverse=True)
-    bull = [s["name"] for s in sectors if s["score"] > 0][:TOP_N_SECTORS]
-    bear = [s["name"] for s in sorted(sectors, key=lambda s: s["score"]) if s["score"] < 0][:TOP_N_SECTORS]
-    return {"on": True, "mode": "intl", "intl_t": pm.get("intl_t"), "combo_t": pm.get("combo_t")}, bull, bear
-
-
-def apply_sector_factor(cal, sectors, bull, bear):
-    """校準回測通過時，依類股可信度調整分數再排名（原始分數保留在 score_raw）"""
-    sf = (cal or {}).get("sector_factor") or {}
-    if not sf.get("adopt") or sf.get("variant") not in focus.FACTOR_VARIANTS:
-        return {"on": False}, bull, bear
-    f = focus.sector_factor(focus.sector_confidence(cal), sf["variant"])
-    for s in sectors:
-        s["score_raw"] = s["score"]
-        s["score"] = round(s["score"] * f.get(s["name"], f["_default"]), 1)
-    sectors.sort(key=lambda s: s["score"], reverse=True)
-    bull = [s["name"] for s in sectors if s["score"] > 0][:TOP_N_SECTORS]
-    bear = [s["name"] for s in sorted(sectors, key=lambda s: s["score"]) if s["score"] < 0][:TOP_N_SECTORS]
-    return {"on": True, "variant": sf["variant"]}, bull, bear
 
 
 def next_tw_day(d, include_today):
@@ -911,11 +699,17 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         s["confidence"] = ({"level": c["level"], "label": c["label"], "best_t0": c["best_t0"], "best_t1": c["best_t1"],
                             "links": c["links"][:6]} if c else None)
         s["sensitive"] = focus.sensitive_stocks(cal, s["name"], stocks, industry) if cal else []
-    names = [s["name"] for s in sorted(sectors, key=lambda s: -abs(s["score"])) if s["confidence"]]
+    names = focus.apply_lights(cal, sectors, session)      # 狀態燈順序：|z| 由大到小
     # 盤前版：預測台股今天；日盤收盤版：預測下一個台股交易日
     target = next_tw_day(now.date(), include_today=(session == "night"))
     cards = focus.predict_cards(cal or {}, KLINE_DUMP, board, session, now.strftime("%Y-%m-%d"), target, stocks)
-    return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN,
+    L = (cal or {}).get("lights") or {}
+    mode = L.get("pre" if session == "night" else "day") or {}
+    reso = (cal or {}).get("resonance") or {}
+    return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN, "target": target,
+            "lights": {"z": L.get("z", 1.0), "z_strong": L.get("z_strong", 2.0), "robust_ok": L.get("robust_ok"),
+                       "test_from": L.get("test_from"), "pooled": mode.get("pooled")},
+            "resonance": {"on": bool(reso.get("adopt")), "res": reso.get("res"), "non": reso.get("non")},
             "levels": {"A": "同日＋隔日都有實測支持（有預測力）", "B": "只有同日關係（同步反映，預測力弱）"}}
 
 
@@ -1041,10 +835,15 @@ def run(now):
         except Exception:  # noqa: BLE001
             pass
     links_by_code, weights_mode, cal_meta, cal = load_links()
-    MOMENTUM.update(cal.get("momentum") or {})
     print(f"計分權重：{weights_mode}；標準化：{'z 分數（20 日波動度）' if NORM == 'z' else '漲跌停幅度'}")
-    sigmas, pairs_by = live_sigmas(src) if (NORM == "z" and not a.fixtures) else ({}, None)
+    # 只有「有實測支持」的商品才抓日K、算價差、抓國際行情；其餘只留報價（頁面收在「未驗證」）
+    ver = focus.verified_codes(cal, SPREADS)
+    if ver:
+        print(f"有實測支持：陸期／價差 {len(ver['cn'])} 個、國際 {len(ver['intl'])} 個（對照表共 {len(COMMODITIES) + len(SPREADS)}＋{len(INTL)} 個）")
+    sigmas, pairs_by = live_sigmas(src, ver and ver["need"]) if (NORM == "z" and not a.fixtures) else ({}, None)
     board = commodity_board(src, links_by_code, sigmas)
+    for c in board:
+        c["verified"] = ver is None or c["code"] in ver["cn"]
     ok = sum(c["status"] == "ok" for c in board)
     print(f"陸期：{ok}/{len(board)} 個商品取得報價")
     cn = china_status(board, now, None if a.fixtures else prev_payload)
@@ -1059,25 +858,13 @@ def run(now):
     stocks, tw_date = load_quotes(src, now)
     print(f"台股：{len(stocks)} 檔報價、{len(industry)} 檔產業別，資料日 {tw_date}")
 
-    board = board + spread_board(board, links_by_code, cal, pairs_by)
+    board = board + spread_board(board, links_by_code, cal, pairs_by, only=ver and ver["cn"])
     premarket = session == "night"
     if not a.fixtures:
-        board = board + intl_board(src.s, board, cal, premarket=premarket)
+        board = board + intl_board(src.s, board, cal, premarket=premarket, only=ver and ver["intl"])
     attach_beneficiaries(board, stocks, cal)
     sectors, bull, bear = score_sectors(board, industry, stocks)
-    pm_on, bull, bear = apply_premarket_mode(cal, board, sectors, bull, bear, session, industry, stocks)
-    factor_on, bull, bear = apply_sector_factor(cal, sectors, bull, bear)
     focus_out = build_focus(cal, board, sectors, session, now, stocks, industry)
-    strength = signal_strength(cal, sectors)
-    chips = {}
-    if not a.fixtures and tw_date:
-        shown = {x["code"] for sc in sectors for x in sc["strong"] + sc["weak"]}
-        shown |= {x["code"] for c in board for x in c.get("stocks", [])}
-        shown |= {x["code"] for sc in sectors for x in sc.get("sensitive", [])}
-        shown |= {x["code"] for cd in focus_out["cards"] for x in cd["stocks"]}
-        chips = build_chips(src, stocks, industry, tw_date, sorted(shown))
-        print(f"籌碼：{len(chips)} 檔（法人 {sum(1 for v in chips.values() if v['inst'] is not None)}、"
-              f"量比 {sum(1 for v in chips.values() if v['vr'] is not None)}、融資券 {sum(1 for v in chips.values() if v['mg'] is not None)}）")
     payload = {
         "generated_at": now.isoformat(timespec="minutes"),
         "run_date": now.strftime("%Y-%m-%d"),
@@ -1087,7 +874,6 @@ def run(now):
         "demo": bool(a.fixtures),
         "weights_mode": weights_mode, "calibration": cal_meta,
         "norm": NORM if sigmas else "limit",
-        "momentum": {"adopt": bool(MOMENTUM.get("adopt")), "combo_w": MOMENTUM.get("combo_w")},
         "premarket": {"on": session == "night",
                       "intl_scored": [c["code"] for c in board if c.get("kind") == "intl" and c.get("links")]},
         "industry": INDUSTRY_STATE,
@@ -1095,19 +881,17 @@ def run(now):
         "market": {"cn": cn, "tw_open_today": tw_open_today,
                    "tw_holiday": HOLIDAYS.get(today.isoformat()),
                    "tw_expected": expected_trade_date(now)},
-        "params": {"min_lots": MIN_LOTS, "limit_bonus": LIMIT_BONUS},
+        "params": {"limit_bonus": LIMIT_BONUS},
         "sources": SOURCES,
         "run_url": os.environ.get("RUN_URL"),
-        "commodities": board, "sectors": sectors, "bull": bull, "bear": bear, "chips": chips,
+        "commodities": board, "sectors": sectors, "bull": bull, "bear": bear,
         "focus": focus_out,
-        "sector_factor": factor_on,
-        "premarket_mode": pm_on,
-        "signal_strength": strength,
     }
     if not a.fixtures:
         # 命中率追蹤：補類股指數快取、把這次訊號記入帳本並開獎過去的訊號
         try:
             tr = track.update(payload, getattr(src, "s", None), skip_signal=cn["stale"])
+            payload["gates"] = tr["summary"].get("gates")       # 實盤停損狀態（頁面用來決定要不要降級）
             last = tr.get("index_last")
             record("twse_index", "證交所 類股指數（命中率開獎用）", history.IND_URL.format("YYYYMMDD"),
                    "多空類股的實際超額報酬", "ok" if last else "warn", None, last)

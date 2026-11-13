@@ -16,6 +16,7 @@
 <link rel="icon" type="image/png" href="../icons/icon-192.png">
 <title>陸期×台股 產業多空儀表板</title>
 <script src="../theme.js"></script>
+<link rel="stylesheet" href="../shared.css">
 <style>
 :root{
   color-scheme:dark;
@@ -214,21 +215,15 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
 </header>
 
 <main>
-  <section class="view on" id="v-home" aria-label="多空">
+  <section class="view on" id="v-home" aria-label="首頁">
     <div id="notes"></div>
     <details class="disc">
       <summary><span><b style="color:var(--warn)">⚠ 免責聲明</b>　量化研究參考，非投資建議</span></summary>
       <p>本頁為<em>量化研究參考，不構成任何投資建議</em>。訊號由公開行情（新浪財經、Yahoo、證交所、櫃買中心）自動計算，可能有延遲、錯誤或中斷，<em>不保證正確性與即時性</em>；歷史回測與相關性不代表未來表現。投資請自行判斷，並自負盈虧與風險。</p>
     </details>
+    <div id="home-head"></div>
     <div id="pred"></div>
-    <div class="seg full" id="side-seg">
-      <button class="on" data-side="bull" type="button">多頭 前3</button>
-      <button data-side="bear" type="button">空頭 前3</button>
-      <button data-side="focus" type="button">高信心族群</button>
-    </div>
-    <div id="sectors"></div>
-    <h2>全部類股分數</h2>
-    <div class="card" id="bars"></div>
+    <div id="lights"><div class="empty">載入中…</div></div>
   </section>
 
   <section class="view" id="v-board" aria-label="看板">
@@ -236,17 +231,15 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
     <div class="seg" id="sort-seg">
       <button class="on" data-sort="chg" type="button">依漲跌</button>
       <button data-sort="z" type="button">依 z 分數</button>
-      <button data-sort="m5" type="button">依 5 日動能</button>
     </div>
     <div class="card"><div class="rows" id="board"></div></div>
+    <button class="btn ghost hidden" id="unver-btn" type="button" style="margin-top:10px"></button>
   </section>
 
   <section class="view" id="v-verify" aria-label="驗證">
-    <h2>實盤命中率</h2>
+    <h2>實盤紀錄與停損</h2>
     <div class="card" id="track"><div class="empty">載入中…</div></div>
-    <h2>依族群拆解（實盤）</h2>
-    <div class="card" id="tk-break"><div class="empty">載入中…</div></div>
-    <h2>歷史回測（樣本外）</h2>
+    <h2>狀態燈的歷史表現（樣本外）</h2>
     <div class="card" id="bt"><div class="empty">載入中…</div></div>
     <h2>類股分數歷史</h2>
     <div class="card">
@@ -313,15 +306,18 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
           </ul>
           <h4>類股分數</h4>
           <ul>
-            <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100</li>
-            <li>權重為正：商品漲有利類股（產品報價、庫存利益）</li>
-            <li>權重為負：商品漲代表成本壓力</li>
+            <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100；只計「有效且通過多重比較校正」的關聯</li>
+            <li>權重為正：商品漲有利類股；為負：商品漲代表成本壓力</li>
           </ul>
-          <h4>其他規則</h4>
+          <h4>狀態燈</h4>
           <ul>
-            <li>「共振」＝陸期訊號方向與類股當日平均漲跌同向</li>
-            <li>前5強／前5弱：以台股最新收盤漲跌幅排序，只計成交量 ≥ <span id="minlots">100</span> 張的個股</li>
-            <li>盤前版（台股開盤前）：另把前一晚已收盤的美國期貨（原油、銅等），以實測的「美盤 → 次一台股交易日」權重計入分數</li>
+            <li>只有通過實測檢驗的類股才有燈；訊號強度 = 今天的分數 ÷ 該類股自己歷史分數的常見幅度</li>
+            <li>強度達 1 倍以上才亮燈（偏多／偏空），2 倍以上標「強」</li>
+            <li>盤前版（06:17）：陸期夜盤＋前一晚美國期貨，看今天；收盤版（17:10）：回顧今天</li>
+          </ul>
+          <h4>實盤停損</h4>
+          <ul>
+            <li>每個區塊滿 40 次後，最近 60 次方向命中低於 45% 且平均為負，就自動降級為「研究中」</li>
           </ul>
           <p class="calc-end">本頁為量化參考，非投資建議。</p>
         </div>
@@ -331,7 +327,7 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
 </main>
 
 <nav class="nav" id="nav" aria-label="主選單">
-  <button class="on" data-v="home" type="button"><span class="ic">◎</span>多空</button>
+  <button class="on" data-v="home" type="button"><span class="ic">◎</span>首頁</button>
   <button data-v="board" type="button"><span class="ic">▦</span>看板</button>
   <button data-v="verify" type="button"><span class="ic">✓</span>驗證</button>
   <button data-v="codes" type="button"><span class="ic">⌕</span>代碼</button>
@@ -347,6 +343,7 @@ canvas.heat{display:block;touch-action:pan-x pan-y}
 </div>
 
 <script src="../config.js"></script>
+<script src="../shared.js"></script>
 <script src="m.js"></script>
 </body>
 </html>

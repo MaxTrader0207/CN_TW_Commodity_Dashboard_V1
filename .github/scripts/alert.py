@@ -87,6 +87,14 @@ def failure_detail(run):
     return "\n".join(lines) or "- （沒有取得失敗步驟，請開執行紀錄查看）"
 
 
+def deploy_only(run, jobs=None):
+    """失敗的工作是不是只有部署（工作名稱以 deploy 開頭），而且至少有一個其他工作成功"""
+    jobs = jobs if jobs is not None else api(f"repos/{REPO}/actions/runs/{run['id']}/jobs?per_page=50").get("jobs", [])
+    failed = [j["name"] for j in jobs if j.get("conclusion") in FAIL]
+    ok = [j["name"] for j in jobs if j.get("conclusion") == "success"]
+    return bool(failed) and all(n.lower().startswith("deploy") for n in failed) and bool(ok)
+
+
 def check_sources(run):
     """每日更新成功時，檢查這次寫出的 status.json 的核心來源"""
     j = api(f"repos/{REPO}/contents/docs/data/status.json?ref=data", ok_fail=True)
@@ -119,11 +127,17 @@ def main():
         return
     key = name
     if concl in FAIL:
-        raise_alert(key, f"⚠ {name} 執行失敗",
-                    f"時間：{tpe(run['run_started_at'])}（台北）\n觸發：{run['event']}\n執行紀錄：{run['html_url']}\n\n"
-                    + failure_detail(run))
+        body = (f"時間：{tpe(run['run_started_at'])}（台北）\n觸發：{run['event']}\n執行紀錄：{run['html_url']}\n\n"
+                + failure_detail(run))
+        if deploy_only(run):
+            # 資料已經更新成功，只有「發佈網站」這一步失敗（已自動重試一次）：另外歸類，避免誤以為資料沒更新
+            raise_alert(key + "-deploy", f"⚠ 網站部署失敗（{name} 的資料已更新）",
+                        body + "\n\n資料已寫入 data 分支，下一次更新或手動執行「Deploy pages」會把網站補上。")
+        else:
+            raise_alert(key, f"⚠ {name} 執行失敗", body)
     elif concl == "success":
         resolve(key, f"{tpe(run['run_started_at'])} 執行成功 {run['html_url']}")
+        resolve(key + "-deploy", f"{tpe(run['run_started_at'])} 部署成功 {run['html_url']}")
         if name == "Daily update":
             check_sources(run)
     else:

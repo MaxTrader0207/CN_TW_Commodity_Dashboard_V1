@@ -1,7 +1,7 @@
 """實盤命中率追蹤
 
 每次執行：
-  1. 把這次的多頭／空頭前 3 類股寫進訊號帳本 docs/data/track/signals.json
+  1. 把這次的狀態燈、預測卡方向（以及舊排法的多空前 3 類股）寫進訊號帳本 docs/data/track/signals.json
      （同一天同一版本只留最後一次，因為那才是收盤後的最終訊號）
   2. 用證交所類股指數「超額報酬」（類股 − 加權指數，與 calibrate.py 回測同一把尺）開獎：
        隔日：訊號產生後的下一個台股交易日（日盤版 17:10 → 明天；夜盤版 08:10 → 今天）
@@ -25,6 +25,8 @@ DATA = ROOT / "docs" / "data"
 LEDGER = DATA / "track" / "signals.json"
 OUT = DATA / "track.json"
 MAX_GAP_DAYS = 6
+# 實盤停損：累積滿 GATE_N 次後，最近 GATE_WINDOW 次的方向命中率低於 GATE_HIT 且平均報酬為負 → 該區塊降級為「研究中」
+GATE_N, GATE_WINDOW, GATE_HIT = 40, 60, 0.45
 
 
 def load_ledger():
@@ -54,8 +56,12 @@ def entry(p):
         fs = [by[n] for n in p["focus"].get("sectors", []) if n in by]
         e["focus_bull"] = pick([s["name"] for s in sorted(fs, key=lambda s: -s["score"]) if s["score"] > 0][:3])
         e["focus_bear"] = pick([s["name"] for s in sorted(fs, key=lambda s: s["score"]) if s["score"] < 0][:3])
-        e["cards"] = [{"sector": c["sector"], "direction": c["direction"], "target": c.get("target")}
+        e["cards"] = [{"sector": c["sector"], "direction": c["direction"], "target": c.get("target"),
+                       "kind": c.get("kind", "cn"), "tier": c.get("tier")}
                       for c in p["focus"].get("cards", [])]
+        # 狀態燈（有實測支持的類股）：state +1 偏多／−1 偏空／0 沒亮
+        e["lights"] = [{"name": s["name"], "state": s["light"]["state"], "z": s["light"]["z"]}
+                       for s in p.get("sectors", []) if s.get("light")]
     return {f"{run_at[:10]}_{p['session']}": e}
 
 
@@ -163,6 +169,57 @@ def sector_breakdown(pairs, excess, conf_now):
     }
 
 
+def gate(xs):
+    """xs：依時間排序的「訊號方向 × 實際超額報酬」。回傳最近 GATE_WINDOW 次的表現與狀態：
+    collecting 累積中／ok 達標／demoted 未達標（頁面降級為研究中）；之後表現回升會自動恢復"""
+    a = _agg(xs[-GATE_WINDOW:])
+    if len(xs) < GATE_N:
+        state = "collecting"
+    else:
+        state = "demoted" if (a["win"] < GATE_HIT and a["avg"] < 0) else "ok"
+    return {**a, "total": len(xs), "need": GATE_N, "window": GATE_WINDOW, "min_hit": GATE_HIT, "state": state}
+
+
+def light_outcomes(sig, same_row, next_row):
+    """這筆訊號每個亮燈類股的結果（方向 × 超額報酬）"""
+    out = []
+    for x in sig.get("lights") or []:
+        if not x.get("state"):
+            continue
+        r = {"name": x["name"], "state": x["state"], "z": x.get("z")}
+        for k, row in (("same", same_row), ("next", next_row)):
+            v = (row or {}).get(x["name"])
+            r[k] = None if v is None else round(x["state"] * v, 3)
+        out.append(r)
+    return out
+
+
+def build_gates(valid_rows, led, excess):
+    """各區塊的實盤表現與停損狀態。
+    pre：盤前版亮燈 → 當天；day_next：收盤版亮燈 → 下一交易日；day_same：收盤版亮燈 → 當天（回顧用，不判定）；
+    cards_cn／cards_intl：預測卡方向 → 目標日的類股超額報酬"""
+    xs = {"pre": [], "day_next": [], "day_same": [], "cards_cn": [], "cards_intl": []}
+    for r in valid_rows:                    # 依時間由舊到新
+        sig = led[r["key"]]
+        for x in r.get("lights") or []:
+            if r["session"] == "night":
+                if x["next"] is not None:
+                    xs["pre"].append(x["next"])
+            else:
+                if x["next"] is not None:
+                    xs["day_next"].append(x["next"])
+                if x["same"] is not None:
+                    xs["day_same"].append(x["same"])
+        row = excess.get(r["next_date"]) if r.get("next_date") else None
+        for c in sig.get("cards") or []:
+            v = (row or {}).get(c["sector"])
+            if v is not None and c.get("direction"):
+                xs["cards_" + c.get("kind", "cn")].append(c["direction"] * v)
+    g = {k: gate(v) for k, v in xs.items()}
+    g["day_same"]["state"] = "info"         # 同日只是回顧，不做停損判定
+    return g
+
+
 def update(payload, session=None, log=print, skip_signal=False):
     """session：requests.Session（None 時只用快取，不連網）"""
     if session is not None:
@@ -206,7 +263,12 @@ def update(payload, session=None, log=print, skip_signal=False):
                      "bull": [x["name"] for x in sig["bull"]], "bear": [x["name"] for x in sig["bear"]],
                      "same_date": same, "next_date": nxt,
                      "same": score(sig, excess.get(same)) if same else None,
-                     "next": score(sig, excess.get(nxt)) if nxt else None})
+                     "next": score(sig, excess.get(nxt)) if nxt else None,
+                     "lights": light_outcomes(sig, excess.get(same) if same else None, excess.get(nxt) if nxt else None),
+                     "cards": [{"sector": c["sector"], "kind": c.get("kind", "cn"), "direction": c["direction"],
+                                "ret": None if not nxt or c["sector"] not in (excess.get(nxt) or {}) or not c["direction"]
+                                else round(c["direction"] * excess[nxt][c["sector"]], 3)}
+                               for c in sig.get("cards") or []]})
     valid = [r for r in rows if r["valid"]]
     breakdown = sector_breakdown([(led[r["key"]], r) for r in rows if r["valid"]], excess, current_conf())
     summary = {s: {"next": summarize([r for r in valid if r["session"] == s], "next"),
@@ -215,10 +277,11 @@ def update(payload, session=None, log=print, skip_signal=False):
     summary["all"] = {"next": summarize(valid, "next")}
     summary["excluded"] = len(rows) - len(valid)
     summary["breakdown"] = breakdown
+    summary["gates"] = build_gates(valid, led, excess)
     out = {"updated": payload["generated_at"], "since": rows[0]["run_at"][:10] if rows else None,
            "index_last": tw_dates[-1] if tw_dates else None,
            "summary": summary, "rows": list(reversed(rows))[:40]}
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     n_done = summary["all"]["next"]["n"]
     log(f"命中率追蹤：帳本 {len(led)} 筆，已開獎（隔日）{n_done} 筆，類股指數最新 {out['index_last']}")
     return out

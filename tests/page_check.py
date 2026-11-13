@@ -42,9 +42,10 @@ def main():
             page.wait_for_timeout(300)
             r = page.evaluate("""() => ({
               sw: document.documentElement.scrollWidth, cw: innerWidth,
-              cards: document.querySelectorAll('#bull .card, #bear .card').length,
+              lights: document.querySelectorAll('#lights .u-light').length,
+              want: (LATEST.sectors || []).filter(s => s.light).length,
+              cards: document.querySelectorAll('#pred .u-pred').length, want_cards: (LATEST.focus?.cards || []).length,
               tiles: document.querySelectorAll('#board .tile').length,
-              bars: document.querySelectorAll('#bars .bar-track').length,
               time: document.querySelector('#m-time').textContent })""")
             # 詳細面板：點第一個商品格，要能打開且不破版
             page.evaluate("document.querySelectorAll('details').forEach(d => d.open = false)")
@@ -61,7 +62,7 @@ def main():
             if w == 1280 and (DOCS / "data" / "klines.json").exists():
                 miss = page.evaluate("""async () => { const out = [];
                   for (const code of Object.keys(BOARD)) {
-                    if (BOARD[code].status !== 'ok') continue;
+                    if (BOARD[code].status !== 'ok' || BOARD[code].verified === false) continue;   // 未驗證的商品不抓日K
                     await openDetail(code);
                     if (!document.querySelector('#d-body svg.chart')) out.push(code);
                   }
@@ -81,8 +82,10 @@ def main():
                 problems.append(f"{name}：頁面寬 {r['sw']}px 超出畫面 {r['cw']}px，可能是 {wide}")
             if r["time"] in ("—", ""):
                 problems.append(f"{name}：資料沒有載入（更新時間空白）")
-            if not r["tiles"] or not r["bars"]:
-                problems.append(f"{name}：商品看板或類股分數沒有畫出來 {r}")
+            if not r["tiles"]:
+                problems.append(f"{name}：商品看板沒有畫出來 {r}")
+            if r["lights"] != r["want"] or r["cards"] != r["want_cards"]:
+                problems.append(f"{name}：狀態燈或預測卡數量不對 {r}")
         # 手機版（模擬 iPhone）：自動轉址、每個分頁不破版、詳細頁可開關
         ctx = b.new_context(**p.devices["iPhone 13"])
         page = ctx.new_page()
@@ -90,7 +93,7 @@ def main():
         page.on("pageerror", lambda e: errs.append(str(e)))
         page.goto(url)
         page.wait_for_url("**/m/**", timeout=5000)
-        page.wait_for_selector("#sectors .card, #sectors .empty", timeout=10000)
+        page.wait_for_selector("#lights .u-light, #lights .u-empty", timeout=10000)
         res = {}
         for v in ("home", "board", "verify", "codes", "more"):
             page.click(f'#nav button[data-v="{v}"]')
@@ -110,17 +113,13 @@ def main():
         print(f"[{LABEL}手機版 PWA] {pwa}")
         if not pwa["sw"] or not pwa["mf"]:
             problems.append(f"手機版：PWA 設定有問題 {pwa}")
-        # 高信心族群：有預測卡資料時要畫出來，「高信心族群」分頁要有內容
+        # 首頁：狀態燈與預測卡的數量要和資料一致
         page.click('#nav button[data-v="home"]')
-        fc = page.evaluate("""() => ({cards: (D.focus?.cards || []).length, shown: document.querySelectorAll('#pred .pred').length,
-            secs: (D.focus?.sectors || []).length})""")
-        page.click('#side-seg button[data-side="focus"]')
-        page.wait_for_timeout(200)
-        fc["focus_cards"] = page.evaluate("document.querySelectorAll('#sectors .card:not(.empty)').length")
-        page.click('#side-seg button[data-side="bull"]')
-        print(f"[{LABEL}手機版 高信心] {fc}")
-        if fc["cards"] != fc["shown"] or (fc["secs"] and fc["focus_cards"] != fc["secs"]):
-            problems.append(f"手機版：高信心族群／隔日預測卡沒有正確顯示 {fc}")
+        fc = page.evaluate("""() => ({cards: (D.focus?.cards || []).length, shown: document.querySelectorAll('#pred .u-pred').length,
+            secs: (D.sectors || []).filter(s => s.light).length, lights: document.querySelectorAll('#lights .u-light').length})""")
+        print(f"[{LABEL}手機版 首頁] {fc}")
+        if fc["cards"] != fc["shown"] or fc["secs"] != fc["lights"]:
+            problems.append(f"手機版：狀態燈或預測卡沒有正確顯示 {fc}")
         # 文字不可被「…」截斷（標題列除外）：展開所有區塊、逐一打開每個項目的詳細頁檢查
         page.click('#nav button[data-v="home"]')
         page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")

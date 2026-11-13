@@ -40,6 +40,7 @@ DISCOVER_IN_SCORE = False  # 數據新增的組合預設只列為候選，不計
 RHO_FULL = 0.30          # |ρ| 達此值給滿權重 1.0
 TRAIN_FRAC = 0.6
 TOP = 3
+SCORED = ("有效", "樣本不足")   # 計入類股分數的關聯狀態
 
 
 # ───────────── 統計 ─────────────
@@ -184,7 +185,6 @@ def annotate_quality(rows, series_of, excess, tw_dates):
         r["decay"] = bool((rho > 0) != (full > 0) or abs(t) < 1)
 
 
-WEAK_PCT = 30         # 訊號強度（當天最大 |分數|）低於訓練期第 30 百分位 → 弱訊號日
 DECAY_MULTS = {"decay_half": 0.5, "decay_zero": 0.0}
 
 
@@ -210,23 +210,169 @@ def decay_links(live, series, excess, tw_dates, d_end, mult):
     return out, hit
 
 
-def weak_day_stats(rec, d_split):
-    """訓練期（d_split 之前）的強度第 WEAK_PCT 百分位當門檻，比較測試期強／弱訊號日的多空價差"""
+# ───────────── 類股迴歸式（第 3 步）─────────────
+RIDGE_LAMS = (1.0, 3.0, 10.0, 30.0, 100.0)
+RIDGE_VAL = 0.3        # 訓練期最後 30% 當驗證段，用來選收縮強度與決定這個類股要不要計分
+RIDGE_MIN_T = 2.0      # 驗證段「預測值 vs 實際」的 t 值要達到這個門檻，類股才計分
+
+
+def _solve(A, b):
+    """高斯消去（部分選主元）解 A x = b"""
+    n = len(b)
+    M = [row[:] + [b[i]] for i, row in enumerate(A)]
+    for c in range(n):
+        piv = max(range(c, n), key=lambda r: abs(M[r][c]))
+        if abs(M[piv][c]) < 1e-12:
+            return None
+        M[c], M[piv] = M[piv], M[c]
+        for r in range(c + 1, n):
+            f = M[r][c] / M[c][c]
+            if f:
+                for k in range(c, n + 1):
+                    M[r][k] -= f * M[c][k]
+    x = [0.0] * n
+    for c in range(n - 1, -1, -1):
+        x[c] = (M[c][n] - sum(M[c][k] * x[k] for k in range(c + 1, n))) / M[c][c]
+    return x
+
+
+def ridge_fit(X, y, lam):
+    """最小化 Σ(y − Xβ)² + λ·Σβ²（不含截距：訊號與超額報酬都以 0 為中心）"""
+    k = len(X[0])
+    A = [[sum(r[i] * r[j] for r in X) + (lam if i == j else 0.0) for j in range(k)] for i in range(k)]
+    return _solve(A, [sum(r[i] * yy for r, yy in zip(X, y)) for i in range(k)])
+
+
+def ridge_links(items, cmd_ret, excess, tw_dates, zsig, d1=None, base=None):
+    """每個類股一條收縮迴歸：類股當日超額報酬 ~ Σ β × 商品訊號。
+    高度相關的商品（例如原油、燃料油、瀝青）由迴歸自己分攤權重，不再各算一票。
+    base=現行的計分關聯（links_by_code）：候選商品與計分類股都跟現行相同，只換權重，公平比較；
+    base=None：候選 = 對照表連到這個類股的全部商品，並用驗證段決定類股要不要計分。
+    只用 d1 以前的資料；驗證段（訓練期最後 30%）選收縮強度 λ。回傳 (links_by_code, 各類股資訊)"""
+    meta = {code: (limit, bonus) for _ex, code, _n, limit, _l, bonus in items}
+    cand = {}
+    if base is not None:
+        for code, ls in base.items():
+            for l in ls:
+                if code in meta:
+                    cand.setdefault(l["sector"], []).append((code, *meta[code], l["why"]))
+    else:
+        for ex, code, name, limit, links, bonus in items:
+            for sector, _w, why in links:
+                cand.setdefault(sector, []).append((code, limit, bonus, why))
+    days = [d for d in tw_dates if (not d1 or d < d1)]
+    live, info = {}, {}
+    for sector, cs in cand.items():
+        rows = []
+        for d in days:
+            y = (excess.get(d) or {}).get(sector)
+            if y is None:
+                continue
+            x, seen = [], 0
+            for code, limit, bonus, _ in cs:
+                r, sd = cmd_ret.get(code, {}).get(d), zsig.get(code, {}).get(d)
+                if r is None or not sd:
+                    x.append(0.0)
+                else:
+                    x.append(H.z_signal(r, sd, limit if bonus else None, bonus))
+                    seen += 1
+            if seen:
+                rows.append((x, y))
+        if len(rows) < MIN_N:
+            continue
+        cut = int(len(rows) * (1 - RIDGE_VAL))
+        tr, va = rows[:cut], rows[cut:]
+        best = None
+        for lam in RIDGE_LAMS:
+            b = ridge_fit([r[0] for r in tr], [r[1] for r in tr], lam)
+            if b is None:
+                continue
+            pred = [sum(bi * xi for bi, xi in zip(b, r[0])) for r in va]
+            rho, t = corr(pred, [r[1] for r in va])
+            if rho is not None and (best is None or t > best[0]):
+                best = (t, lam, rho)
+        if not best:
+            continue
+        t, lam, rho = best
+        scored = base is not None or t >= RIDGE_MIN_T
+        info[sector] = {"lam": lam, "val_t": round(t, 2), "val_rho": round(rho, 3), "n": len(rows), "k": len(cs),
+                        "scored": scored}
+        if not scored:
+            continue
+        b = ridge_fit([r[0] for r in rows], [r[1] for r in rows], lam)      # 選定 λ 後用全部訓練資料重估
+        for (code, _l, _b, why), bi in zip(cs, b):
+            if abs(bi) >= 1e-4:
+                live.setdefault(code, []).append({"sector": sector, "w": round(bi, 4), "why": why, "src": "迴歸"})
+    return live, info
+
+
+LIGHT_Z = 1.0          # 狀態燈：|類股分數| ≥ 1 倍「該類股自己的歷史分數幅度」才亮
+LIGHT_Z_STRONG = 2.0   # 強訊號
+
+
+def _agg(xs):
+    n = len(xs)
+    return {"n": n, "hit": round(sum(x > 0 for x in xs) / n, 3) if n else None,
+            "avg": round(sum(xs) / n, 3) if n else None}
+
+
+def sector_records(items, cmd_ret, excess, tw_dates, links, zsig, raw=False):
+    """全期每天每個類股的分數與實際超額報酬：{類股: {日期: [分數, 同期報酬, 隔日報酬]}}"""
+    rec = []
+    backtest(items, cmd_ret, excess, tw_dates, links, tw_dates[0], tw_dates[-1], zsig, record_sec=rec, raw=raw)
+    by = {}
+    for lag, d, sct, v, r in rec:
+        row = by.setdefault(sct, {}).setdefault(d, [v, None, None])
+        row[1 + lag] = r
+    return by
+
+
+def score_sd(by, d_end=None):
+    """各類股分數的幅度（對 0 的均方根；只用 d_end 以前，回測不偷看）"""
     out = {}
-    tr = sorted(x[1] for x in rec.get(0, []) if x[0] < d_split)
-    if len(tr) < 30:
-        return None
-    th = tr[int(len(tr) * WEAK_PCT / 100)]
-    out["threshold"] = round(th, 1)
-    for lag in (0, 1):
-        te = [x for x in rec.get(lag, []) if x[0] >= d_split]
-        weak = [x[2] for x in te if x[1] < th]
-        strong = [x[2] for x in te if x[1] >= th]
-        avg = lambda xs: round(sum(xs) / len(xs), 3) if xs else None  # noqa: E731
-        out[f"lag{lag}"] = {"weak_n": len(weak), "weak_avg": avg(weak), "strong_n": len(strong), "strong_avg": avg(strong),
-                            "weak_win": round(sum(v > 0 for v in weak) / len(weak), 3) if weak else None,
-                            "strong_win": round(sum(v > 0 for v in strong) / len(strong), 3) if strong else None}
+    for sct, m in by.items():
+        xs = [v[0] for d, v in m.items() if (not d_end or d < d_end) and abs(v[0]) > 1e-9]
+        if len(xs) >= 60:
+            out[sct] = round(math.sqrt(sum(x * x for x in xs) / len(xs)), 2)
     return out
+
+
+def light_stats(by, sd, d0):
+    """狀態燈的樣本外表現：d0 之後，|分數| ≥ LIGHT_Z × 幅度（亮燈）與沒亮燈的日子，
+    訊號方向 × 實際超額報酬（lag0 同期、lag1 隔日）。回傳 (各類股, 合計)"""
+    per, pool = {}, {"lit": {0: [], 1: []}, "unlit": {0: [], 1: []}, "strong": {0: [], 1: []}}
+    for sct, m in by.items():
+        if sct not in sd:
+            continue
+        lit = {0: [], 1: []}
+        for d, (v, r0, r1) in m.items():
+            if d < d0 or abs(v) < 1e-9:
+                continue
+            z = abs(v) / sd[sct]
+            dr = 1 if v > 0 else -1
+            for lag, r in ((0, r0), (1, r1)):
+                if r is None:
+                    continue
+                (pool["lit"] if z >= LIGHT_Z else pool["unlit"])[lag].append(dr * r)
+                if z >= LIGHT_Z:
+                    lit[lag].append(dr * r)
+                if z >= LIGHT_Z_STRONG:
+                    pool["strong"][lag].append(dr * r)
+        per[sct] = {"lag0": _agg(lit[0]), "lag1": _agg(lit[1])}
+    return per, {k: {"lag0": _agg(v[0]), "lag1": _agg(v[1])} for k, v in pool.items()}
+
+
+def resonance_stats(by, d0):
+    """共振（陸期方向與類股當天實際超額報酬同向）之後，隔日是否較容易延續：
+    d0 之後每個「類股 × 日」的 訊號方向 × 隔日超額報酬，分成共振／非共振"""
+    res, non = [], []
+    for m in by.values():
+        for d, (v, r0, r1) in m.items():
+            if d < d0 or abs(v) < 1 or r0 is None or r1 is None or r0 == 0:
+                continue
+            dr = 1 if v > 0 else -1
+            (res if (r0 > 0) == (v > 0) else non).append(dr * r1)
+    return {"res": _agg(res), "non": _agg(non)}
 
 
 ROBUST_FRACS = (0.5, 0.6, 0.7)   # 採用新計分方式前，用 3 個不同的訓練／測試切點檢查，全部通過才採用
@@ -244,30 +390,39 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
         ex = H.excess_returns(idx_ret, H.estimate_betas(idx_ret, d_end=sp))
         sp_items, _ = spread_items(spr_ret, d_end=sp)
         items = commodity_items() + sp_items
-        pr, dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
-        conf = F.sector_confidence({"pairs": pr, "discovered": dc})
+        _pr, _dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
         t = lambda r: {"lag0": r["lag0"]["spread_t"] or 0, "lag1": r["lag1"]["spread_t"] or 0,  # noqa: E731
                        "dir0": r["lag0"]["dir_t"] or 0}
-        rec = {}
         row = {"split": sp, "base": t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig))}
-        backtest(items, series, ex, tw_dates, lv, tw_dates[0], tw_dates[-1], zsig, record=rec)   # 全期每日強度與價差
-        row["weak_day"] = weak_day_stats(rec, sp)
+        by = sector_records(items, series, ex, tw_dates, lv, zsig)
+        row["lights"] = light_stats(by, score_sd(by, sp), sp)[1]
+        row["resonance"] = resonance_stats(by, sp)
+        rl, ri = ridge_links(items, series, ex, tw_dates, zsig, d1=sp, base=lv)
+        row["ridge"] = t(backtest(items, series, ex, tw_dates, rl, sp, tw_dates[-1], zsig, raw=True))
+        by_r = sector_records(items, series, ex, tw_dates, rl, zsig, raw=True)
+        row["ridge"]["lights"] = light_stats(by_r, score_sd(by_r, sp), sp)[1]
+        row["ridge"]["sectors"] = sorted(k for k, v in ri.items() if v["scored"])
         for v, m in DECAY_MULTS.items():
             lv_d, hit = decay_links(lv, series, ex, tw_dates, sp, m)
             row[v] = t(backtest(items, series, ex, tw_dates, lv_d, sp, tw_dates[-1], zsig))
             row[v]["n_links"] = len(hit)
-        for v in F.FACTOR_VARIANTS:
-            row["factor_" + v] = t(backtest(items, series, ex, tw_dates, lv, sp, tw_dates[-1], zsig,
-                                            factor=F.sector_factor(conf, v)))
         _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
         row["pre_intl"] = t(backtest(intl_items, intl_series, ex, tw_dates, il, sp, tw_dates[-1], zpre))
         row["pre_combo"] = t(backtest(intl_items + items, pre_series, ex, tw_dates, {**lv, **il}, sp, tw_dates[-1], zpre))
+        by_p = sector_records(intl_items + items, pre_series, ex, tw_dates, {**lv, **il}, zpre)
+        row["lights_pre"] = light_stats(by_p, score_sd(by_p, sp), sp)[1]
         out[str(frac)] = row
-        print(f"  穩健性 切點 {sp}：基準 同日 t {row['base']['lag0']} 隔日 t {row['base']['lag1']}｜" +
-              "｜".join(f"{v} {row['factor_' + v]['lag1']}" for v in F.FACTOR_VARIANTS) +
+        print(f"  穩健性 切點 {sp}：基準 同日 t {row['base']['lag0']} 隔日 t {row['base']['lag1']}"
               f"｜盤前 國際 {row['pre_intl']['lag0']} vs 合併 {row['pre_combo']['lag0']}"
               f"｜降權 半 {row['decay_half']['lag0']}/{row['decay_half']['lag1']} 零 {row['decay_zero']['lag0']}/{row['decay_zero']['lag1']}"
-              f"（{row['decay_half']['n_links']} 組）｜弱訊號日 {row['weak_day']}")
+              f"（{row['decay_half']['n_links']} 組）")
+        L0, L1, LP = row["lights"]["lit"], row["lights"]["unlit"], row["lights_pre"]
+        print(f"    狀態燈 收盤版 亮燈：同日 {L0['lag0']} 隔日 {L0['lag1']}｜未亮：同日 {L1['lag0']} 隔日 {L1['lag1']}")
+        print(f"    狀態燈 盤前版 亮燈：當天 {LP['lit']['lag0']}｜未亮：{LP['unlit']['lag0']}｜強：{LP['strong']['lag0']}")
+        print(f"    共振後隔日：{row['resonance']['res']}｜非共振：{row['resonance']['non']}")
+        R = row["ridge"]
+        print(f"    迴歸式：同日 t {R['lag0']} 隔日 t {R['lag1']}（原 {row['base']['lag0']}／{row['base']['lag1']}）｜"
+              f"亮燈 同日 {R['lights']['lit']['lag0']} 隔日 {R['lights']['lit']['lag1']}｜計分類股 {R['sectors']}")
     return out
 
 
@@ -291,7 +446,9 @@ def build_links(items, cmd_ret, excess, tw_dates, d0=None, d1=None):
             cw, status = judge(st, w)
             pairs.append({"ex": ex, "code": code, "name": name, "sector": sector, "manual_w": w,
                           "why": why, **rnd(st), "cal_w": cw, "status": status})
-            if cw:
+            # 只有方向符合產業邏輯且同日顯著（有效）的關聯才計分；「方向相反」「只有隔日顯著」不計分：
+            # 沒有產業邏輯支持的翻號關聯，三個切點的回測都拖累亮燈日的命中率
+            if cw and status in SCORED:
                 live[code].append({"sector": sector, "w": cw, "why": why,
                                    "src": "手動" if status == "樣本不足" else "實測"})
         cands = []
@@ -319,9 +476,10 @@ def rnd(st):
 
 
 # ───────────── 回測 ─────────────
-def daily_scores(items, cmd_ret, links_by_code, d, zsig=None):
+def daily_scores(items, cmd_ret, links_by_code, d, zsig=None, raw=False):
     """仿 build.score_sectors：回傳 {sector: score}。
-    zsig=None：訊號 = 漲跌 ÷ 漲跌停幅度（舊）；zsig={code: {d: σ}}：訊號 = 漲跌 ÷ 滾動 20 日波動度，2σ 滿格（新）"""
+    zsig=None：訊號 = 漲跌 ÷ 漲跌停幅度（舊）；zsig={code: {d: σ}}：訊號 = 漲跌 ÷ 滾動 20 日波動度，2σ 滿格（新）
+    raw=True：權重是迴歸係數，分數 = Σ 係數 × 訊號 × 100，不再除以 √Σ|權重|"""
     num, den = {}, {}
     for ex, code, name, limit, _, bonus in items:
         for l in links_by_code.get(code, []):
@@ -341,12 +499,15 @@ def daily_scores(items, cmd_ret, links_by_code, d, zsig=None):
             if bonus and abs(r) >= limit - 0.1:
                 sig *= LIMIT_BONUS
             num[s] = num.get(s, 0) + l["w"] * sig
+    if raw:
+        return {s: num.get(s, 0) * 100 for s in den if den[s]}
     return {s: num.get(s, 0) / norm(den[s]) * 100 for s in den if den[s]}
 
 
-def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None, factor=None, record=None):
-    """factor：{類股: 分數乘數}（含 "_default"），用來測試依類股可信度調整分數。
-    record：傳入 dict 時，記錄每天的（日期, 訊號強度 = 最大 |分數|, 多空價差）到 record[lag]"""
+def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None, record_sec=None, raw=False):
+    """多空前 3 類股的回測（舊排法，用來比較各種計分方式）。
+    record_sec：傳入 list 時，記錄每天每個類股的 (lag, 日期, 類股, 分數, 實際超額報酬)，給狀態燈統計用
+    raw：權重是迴歸係數（見 daily_scores）"""
     all_days = sorted({d for c in cmd_ret.values() for d in c})
     days = [d for d in all_days if d0 <= d <= d1]
     prev_of = {d: all_days[k - 1] for k, d in enumerate(all_days) if k}
@@ -377,9 +538,9 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None,
                 row = excess.get(t)
             if not row:
                 continue
-            sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d, zsig).items() if s in row}
-            if factor is not None:
-                sc = {s: v * factor.get(s, factor.get("_default", 1.0)) for s, v in sc.items()}
+            sc = {s: v for s, v in daily_scores(items, cmd_ret, links_by_code, d, zsig, raw).items() if s in row}
+            if record_sec is not None:
+                record_sec.extend((lag, d, s, v, row[s]) for s, v in sc.items())
             # 方向命中：每個有分數的類股，分數方向 × 實際超額報酬（適用於關聯很少、常常只有單邊的模型）
             dirs += [math.copysign(1, v) * row[s] for s, v in sc.items() if abs(v) >= 1]
             b = [s for s, v in sorted(sc.items(), key=lambda kv: -kv[1]) if v > 0][:TOP]
@@ -391,8 +552,6 @@ def backtest(items, cmd_ret, excess, tw_dates, links_by_code, d0, d1, zsig=None,
             bear += [row[s] for s in e]
             if b and e:
                 spread.append(sum(row[s] for s in b) / len(b) - sum(row[s] for s in e) / len(e))
-                if record is not None:
-                    record.setdefault(lag, []).append((d, max(abs(v) for v in sc.values()), spread[-1]))
         avg = lambda xs: round(sum(xs) / len(xs), 3) if xs else None  # noqa: E731
         res[f"lag{lag}"] = {
             "days": used,
@@ -537,14 +696,31 @@ def main():
     import requests
     ap = argparse.ArgumentParser()
     ap.add_argument("--years", type=float, default=2.0)
+    ap.add_argument("--offline", action="store_true",
+                    help="不連網：用上次校準保存的輸入（pipeline/cache/calib_inputs.json.gz 與類股指數快取）重算，方便本機重現")
+    ap.add_argument("--out", help="輸出檔（預設 docs/data/calibration.json）；離線試算時可指定別的路徑")
     a = ap.parse_args()
+    global OUT, SCORE_HIST
+    write_detail = (not a.offline) or bool(a.out)
+    if a.out:
+        OUT = Path(a.out).resolve()
+        SCORE_HIST = OUT.parent / "score_history.json"
     s = requests.Session()
     s.headers.update(UA)
     today = datetime.now(TPE).date()
     start = today - timedelta(days=int(365 * a.years))
-
-    data, empty = H.update_index(s, start, today, checkpoint=git_checkpoint)
-    git_checkpoint(f"cache: 類股指數 {len(data)} 天")
+    import gzip
+    INP = H.CACHE_DIR / "calib_inputs.json.gz"
+    off = None
+    if a.offline:
+        with gzip.open(INP, "rt", encoding="utf-8") as f:
+            off = json.load(f)
+        data, empty = H.load_index(), H.load_empty()
+        today = date.fromisoformat(max(data))
+        start = today - timedelta(days=int(365 * a.years))
+    else:
+        data, empty = H.update_index(s, start, today, checkpoint=git_checkpoint)
+        git_checkpoint(f"cache: 類股指數 {len(data)} 天")
     idx_ret = {d: v for d, v in H.index_returns(data, empty).items() if d >= start.isoformat()}
     betas = H.estimate_betas(idx_ret)
     excess = H.excess_returns(idx_ret, betas)
@@ -560,10 +736,16 @@ def main():
     naive_ret = {}
     for ex, code, name, limit, _ in COMMODITIES:
         try:
-            rows = H.fetch_kline(s, code)
-            klines[code] = [r for r in rows if r["d"] >= (start - timedelta(days=10)).isoformat()]
-            # 主力換月修正：比對連續主力每天實際的合約，換約日改用新合約自己的前一日結算價
-            pairs, rolls = H.roll_pairs(s, code, rows, start - timedelta(days=10), roll_cache)
+            if off is not None:      # 離線：沿用上次保存的日K與換月修正後的（收盤, 前結算）
+                rows = off["klines"][code]
+                klines[code] = rows
+                pairs, rolls = {d: tuple(v) for d, v in off["pairs"][code].items()}, []
+                roll_cache.setdefault(code, {"contract": {}})
+            else:
+                rows = H.fetch_kline(s, code)
+                klines[code] = [r for r in rows if r["d"] >= (start - timedelta(days=10)).isoformat()]
+                # 主力換月修正：比對連續主力每天實際的合約，換約日改用新合約自己的前一日結算價
+                pairs, rolls = H.roll_pairs(s, code, rows, start - timedelta(days=10), roll_cache)
             pairs_by[code] = pairs
             roll_log[code] = rolls
             r, dropped = H.pairs_returns(pairs, limit)
@@ -577,8 +759,10 @@ def main():
         except Exception as e:  # noqa: BLE001
             kline_info[code] = {"error": str(e)[:120]}
             print(f"  ⚠ {code} 日K失敗：{e}")
-        H.ROLL_JSON.write_text(json.dumps(roll_cache, ensure_ascii=False), encoding="utf-8")
-    git_checkpoint("cache: 主力換月對照表")
+        if off is None:
+            H.ROLL_JSON.write_text(json.dumps(roll_cache, ensure_ascii=False), encoding="utf-8")
+    if off is None:
+        git_checkpoint("cache: 主力換月對照表")
     print(f"陸期日K：{sum(1 for v in kline_info.values() if 'days' in v)}/{len(COMMODITIES)} 個商品")
     n_roll = sum(v.get("rolls", 0) for v in kline_info.values())
     big = sorted((x for code, rs in roll_log.items() for x in rs if x["date"] >= start.isoformat() and x["fixed"] is not None),
@@ -626,45 +810,6 @@ def main():
         "manual_z": backtest(items_c, series, excess_bt, tw_dates, manual_links(items_c), split, tw_dates[-1], zsig),
         "calibrated_z": backtest(items_c, series, excess_bt, tw_dates, live_c, split, tw_dates[-1], zsig),
         "calibrated_spreads_z": backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1], zsig)})
-    # 多日動能：1 日 z、5 日、20 日累計（÷ σ√n）、組合（1 日 ＋ 0.5 × 5 日），同一組樣本內權重、不加漲跌停加成，公平比較
-    zs = {n: {code: H.momentum_z(series[code], zsig[code], n) for code in series} for n in (1, 5, 20)}
-    combo = {code: {d: H.combo_z(z, zs[5][code].get(d)) for d, z in zs[1][code].items()} for code in series}
-    unit = {code: {d: 1.0 for d in v} for code, v in combo.items()}
-    items_nb = [(*it[:5], False) for it in items_all]
-    mom = {f"mom_{k}": backtest(items_nb, v, excess_bt, tw_dates, live_all, split, tw_dates[-1], unit)
-           for k, v in (("1d", zs[1]), ("5d", zs[5]), ("20d", zs[20]), ("combo", combo))}
-    test.update(mom)
-    b1, bc = mom["mom_1d"], mom["mom_combo"]
-    g = lambda r, lag: r[lag]["spread_t"] or 0  # noqa: E731
-    mom_adopt = g(bc, "lag1") > g(b1, "lag1") + 0.3 and g(bc, "lag0") >= g(b1, "lag0") - 0.3
-    for k, v in mom.items():
-        print(f"動能回測 {k}：同日價差 {v['lag0']['spread_avg']}(t {v['lag0']['spread_t']})｜隔日 {v['lag1']['spread_avg']}(t {v['lag1']['spread_t']})")
-    print(f"動能組合是否採用於即時計分：{mom_adopt}")
-    # 依類股可信度調整分數：倍數只用「訓練期」的信心等級決定，測試期比較；規則同動能
-    conf_tr = F.sector_confidence({"pairs": pairs_all_tr, "discovered": disc_all_tr})
-    base = test["calibrated_spreads_z"]
-    fac = {v: backtest(items_all, series, excess_bt, tw_dates, live_all, split, tw_dates[-1], zsig,
-                       factor=F.sector_factor(conf_tr, v)) for v in F.FACTOR_VARIANTS}
-    test.update({f"factor_{v}": r_ for v, r_ in fac.items()})
-    passed = [(g(r_, "lag1"), v) for v, r_ in fac.items()
-              if g(r_, "lag1") > g(base, "lag1") + 0.3 and g(r_, "lag0") >= g(base, "lag0") - 0.3]
-    sector_factor = {"adopt": bool(passed), "variant": max(passed)[1] if passed else None,
-                     "base": "calibrated_spreads_z", "train_conf": {k: v_["level"] for k, v_ in conf_tr.items()},
-                     "rule": "隔日價差 t 值比原本高 0.3 以上、且同日 t 值不低於原本 −0.3 才採用"}
-    for v, r_ in fac.items():
-        print(f"可信度調整 {v}：同日 t {g(r_, 'lag0')}（原 {g(base, 'lag0')}）｜隔日 t {g(r_, 'lag1')}（原 {g(base, 'lag1')}）")
-    print(f"可信度調整是否採用：{sector_factor['adopt']} {sector_factor['variant'] or ''}")
-    # 歷史分數熱力圖：最近 HEAT_DAYS 個台股交易日，用全期實測權重＋z 分數回填（樣本內，僅供觀察）
-    heat_days = [d for d in tw_dates[-HEAT_DAYS:]]
-    hist_rows = []
-    for d in heat_days:
-        sc = daily_scores(items, series, live, d, zsig)
-        if not sc:
-            continue
-        hist_rows.append({"d": d, "src": "回填", "s": {k: round(v, 1) for k, v in sc.items()},
-                          "a": {k: round(v, 3) for k, v in excess.get(d, {}).items() if k in sc}})
-    write_score_history(hist_rows)
-    print(f"分數熱力圖回填：{len(hist_rows)} 天")
     for k in ("manual", "calibrated", "calibrated_spreads"):
         a, b = test[k], test[k + "_z"]
         print(f"標準化比較 {k}：同日價差 {a['lag0']['spread_avg']}(t {a['lag0']['spread_t']}) → z {b['lag0']['spread_avg']}(t {b['lag0']['spread_t']})"
@@ -674,6 +819,13 @@ def main():
     stocks, stock_meta = {}, {}
     closes_cache = {}
     for code in sorted({c for v in BENEFICIARIES.values() for c, *_ in v}):
+        if off is not None:
+            if code in off["stock_res"]:
+                closes_cache[code] = off["stock_res"][code]
+                stock_meta[code] = {"beta": None, "days": len(closes_cache[code]), "suffix": "快取"}
+            else:
+                stock_meta[code] = {"error": "離線快取沒有這檔"}
+            continue
         try:
             closes, suf = fetch_stock(s, code)
             res, beta = stock_residuals(closes, idx_ret)
@@ -710,7 +862,7 @@ def main():
     intl_rows, intl_info, intl_series, intl_closes = [], {}, {}, {}
     for code, sym, name, cn, links in INTL:
         try:
-            closes, meta = H.fetch_yahoo(s, sym)
+            closes = off["intl"][code] if off is not None else H.fetch_yahoo(s, sym)[0]
             intl_closes[code] = closes
             ret = {d: v for d, v in H.intl_returns(closes).items() if d >= start.isoformat()}
             sh = H.shift_to_tw(ret, tw_dates)
@@ -733,8 +885,9 @@ def main():
         except Exception as e:  # noqa: BLE001
             intl_info[code] = {"symbol": sym, "error": str(e)[:120]}
             print(f"  ⚠ 國際 {sym} 失敗：{e}")
-        import time as _tm
-        _tm.sleep(0.3)
+        if off is None:
+            import time as _tm
+            _tm.sleep(0.3)
     print(f"國際商品：{sum(1 for v in intl_info.values() if 'days' in v)}/{len(INTL)}")
     for r_ in sorted(intl_rows, key=lambda r_: -abs(r_["t0"] or 0)):
         print(f"  [國際] {r_['name']:<10}→{r_['sector']:<6} 隔夜→台股 ρ={r_['rho0']} t={r_['t0']} {r_['status']}")
@@ -742,12 +895,36 @@ def main():
         for f in v.get("follow", []):
             print(f"  [陸期跟隨] {code}→{f['cn']} ρ={f['rho']} t={f['t']} n={f['n']}")
 
+    # 多重比較校正與關聯衰退（陸期、價差、國際、數據新增一起當作同一批檢定）
+    qrows = pairs + discovered + intl_rows
+    annotate_quality(qrows, lambda r: (intl_series if r.get("ex") == "國際" else series).get(r["code"], {}), excess, tw_dates)
+    n_fdr = sum(1 for r in qrows if r.get("status") == "有效" and not r["fdr_ok"])
+    n_decay = sum(1 for r in qrows if r.get("decay"))
+    print(f"多重比較校正（BH q={FDR_Q}）：有效但未通過 {n_fdr} 組；近 {DECAY_DAYS} 日轉弱 {n_decay} 組")
+    for r in qrows:
+        if r.get("decay") or (r.get("status") == "有效" and not r["fdr_ok"]):
+            print(f"  {r['name']}→{r['sector']} t0={r['t0']} FDR {'過' if r['fdr_ok'] else '未過'} 近期 {r.get('recent')}")
+    # 全期計分權重：再去掉多重比較校正沒過的（可能巧合），讓「有計分」＝「有實測支持」
+    bad = {(r["code"], r["sector"]) for r in qrows if r.get("status") == "有效" and not r["fdr_ok"]}
+    live = {c: [l for l in ls if (c, l["sector"]) not in bad] for c, ls in live.items()}
+    print(f"計分關聯：{sum(len(v) for v in live.values())} 組（陸期＋價差）")
+    # 歷史分數熱力圖：最近 HEAT_DAYS 個台股交易日，用全期實測權重＋z 分數回填（樣本內，僅供觀察）
+    heat_days = [d for d in tw_dates[-HEAT_DAYS:]]
+    hist_rows = []
+    for d in heat_days:
+        sc = daily_scores(items, series, live, d, zsig)
+        if not sc:
+            continue
+        hist_rows.append({"d": d, "src": "回填", "s": {k: round(v, 1) for k, v in sc.items()},
+                          "a": {k: round(v, 3) for k, v in excess.get(d, {}).items() if k in sc}})
+    write_score_history(hist_rows)
+    print(f"分數熱力圖回填：{len(hist_rows)} 天")
     # ── 盤前版（08:10）：國際隔夜（＋陸期）→ 當天台股 ──
     # 所有序列都對齊到「資訊之後第一個台股交易日」，回測的同日（lag0）就是盤前預測力
     intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
     intl_live = {}
     for r_ in intl_rows:
-        if r_["cal_w"]:
+        if r_["cal_w"] and r_["status"] in SCORED and r_.get("fdr_ok") is not False:
             intl_live.setdefault(r_["code"], []).append(
                 {"sector": r_["sector"], "w": r_["cal_w"], "why": r_["why"], "src": "實測"})
     _, _, intl_live_tr = build_links(intl_items, intl_series, excess_bt, tw_dates, d1=split)
@@ -761,7 +938,7 @@ def main():
                               split, tw_dates[-1], zpre),
     }
     test.update(pre)
-    # 盤前版排名：只用國際隔夜 vs 國際＋陸期，回測過關才改用（同動能規則，以多空價差 t 值比較）
+    # 盤前版排名：只用國際隔夜 vs 國際＋陸期，回測過關才改用（以多空價差 t 值比較）
     gi = lambda r, k: (r["lag0"].get(k) or 0)  # noqa: E731
     pm_adopt = (gi(pre["pre_intl"], "spread_t") > gi(pre["pre_combo"], "spread_t") + 0.3
                 and gi(pre["pre_intl"], "dir_t") >= gi(pre["pre_combo"], "dir_t") - 0.3)
@@ -773,16 +950,11 @@ def main():
     robust = robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, cn_shift)
     pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
                  for r_ in robust.values())
-    premarket_mode.update(adopt=pm_all, mode="intl" if pm_all else "combo", single_split=pm_adopt,
-                          rule=premarket_mode["rule"] + "；並且在 3 個不同訓練期切點都要通過")
-    ok_v = [v for v in F.FACTOR_VARIANTS
-            if all(r_["factor_" + v]["lag1"] > r_["base"]["lag1"] + 0.3 and r_["factor_" + v]["lag0"] >= r_["base"]["lag0"] - 0.3
-                   for r_ in robust.values())]
-    sector_factor.update(adopt=bool(ok_v), single_split=sector_factor["variant"],
-                         variant=max(ok_v, key=lambda v: min(r_["factor_" + v]["lag1"] for r_ in robust.values())) if ok_v else None,
-                         rule=sector_factor["rule"] + "；並且在 3 個不同訓練期切點都要通過")
-    print(f"穩健性檢查後：盤前改用國際 {pm_all}；可信度調整 {sector_factor['adopt']} {sector_factor['variant'] or ''}")
-    # 16. 近期轉弱的關聯降權：同日或隔日其中一個 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過
+    premarket_mode.update(adopt=False, passed=pm_all, mode="combo", single_split=pm_adopt,
+                          rule=premarket_mode["rule"] + "；並且在 3 個不同訓練期切點都要通過",
+                          note="通過時只在這裡標示；盤前狀態燈目前用國際＋陸期合併分數")
+    print(f"穩健性檢查後：盤前改用國際 {pm_all}")
+    # 近期轉弱的關聯降權：同日或隔日其中一個 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過
     def _ok(r_, v):
         b, x = r_["base"], r_[v]
         return ((x["lag0"] >= b["lag0"] + 0.3 and x["lag1"] >= b["lag1"] - 0.3)
@@ -793,40 +965,47 @@ def main():
     if ok_d:
         live, hit = decay_links(live, series, excess, tw_dates, tw_dates[-1], DECAY_MULTS[ok_d[0]])
         decay_cfg["links"] = [f"{c}→{s_}" for c, s_ in hit]
-    # 17. 弱訊號日：測試期「強訊號日」的同日多空價差要在 3 個切點都比「弱訊號日」高 0.1 以上，才在頁面標示
-    wk = [r_["weak_day"] for r_ in robust.values()]
-    wd_ok = all(w and w["lag0"]["strong_avg"] is not None and w["lag0"]["weak_avg"] is not None
-                and w["lag0"]["strong_avg"] > w["lag0"]["weak_avg"] + 0.1 for w in wk)
-    rec_full = {}
-    backtest(items, series, excess, tw_dates, live, tw_dates[0], tw_dates[-1], zsig, record=rec_full)
-    st_all = sorted(x[1] for x in rec_full.get(0, []))
-    weak_day = {"adopt": wd_ok, "pct": WEAK_PCT,
-                "threshold": round(st_all[int(len(st_all) * WEAK_PCT / 100)], 1) if len(st_all) >= 30 else None,
-                "rule": "測試期強訊號日的同日多空價差，要在 3 個切點都比弱訊號日高 0.1 個百分點以上"}
-    print(f"轉弱降權採用：{decay_cfg['adopt']} {decay_cfg['variant'] or ''}；弱訊號日標示：{wd_ok}（門檻 {weak_day['threshold']}）")
+    # 類股迴歸式：計分類股與候選商品都跟現行相同、只換權重；過關只做紀錄與提醒，不自動切換
+    ridge_ok = all(_ok(r_, "ridge") for r_ in robust.values())
+    ridge = {"adopt": False, "passed": ridge_ok, "lams": list(RIDGE_LAMS),
+             "rule": "同日或隔日多空價差 t 值提升 0.3 以上、另一個不降超過 0.3，且 3 個切點都通過",
+             "note": "通過時只在這裡標示，需人工確認盤前版也適用後再啟用"}
+    print(f"轉弱降權採用：{decay_cfg['adopt']} {decay_cfg['variant'] or ''}；類股迴歸式通過：{ridge_ok}")
+    # 狀態燈：每個類股的分數除以「自己歷史分數的幅度」，夠異常才亮燈（取代多空前 3 名）
+    #   幅度（sd）用全期實測權重算，給每日計分用；表現（stats）用訓練期權重與幅度、只看測試期
+    by_day_tr = sector_records(items_all, series, excess_bt, tw_dates, live_all, zsig)
+    by_pre_tr = sector_records(intl_items + items_all, pre_series, excess_bt, tw_dates, {**live_all, **intl_live_tr}, zpre)
+    by_day = sector_records(items, series, excess, tw_dates, live, zsig)
+    by_pre = sector_records(intl_items + items, pre_series, excess, tw_dates, {**live, **intl_live}, zpre)
+    per_d, pool_d = light_stats(by_day_tr, score_sd(by_day_tr, split), split)
+    per_p, pool_p = light_stats(by_pre_tr, score_sd(by_pre_tr, split), split)
+    lit_ok = all(r_["lights"]["lit"]["lag0"]["avg"] > r_["lights"]["unlit"]["lag0"]["avg"]
+                 and r_["lights_pre"]["lit"]["lag0"]["avg"] > r_["lights_pre"]["unlit"]["lag0"]["avg"] for r_ in robust.values())
+    lights = {"z": LIGHT_Z, "z_strong": LIGHT_Z_STRONG, "test_from": split, "robust_ok": lit_ok,
+              "day": {"sd": score_sd(by_day), "stats": per_d, "pooled": pool_d},
+              "pre": {"sd": score_sd(by_pre), "stats": per_p, "pooled": pool_p}}
+    print(f"狀態燈：亮燈日優於未亮日（3 個切點）{lit_ok}；收盤版 {pool_d['lit']}；盤前版 {pool_p['lit']['lag0']}")
+    # 共振：3 個切點都是「共振後隔日」的命中率與平均報酬高於非共振，才保留這個標記
+    rs = [r_["resonance"] for r_ in robust.values()]
+    reso_ok = all(x["res"]["n"] and x["non"]["n"] and x["res"]["hit"] > x["non"]["hit"] and x["res"]["avg"] > x["non"]["avg"]
+                  for x in rs)
+    resonance = {"adopt": reso_ok, **resonance_stats(by_day_tr, split),
+                 "rule": "3 個切點都是共振後隔日的方向命中率與平均報酬高於非共振"}
+    print(f"共振標記保留：{reso_ok}（共振 {resonance['res']}｜非共振 {resonance['non']}）")
     for k, v in pre.items():
         x = v['lag0']
         print(f"盤前回測 {k}：方向命中 {x['dir_avg']}（勝率 {x['dir_win']}, t={x['dir_t']}, n={x['dir_n']}）｜"
               f"多頭 {x['bull_avg']} 空頭 {x['bear_avg']} 價差 {x['spread_avg']} t={x['spread_t']}")
 
     # 保存本次輸入（陸期日K、個股殘差報酬、國際日線），方便本機重現與除錯
-    import gzip
-    inp = {"klines": klines, "stock_res": closes_cache, "intl": intl_closes,
-           "pairs": {c: {d: list(v) for d, v in m.items()} for c, m in pairs_by.items()}}
-    with gzip.open(H.CACHE_DIR / "calib_inputs.json.gz", "wt", encoding="utf-8") as f:
-        json.dump(inp, f, ensure_ascii=False)
+    if off is None:
+        inp = {"klines": klines, "stock_res": closes_cache, "intl": intl_closes,
+               "pairs": {c: {d: list(v) for d, v in m.items()} for c, m in pairs_by.items()}}
+        with gzip.open(INP, "wt", encoding="utf-8") as f:
+            json.dump(inp, f, ensure_ascii=False)
     ok_stocks = sum(1 for v in stock_meta.values() if "days" in v)
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
-    # 多重比較校正與關聯衰退（陸期、價差、國際、數據新增一起當作同一批檢定）
-    qrows = pairs + discovered + intl_rows
-    annotate_quality(qrows, lambda r: (intl_series if r.get("ex") == "國際" else series).get(r["code"], {}), excess, tw_dates)
-    n_fdr = sum(1 for r in qrows if r.get("status") == "有效" and not r["fdr_ok"])
-    n_decay = sum(1 for r in qrows if r.get("decay"))
-    print(f"多重比較校正（BH q={FDR_Q}）：有效但未通過 {n_fdr} 組；近 {DECAY_DAYS} 日轉弱 {n_decay} 組")
-    for r in qrows:
-        if r.get("decay") or (r.get("status") == "有效" and not r["fdr_ok"]):
-            print(f"  {r['name']}→{r['sector']} t0={r['t0']} FDR {'過' if r['fdr_ok'] else '未過'} 近期 {r.get('recent')}")
     # 高信心族群：隔日關係（陸期 D 日 → 台股下一交易日）的歷史命中率，給「隔日預測卡」使用
     focus_pred = F.predictive_stats(pairs + discovered, stocks, cmd_ret,
                                     {c: H.rolling_sigma(v) for c, v in cmd_ret.items()}, excess, closes_cache, split)
@@ -856,25 +1035,33 @@ def main():
         "pairs": pairs, "discovered": discovered, "live_links": live,
         "spreads": {code: {"name": name, "legs": legs, "sigma": sp_sigma.get(code), "days": len(spr_ret[code])}
                     for code, name, legs, _ in SPREADS},
-        "stocks": stocks, "stock_meta": stock_meta,
+        "stocks": stocks,
         "intl": {"pairs": intl_rows, "info": intl_info, "live_links": intl_live,
                  "note": "美國 D 日漲跌對齊到 D 之後第一個台股交易日（ρ0 即預測力）；僅交叉確認，不計入類股分數"},
-        "momentum": {"adopt": mom_adopt, "combo_w": H.MOM_COMBO_W,
-                     "rule": "組合版隔日價差 t 值比 1 日版高 0.3 以上、且同日 t 值不低於 1 日版 −0.3 才採用"},
         "backtest": {"train": [tw_dates[0], split], "test": [split, tw_dates[-1]], **test},
-        "sector_factor": sector_factor,
         "premarket_mode": premarket_mode,
         "robust": robust,
         "decay_weight": decay_cfg,
-        "weak_day": weak_day,
+        "ridge": ridge,
+        "lights": lights,
+        "resonance": resonance,
         "quality": {"fdr_q": FDR_Q, "decay_days": DECAY_DAYS},
         "focus": {"predictive": focus_pred, "z_min": F.Z_MIN, "t_lag1": F.T_LAG1},
-        "kline": kline_info,
-        "rolls": {code: [x for x in rs if x["date"] >= start.isoformat()] for code, rs in roll_log.items()},
+        # 詳細面板只顯示最近 3 次換月；完整紀錄在 calibration_detail.json
+        "rolls": {code: [x for x in rs_ if x["date"] >= start.isoformat()][-3:] for code, rs_ in roll_log.items()},
+    }
+    detail = {
+        "generated_at": out["generated_at"],
+        "note": "研究用的完整紀錄，網頁不會載入",
+        "kline": kline_info, "stock_meta": stock_meta,
+        "rolls": {code: [x for x in rs_ if x["date"] >= start.isoformat()] for code, rs_ in roll_log.items()},
         "roll_changed": [{"name": nm, "sector": sct, "before": list(a), "after": list(b)} for nm, sct, a, b in changed],
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    if write_detail:
+        (OUT.parent / "calibration_detail.json").write_text(json.dumps(detail, ensure_ascii=False, separators=(",", ":")),
+                                                            encoding="utf-8")
 
     print("組合狀態：", counts)
     for p in [p for p in pairs if p["ex"] == "價差"]:

@@ -250,16 +250,48 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
     return out
 
 
-# ── 依類股可信度調整分數（第 4 項）：倍數只用訓練期的信心等級決定，回測過關才採用 ──
-FACTOR_VARIANTS = {
-    "conf_only": {"A": 1.0, "B": 1.0, None: 0.0},     # 只讓有實測支持的類股進排名
-    "discount": {"A": 1.0, "B": 1.0, None: 0.5},      # 未驗證類股分數打五折
-    "pred_boost": {"A": 1.5, "B": 1.0, None: 0.5},    # 可預測族群加權、未驗證打折
-}
+# ── 只處理有實測支持的項目（其餘不抓日K、不算價差、不抓國際行情）──
+def verified_codes(cal, spreads=(), extra=()):
+    """回傳 {"cn": 有實測支持的陸期商品與價差, "intl": 國際商品, "need": 需要抓日K的陸期代碼}；
+    沒有校準檔（手動權重）時回傳 None，代表全部都處理。
+    有實測支持 = 至少一組關聯「有效」且通過多重比較校正，或樣本不足暫用手動權重（新上市商品）。"""
+    if not cal or not cal.get("pairs"):
+        return None
+    ok = lambda p: (p.get("status") == "有效" and p.get("fdr_ok") is not False) or p.get("status") == "樣本不足"  # noqa: E731
+    cn = {p["code"] for p in cal["pairs"] if ok(p)}
+    intl = {p["code"] for p in (cal.get("intl") or {}).get("pairs", []) if ok(p)}
+    need = set(cn)
+    for code, _name, legs, _links in spreads:          # 價差要用到的腿
+        if code in cn:
+            need |= {c for c, _ in legs}
+    # 預測卡上的「觀察」商品（數據發現的隔日關係）也要有日K
+    need |= {p["code"] for p in (cal.get("focus") or {}).get("predictive", []) if p.get("kind", "cn") == "cn"}
+    need |= set(extra)
+    return {"cn": cn, "intl": intl, "need": need - {c for c, *_ in spreads}}
 
 
-def sector_factor(conf, variant):
-    m = FACTOR_VARIANTS[variant]
-    f = {name: m[c["level"]] for name, c in conf.items()}
-    f["_default"] = m[None]
-    return f
+# ── 狀態燈：取代多空前 3 名 ──
+def apply_lights(cal, sectors, session):
+    """每個有實測支持的類股一個狀態燈：分數 ÷ 該類股自己的歷史分數幅度，絕對值 ≥ 門檻才亮（+1 偏多／−1 偏空）。
+    盤前版用盤前分數的幅度與「預測當天」的樣本外表現；收盤版用收盤分數的幅度與「同日／隔日」表現。
+    回傳亮燈順序（依 |z| 由大到小）"""
+    L = (cal or {}).get("lights") or {}
+    mode = L.get("pre" if session == "night" else "day") or {}
+    sd, stats = mode.get("sd") or {}, mode.get("stats") or {}
+    z_on, z_strong = L.get("z", 1.0), L.get("z_strong", 2.0)
+    order = []
+    for s in sectors:
+        s["light"] = None
+        if not s.get("confidence"):
+            continue
+        d = sd.get(s["name"])
+        z = s["score"] / d if d else None
+        state = 0 if z is None or abs(z) < z_on else (1 if z > 0 else -1)
+        st = stats.get(s["name"])
+        key = (st or {}).get("lag0") or {}
+        s["light"] = {"z": None if z is None else round(z, 2), "state": state, "sd": d,
+                      "strong": z is not None and abs(z) >= z_strong, "stats": st,
+                      # 這個類股自己的樣本外亮燈紀錄不到五成：照樣亮燈，但頁面會註明
+                      "weak_oos": bool(key.get("n", 0) >= 30 and key.get("hit") is not None and key["hit"] < 0.5)}
+        order.append((-(abs(z) if z is not None else 0), s["name"]))
+    return [n for _, n in sorted(order)]

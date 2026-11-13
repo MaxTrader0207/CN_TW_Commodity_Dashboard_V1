@@ -13,6 +13,7 @@
 <title>陸期×台股 產業多空儀表板</title>
 <script src="redirect.js"></script>
 <script src="theme.js"></script>
+<link rel="stylesheet" href="shared.css">
 <style>
 :root{
   color-scheme:dark;
@@ -221,6 +222,7 @@ summary{cursor:pointer;font-weight:600}
 .admin-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
 .admin-row input{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:inherit;min-width:0;flex:1 1 200px;max-width:320px}
 #tip{position:fixed;white-space:pre-line;pointer-events:none;background:var(--tip-bg);color:var(--fg);box-shadow:0 4px 14px rgba(0,0,0,.18);border:1px solid var(--line);padding:6px 9px;border-radius:6px;font-size:12px;max-width:260px;display:none;z-index:9}
+details.unver{margin-top:12px}details.unver>summary{cursor:pointer;color:var(--muted);font-size:13px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -249,48 +251,32 @@ summary{cursor:pointer;font-weight:600}
   <div class="demo" id="mkt-note" style="display:none"></div>
   <div class="demo" id="demo">⚠ 目前顯示的是離線示範資料，並非真實行情。GitHub Actions 首次執行後會自動換成實際數據。</div>
 
-  <section style="margin-top:0;margin-bottom:16px">
-    <details class="card" id="src-box" style="margin:0">
-      <summary><span id="src-summary">資料來源狀態</span></summary>
-      <div class="src-head" id="src-head"></div>
-      <ul class="src-list" id="src-list"></ul>
-    </details>
+  <section id="home" style="margin-top:0">
+    <div id="home-head"></div>
+    <div id="pred" class="hidden" style="margin-bottom:18px"></div>
+    <div id="lights"><div class="card empty">載入中…</div></div>
   </section>
 
-  <section id="focus" class="hidden">
-    <h2>高信心族群</h2>
-    <div class="grid2">
-      <div><p class="col-h">預測卡（只用已驗證的預測關係）</p><div id="pred"></div></div>
-      <div><p class="col-h">有實測支持的類股</p><div class="card" id="conf" style="overflow-x:auto"></div></div>
-    </div>
+  <section>
+    <h2>陸期商品看板（對昨結算）</h2>
+    <div id="board"></div>
   </section>
-
-  <div class="weak-note hidden" id="weak-note"></div>
-  <p class="note hidden" id="pm-note" style="margin:0 0 10px;color:var(--lag)"></p>
-  <div class="grid2">
-    <div class="bull"><p class="col-h"><span class="dot"></span>多頭助攻 前3類股</p><div id="bull"></div></div>
-    <div class="bear"><p class="col-h"><span class="dot"></span>空頭壓力 前3類股</p><div id="bear"></div></div>
-  </div>
 
   <section id="verify">
-    <h2>訊號驗證</h2>
+    <h2>研究與驗證</h2>
     <div class="vgrid">
       <div class="vcard">
-        <h3>實盤命中率</h3>
-        <p class="hint" id="tk-hint">多空前 3 類股在訊號後下一個台股交易日的表現（β 調整超額報酬）</p>
-        <div id="tk-kpis"></div>
+        <h3>實盤紀錄與停損</h3>
+        <p class="hint" id="tk-hint">—</p>
+        <div id="tk-kpis" style="overflow-x:auto"></div>
         <p class="note" id="tk-note"></p>
-        <h3 style="margin-top:14px">依族群拆解（實盤）</h3>
-        <div id="tk-break" style="overflow-x:auto"></div>
+        <div id="tk-break"></div>
       </div>
       <div class="vcard">
-        <h3>歷史回測（樣本外）</h3>
+        <h3>狀態燈的歷史表現（樣本外）</h3>
         <p class="hint" id="bt-hint">—</p>
-        <div style="overflow-x:auto"><table class="vt" id="bt"></table></div>
-        <p class="note" id="bt-note"></p>
-        <h3 style="margin-top:14px">盤前版回測（08:10 已知資訊 → 當天台股）</h3>
-        <div style="overflow-x:auto"><table class="vt" id="bt-pre"></table></div>
-        <p class="note" id="bt-pre-note"></p>
+        <div style="overflow-x:auto"><table class="vt" id="bt-lights"></table></div>
+        <p class="note" id="bt-lights-note"></p>
       </div>
     </div>
     <details style="margin-top:12px">
@@ -298,7 +284,19 @@ summary{cursor:pointer;font-weight:600}
       <div style="overflow-x:auto;margin-top:8px"><table class="vt" id="tk-rows"></table></div>
     </details>
     <details style="margin-top:12px">
-      <summary id="cal-summary">關聯實測表（手動權重 vs 歷史資料）</summary>
+      <summary>計分方式的回測比較</summary>
+      <div style="overflow-x:auto;margin-top:8px"><table class="vt" id="bt"></table></div>
+      <p class="note" id="bt-note"></p>
+      <h3 style="margin-top:14px">盤前版（開盤前已知資訊 → 當天台股）</h3>
+      <div style="overflow-x:auto"><table class="vt" id="bt-pre"></table></div>
+      <p class="note" id="bt-pre-note"></p>
+      <details style="margin-top:8px">
+        <summary>其他比較（標準化方式、是否含價差）</summary>
+        <div style="overflow-x:auto;margin-top:8px"><table class="vt" id="bt-more"></table></div>
+      </details>
+    </details>
+    <details style="margin-top:12px">
+      <summary id="cal-summary">關聯實測表</summary>
       <p class="note" id="cal-note"></p>
       <div class="filters" id="cal-filters"></div>
       <div style="overflow-x:auto"><table class="vt" id="cal"></table></div>
@@ -309,35 +307,30 @@ summary{cursor:pointer;font-weight:600}
       <div style="overflow-x:auto"><table class="vt" id="intl"></table></div>
     </details>
     <details style="margin-top:12px">
+      <summary id="stk-summary">受惠／受壓個股實測</summary>
+      <p class="note" id="stk-note"></p>
+      <div class="filters"><button id="stk-toggle" type="button">顯示全部</button></div>
+      <div style="overflow-x:auto"><table class="vt" id="stk"></table></div>
+    </details>
+    <details style="margin-top:12px">
       <summary id="cov-summary">類股覆蓋範圍（哪些類股有陸期／國際商品可對應）</summary>
       <p class="note" id="cov-note"></p>
       <div style="overflow-x:auto"><table class="vt cov" id="cov"></table></div>
     </details>
     <details style="margin-top:12px">
-      <summary id="stk-summary">受惠／受壓個股實測</summary>
-      <p class="note" id="stk-note"></p>
-      <div style="overflow-x:auto"><table class="vt" id="stk"></table></div>
+      <summary>類股分數歷史（熱力圖）</summary>
+      <div class="card" style="margin-top:8px">
+        <div class="filters" id="heat-mode"></div>
+        <div class="heat-wrap"><div class="heat" id="heat"></div></div>
+        <div class="legend" id="heat-legend"></div>
+        <p class="note" id="heat-note"></p>
+      </div>
     </details>
-  </section>
-
-  <section>
-    <h2>全部關聯類股 陸期助攻分數</h2>
-    <div class="card"><div class="bars" id="bars"></div></div>
-  </section>
-
-  <section>
-    <h2>類股分數歷史（熱力圖）</h2>
-    <div class="card">
-      <div class="filters" id="heat-mode"></div>
-      <div class="heat-wrap"><div class="heat" id="heat"></div></div>
-      <div class="legend" id="heat-legend"></div>
-      <p class="note" id="heat-note"></p>
-    </div>
-  </section>
-
-  <section>
-    <h2>陸期商品看板（對昨結算）</h2>
-    <div id="board"></div>
+    <details class="card" id="src-box" style="margin:12px 0 0">
+      <summary><span id="src-summary">資料來源狀態</span></summary>
+      <div class="src-head" id="src-head"></div>
+      <ul class="src-list" id="src-list"></ul>
+    </details>
   </section>
 
   <section id="codes">
@@ -364,20 +357,22 @@ summary{cursor:pointer;font-weight:600}
       <ul>
         <li>今日漲跌 ÷ 近 20 個交易日波動度（z 分數）</li>
         <li>2σ 為滿格 ±1；觸及漲跌停再 ×1.5</li>
-        <li>抓不到日K時，改用 漲跌 ÷ 漲跌停幅度</li>
-        <li>價差同樣以 20 日波動度標準化</li>
+        <li>價差同樣以 20 日波動度標準化；沒有實測支持的商品不抓日K、不計分</li>
       </ul>
       <h4>類股分數</h4>
       <ul>
-        <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100</li>
-        <li>權重為正：商品漲有利類股（產品報價、庫存利益）</li>
-        <li>權重為負：商品漲代表成本壓力</li>
+        <li>Σ(關聯權重 × 商品訊號) ÷ √Σ|權重| × 100；只計「有效且通過多重比較校正」的關聯</li>
+        <li>權重為正：商品漲有利類股（產品報價、庫存利益）；為負：商品漲代表成本壓力</li>
       </ul>
-      <h4>其他規則</h4>
+      <h4>狀態燈</h4>
       <ul>
-        <li>「共振」＝陸期訊號方向與類股當日平均漲跌同向</li>
-        <li>前5強／前5弱：以台股最新收盤漲跌幅排序，只計成交量 ≥ <span id="minlots">100</span> 張的個股</li>
-        <li>盤前版（台股開盤前）：另把前一晚已收盤的美國期貨（原油、銅等），以實測的「美盤 → 次一台股交易日」權重計入分數</li>
+        <li>只有通過實測檢驗的類股才有燈；訊號強度 = 今天的分數 ÷ 該類股自己歷史分數的常見幅度</li>
+        <li>強度達 1 倍以上才亮燈（偏多／偏空），2 倍以上標「強」；沒亮代表今天在平常的波動範圍內</li>
+        <li>盤前版（06:17）：陸期夜盤＋前一晚已收盤的美國期貨，看今天；收盤版（17:10）：陸期日盤收盤，回顧今天</li>
+      </ul>
+      <h4>實盤停損</h4>
+      <ul>
+        <li>每個區塊累積滿 40 次後，最近 60 次方向命中低於 45% 且平均報酬為負，就自動降級為「研究中」</li>
       </ul>
       <p class="calc-end">本頁為量化參考，非投資建議。</p>
     </div>
@@ -400,6 +395,7 @@ summary{cursor:pointer;font-weight:600}
 </div>
 
 <script src="config.js"></script>
+<script src="shared.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

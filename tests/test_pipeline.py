@@ -124,15 +124,6 @@ def test_z_signal():
     assert H.z_signal(-7.0, 1.0, limit=7, bonus=True) == pytest.approx(-1.5)
 
 
-def test_momentum_z():
-    ds = [(date(2026, 1, 1) + timedelta(days=i)).isoformat() for i in range(6)]
-    ret = dict(zip(ds, [1, 1, 1, 1, 1, 1]))
-    sig = {d: 1.0 for d in ds}
-    m = H.momentum_z(ret, sig, 5)
-    assert ds[3] not in m and m[ds[4]] == pytest.approx(5 / 5 ** 0.5)
-    assert H.combo_z(1.0, 2.0) == pytest.approx(2.0) and H.combo_z(1.0, None) == 1.0
-
-
 def test_pairs_returns_anomaly_cap():
     out, dropped = H.pairs_returns({"2026-01-02": (110, 100), "2026-01-03": (160, 100), "2026-01-04": (90, 0)}, 7)
     assert out == {"2026-01-02": pytest.approx(10.0)} and dropped == 1
@@ -161,9 +152,8 @@ def test_build_fixtures_end_to_end(tmp_path):
     p = json.loads((work / "docs" / "data" / "latest.json").read_text(encoding="utf-8"))
     assert p["demo"] is True and len(p["commodities"]) >= len(COMMODITIES)
     assert len(p["bull"]) <= 3 and len(p["bear"]) <= 3 and not set(p["bull"]) & set(p["bear"])
-    by = {s["name"]: s for s in p["sectors"]}
-    for n in p["bull"] + p["bear"]:
-        assert len(by[n]["strong"]) <= 5 and len(by[n]["weak"]) <= 5
+    assert all("light" in s and "strong" not in s for s in p["sectors"]), "每個類股都有狀態燈欄位，不再輸出當日漲跌排行"
+    assert "chips" not in p and "focus" in p and "lights" in p["focus"]
     st = json.loads((work / "docs" / "data" / "status.json").read_text(encoding="utf-8"))
     assert st["ok"] is True
 
@@ -277,12 +267,8 @@ def test_predict_cards_direction_uses_valid_links_only():
     assert day2[0]["signal_date"] == "2026-11-09" and day2[0]["items"][0]["tier"] == "中"
 
 
-def test_sector_factor_and_breakdown():
-    import focus as F
+def test_breakdown_levels_and_cards():
     import track as T
-    conf = F.sector_confidence(_cal_focus())
-    f = F.sector_factor(conf, "conf_only")
-    assert f["電器電纜"] == 1.0 and f["_default"] == 0.0
     sig = {"bull": [{"name": "電器電纜", "score": 10}], "bear": [{"name": "食品", "score": -5}],
            "conf": {"電器電纜": "A", "食品": None}, "focus_bull": [{"name": "電器電纜", "score": 10}], "focus_bear": [],
            "cards": [{"sector": "電器電纜", "direction": -1}]}
@@ -339,18 +325,6 @@ def test_watchdog_token_days_left():
     assert (ROOT / ".github" / "token-expiry.txt").read_text().strip() == "2027-10-29"
 
 
-def test_weak_day_stats_and_signal_strength():
-    rec = {0: [(f"2026-01-{i:02d}", float(i), 0.1 * i) for i in range(1, 31)] +
-              [(f"2026-03-{i:02d}", float(i), (1.0 if i > 15 else -0.5)) for i in range(1, 29)],
-           1: []}
-    w = C.weak_day_stats(rec, "2026-02-01")
-    assert w["threshold"] == 10.0 and w["lag0"]["strong_avg"] > w["lag0"]["weak_avg"]
-    cal = {"weak_day": {"adopt": True, "threshold": 50.0, "pct": 30}, "robust": {}}
-    ss = B.signal_strength(cal, [{"score": 20.0}, {"score": -35.0, "score_combo": -60.0}])
-    assert ss["value"] == 60.0 and not ss["weak"], "用原始（合併）分數比門檻"
-    assert B.signal_strength(cal, [{"score": 20.0}])["weak"]
-
-
 def test_decay_links_downweights_reversed_relation():
     ds = [(date(2026, 1, 1) + timedelta(days=i)).isoformat() for i in range(150)]
     import random
@@ -360,3 +334,98 @@ def test_decay_links_downweights_reversed_relation():
     live = {"X": [{"sector": "A", "w": 0.5}, {"sector": "B", "w": 0.5}]}
     out, hit = C.decay_links(live, {"X": x}, ex, ds, ds[-1], 0.0)
     assert hit == [("X", "A")] and out["X"][0]["w"] == 0.0 and out["X"][1]["w"] == 0.5
+
+
+# ───────── 2026-11 改版：只處理有實測支持的項目、狀態燈、實盤停損、迴歸式 ─────────
+def test_verified_codes_and_spread_legs():
+    import focus as F
+    cal = {"pairs": [
+        {"code": "CU", "sector": "電器電纜", "status": "有效", "fdr_ok": True},
+        {"code": "M", "sector": "食品", "status": "不顯著", "fdr_ok": False},
+        {"code": "PVC", "sector": "塑膠", "status": "有效", "fdr_ok": False},          # 多重比較沒過 → 不算
+        {"code": "SPR_PR", "sector": "紡織纖維", "status": "有效", "fdr_ok": True},
+        {"code": "NEW", "sector": "鋼鐵", "status": "樣本不足"}],
+        "intl": {"pairs": [{"code": "BZ", "sector": "油電燃氣", "status": "有效", "fdr_ok": True},
+                           {"code": "GC", "sector": "金融保險", "status": "不顯著"}]},
+        "focus": {"predictive": [{"code": "SN", "kind": "cn"}, {"code": "BZ", "kind": "intl"}]}}
+    v = F.verified_codes(cal, [("SPR_PR", "瓶片加工費", [("PR", 1), ("TA", -0.855), ("EG", -0.335)], [])])
+    assert v["cn"] == {"CU", "SPR_PR", "NEW"} and v["intl"] == {"BZ"}
+    assert v["need"] == {"CU", "NEW", "PR", "TA", "EG", "SN"}, "價差的腿與預測卡的觀察商品也要抓日K"
+    assert F.verified_codes({}) is None, "沒有校準檔時全部都處理"
+
+
+def test_apply_lights_uses_own_history_scale():
+    import focus as F
+    cal = {"lights": {"z": 1.0, "z_strong": 2.0,
+                      "day": {"sd": {"油電燃氣": 100.0, "水泥": 25.0}, "stats": {"水泥": {"lag0": {"n": 40, "hit": 0.4, "avg": -0.1}}}},
+                      "pre": {"sd": {"油電燃氣": 50.0}, "stats": {}}}}
+    secs = [{"name": "油電燃氣", "score": 90.0, "confidence": {"level": "A"}},
+            {"name": "水泥", "score": -30.0, "confidence": {"level": "B"}},
+            {"name": "橡膠", "score": 80.0, "confidence": None}]
+    order = F.apply_lights(cal, secs, "day")
+    by = {s["name"]: s for s in secs}
+    assert by["油電燃氣"]["light"]["state"] == 0, "90 分對油電燃氣只是 0.9 倍，不亮"
+    assert by["水泥"]["light"]["state"] == -1 and by["水泥"]["light"]["weak_oos"], "−30 分對水泥是 1.2 倍，亮偏空；樣本外不到五成要標示"
+    assert by["橡膠"]["light"] is None and order == ["水泥", "油電燃氣"]
+    F.apply_lights(cal, secs, "night")
+    assert by["油電燃氣"]["light"]["state"] == 1 and not by["油電燃氣"]["light"]["strong"]
+
+
+def test_gate_states():
+    import track as T
+    assert T.gate([0.5, -0.2])["state"] == "collecting"
+    assert T.gate([-0.5] * 30 + [0.2] * 15)["state"] == "demoted"            # 45 次、命中 33%、平均為負
+    assert T.gate([0.5] * 30 + [-0.2] * 15)["state"] == "ok"
+    g = T.gate([-0.5] * 50 + [0.5] * 60)                                      # 只看最近 60 次：全對 → 恢復
+    assert g["state"] == "ok" and g["n"] == 60 and g["total"] == 110
+    outs = T.light_outcomes({"lights": [{"name": "水泥", "state": -1, "z": -1.2}, {"name": "鋼鐵", "state": 0, "z": 0.3}]},
+                            {"水泥": -0.4}, {"水泥": 0.3})
+    assert outs == [{"name": "水泥", "state": -1, "z": -1.2, "same": 0.4, "next": -0.3}]
+
+
+def test_light_stats_lit_vs_unlit():
+    by = {"X": {f"2026-01-{i:02d}": [(50.0 if i % 2 else 5.0), 1.0 if i % 2 else -1.0, 0.0] for i in range(1, 29)}}
+    per, pool = C.light_stats(by, {"X": 20.0}, "2026-01-01")
+    assert per["X"]["lag0"] == {"n": 14, "hit": 1.0, "avg": 1.0}
+    assert pool["lit"]["lag0"]["hit"] == 1.0 and pool["unlit"]["lag0"]["hit"] == 0.0 and pool["strong"]["lag0"]["n"] == 14
+
+
+def test_ridge_shares_weight_between_collinear_features():
+    import random
+    rnd = random.Random(3)
+    X, y = [], []
+    for _ in range(200):
+        f = rnd.gauss(0, 1)
+        X.append([f, f + rnd.gauss(0, 0.01)])          # 兩個幾乎一樣的商品
+        y.append(1.0 * f + rnd.gauss(0, 0.1))
+    b = C.ridge_fit(X, y, 1.0)
+    assert abs(b[0] - b[1]) < 0.2 and b[0] + b[1] == pytest.approx(1.0, abs=0.05), "共線的兩個特徵平分權重，合計約 1"
+    assert C._solve([[2.0, 0.0], [0.0, 4.0]], [2.0, 8.0]) == [1.0, 2.0]
+
+
+def test_build_links_scores_only_valid_direction():
+    """方向與產業邏輯相反的關聯（即使統計顯著）不計分"""
+    import random
+    rnd = random.Random(5)
+    ds = [(date(2025, 1, 1) + timedelta(days=i)).isoformat() for i in range(260)]
+    x = {d: rnd.gauss(0, 1) for d in ds}
+    ex = {d: {"甲": x[d] + rnd.gauss(0, 0.5), "乙": -x[d] + rnd.gauss(0, 0.5)} for d in ds}
+    items = [("測", "X", "商品", 5.0, [("甲", 0.5, "邏輯同向"), ("乙", 0.5, "邏輯同向但資料相反")], True)]
+    pairs, _disc, live = C.build_links(items, {"X": x}, ex, ds)
+    st = {p["sector"]: p["status"] for p in pairs}
+    assert st == {"甲": "有效", "乙": "方向相反"} and [l["sector"] for l in live["X"]] == ["甲"]
+
+
+def test_alert_deploy_only_classification():
+    import importlib.util
+    import os
+    os.environ.setdefault("GITHUB_REPOSITORY", "x/y")
+    os.environ.setdefault("RUN_ID", "1")
+    os.environ.setdefault("GH_TOKEN", "t")
+    spec = importlib.util.spec_from_file_location("alert_t", ROOT / ".github" / "scripts" / "alert.py")
+    A = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(A)
+    ok, bad = {"conclusion": "success"}, {"conclusion": "failure"}
+    assert A.deploy_only({}, [{"name": "build", **ok}, {"name": "deploy / deploy", **bad}])
+    assert not A.deploy_only({}, [{"name": "build", **bad}, {"name": "deploy / deploy", "conclusion": "skipped"}])
+    assert not A.deploy_only({}, [{"name": "build", **ok}])

@@ -9,7 +9,6 @@ const sc = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1);
 const sg = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + 'σ';
 const pp = v => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 const wr = v => v == null ? '—' : Math.round(v * 100) + '%';
-const lots = v => v == null ? '—' : (v > 0 ? '+' : '') + Math.round(v).toLocaleString();
 const fmtTime = t => t ? t.replace('T', ' ').slice(5, 16) : '—';
 const CFG = window.DASH_CONFIG || {};
 const W_URL = (CFG.triggerUrl || '').replace(/\/$/, '');
@@ -17,7 +16,7 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { ret
                 set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
 const getJSON = async p => { const r = await fetch(p + '?t=' + Date.now()); if (!r.ok) throw new Error(r.status); return r.json(); };
 
-let D = null, BOARD = {}, CHIPS = {}, CAL = null, TRACK = null, HEAT = null, KL = null;
+let D = null, BOARD = {}, CAL = null, TRACK = null, HEAT = null, KL = null;
 const drawn = {};   // 已繪製的分頁
 
 function toast(msg) {
@@ -73,13 +72,7 @@ function staleInfo(d) {
   return null;
 }
 
-// ── 多空 ──
-let SIDE = 'bull';
-document.querySelectorAll('#side-seg button').forEach(b => b.onclick = () => {
-  SIDE = b.dataset.side;
-  document.querySelectorAll('#side-seg button').forEach(x => x.classList.toggle('on', x === b));
-  drawSectors();
-});
+// ── 首頁：版本標題、預測卡、狀態燈（與電腦版共用 shared.js）──
 function drawHome() {
   const notes = $('#notes'); notes.replaceChildren();
   const mk = D.market || {}, add = (txt) => { const b = el('div', 'banner warn'); b.append(el('b', null, '⚠ '), document.createTextNode(txt)); notes.append(b); };
@@ -89,25 +82,15 @@ function drawHome() {
   if (mk.tw_holiday) add(`今日台股休市（${mk.tw_holiday}）。`);
   if (mk.cn?.rolled?.length) add('主力合約今日換月：' + mk.cn.rolled.map(c => BOARD[c]?.name || c).join('、'));
   if (D.industry?.stale?.length) add(D.industry.stale.join('、') + '，新上市櫃股票可能沒有類股。');
-  const ss = D.signal_strength;
-  if (ss?.weak) add(`今日訊號偏弱（最大分數 ${ss.value} < ${ss.threshold}）：回測中這類日子同日連動明顯較弱（價差 ${ss.weak_avg}% vs 強訊號日 ${ss.strong_avg}%），排名請當參考；隔日預測不受影響。`);
-  if (D.premarket_mode?.on) add(`盤前版排名只用「國際隔夜」分數（回測價差 t ${D.premarket_mode.intl_t}，合併版 ${D.premarket_mode.combo_t}）；陸期夜盤僅供參考。`);
-  drawPred();
-  drawSectors();
-  const bars = $('#bars'); bars.replaceChildren();
-  const max = Math.max(1, ...D.sectors.map(s => Math.abs(s.score)));
-  D.sectors.forEach(s => {
-    const r = el('div', 'bar'); const tr = el('div', 'tr'); const i = el('i');
-    const w = Math.abs(s.score) / max * 50;
-    i.style.cssText = `width:${w}%;left:${s.score >= 0 ? 50 : 50 - w}%;background:var(--${s.score >= 0 ? 'up' : 'dn'})`;
-    tr.append(i); r.append(el('div', null, s.name), tr, el('div', 'v ' + cls(s.score), sc(s.score)));
-    bars.append(r);
-  });
+  const opts = { board: BOARD, openDetail };
+  UI.headBlock($('#home-head'), D);
+  UI.predBlock($('#pred'), D, opts);
+  UI.lightsBlock($('#lights'), D, opts);
 }
-// 受惠／受壓個股列：名稱一行、關聯說明（自動換行，不截斷）、實測結果用小標籤；點一下展開完整說明
+// 個股列（商品詳細頁用）：名稱一行、關聯說明自動換行、實測結果用小標籤
 const VERDICT_TAG = { '一致': 'ok', '隔日一致': 'lag', '相反': 'rev' };
-function stockRow(x, sub, extra, whyShown) {
-  const r = el('div', 'row stk'), l = el('div', 'l');
+function stockRow(x, sub) {
+  const r = el('div', 'row stk static'), l = el('div', 'l');
   const t = el('div', 't', x.name || x.code);
   t.append(el('span', 'cd', x.code), el('span', 'tag ' + (x.role === '產品' ? 'p' : 'c'), x.role === '產品' ? '受惠' : '受壓'));
   l.append(t);
@@ -117,170 +100,22 @@ function stockRow(x, sub, extra, whyShown) {
   if (x.oos_same) tags.append(el('span', 'tag ok', '樣本外確認'));
   if (x.oos_next) tags.append(el('span', 'tag lag', '隔日仍成立'));
   if (tags.childElementCount) l.append(tags);
-  const more = [];
-  if (!whyShown && x.why) more.push(x.why);
-  if (x.rho0 != null) more.push(`歷史同日相關 ρ=${x.rho0 > 0 ? '+' : ''}${x.rho0}`);
-  if (x.oos_same) more.push('樣本外確認：前 60% 與後 40% 期間都顯著、方向一致');
-  if (x.oos_next) more.push('隔日仍成立：隔日關聯在測試期仍顯著');
-  if (more.length) {
-    const w = el('div', 'why hidden', more.join('\n'));
-    l.append(w); r.classList.add('tap');
-    r.onclick = () => { w.classList.toggle('hidden'); r.classList.toggle('open'); };
-  } else r.classList.add('static');
   const rr = el('div', 'r'); rr.append(el('b', cls(x.chg_pct), pct(x.chg_pct)));
-  if (extra) rr.append(el('small', null, extra));
   r.append(l, rr);
   return r;
-}
-function benMap(sector) {
-  const m = {};
-  sector.drivers.filter(d => d.contrib !== 0).forEach(d => (BOARD[d.code]?.stocks || []).forEach(x => { if (!m[x.code]) m[x.code] = { ...x, via: d.name }; }));
-  return m;
-}
-// ── 高信心族群／最敏感個股／隔日預測卡 ──
-const CONF_TIP = { A: '同日＋隔日都有實測支持：陸期收盤後，對台股下一交易日仍有預測力', B: '只有同日關係：陸期與台股同步反映，預測力弱' };
-function tval(t) { return t == null ? '—' : (t > 0 ? '+' : '') + t; }
-function mmdd(d) { return d ? d.slice(5).replace('-', '/') : '—'; }
-function confBadge(s) {
-  const c = s.confidence;
-  return el('span', 'badge conf ' + (c ? 'c' + c.level : 'c0'), c ? (c.level === 'A' ? '可預測' : '同步') : '未驗證');
-}
-function sensRow(x) {
-  const r = el('div', 'row stk'), l = el('div', 'l');
-  const t = el('div', 't', x.name || x.code); t.append(el('span', 'cd', x.code));
-  l.append(t, el('div', 's', `經由 ${BOARD[x.item]?.name || x.item}・同日 t ${tval(x.t0)}・隔日 t ${tval(x.t1)}`));
-  const tags = el('div', 'vt');
-  if (x.oos_same) tags.append(el('span', 'tag ok', '樣本外確認'));
-  if (x.oos_next) tags.append(el('span', 'tag lag', '隔日仍成立'));
-  if (tags.childElementCount) l.append(tags);
-  if (x.why) {
-    const w = el('div', 'why hidden', x.why + '\n|t|≥2 才算顯著；t 值越大，與陸期的連動越穩定。');
-    l.append(w); r.classList.add('tap');
-    r.onclick = () => { w.classList.toggle('hidden'); r.classList.toggle('open'); };
-  } else r.classList.add('static');
-  const rr = el('div', 'r'); rr.append(el('b', cls(x.chg_pct), pct(x.chg_pct)));
-  const ch = CHIPS[x.code]; if (ch) rr.append(el('small', null, `法人 ${lots(ch.inst)}`));
-  r.append(l, rr);
-  return r;
-}
-function drawPred() {
-  const box = $('#pred'); box.replaceChildren();
-  (D.focus?.cards || []).forEach(cd => {
-    const c = el('div', 'card pred');
-    const dir = cd.direction;
-    const h = el('div', 'ph');
-    const intl = cd.kind === 'intl';
-    h.append(el('b', null, `${intl ? '盤前預測' : '隔日預測'}：${cd.sector}`), el('span', 'badge conf cA', intl ? '國際隔夜' : '陸期收盤'));
-    if (cd.tier) h.append(el('span', 'badge tier t' + cd.tier, cd.tier + '訊號'));
-    h.append(el('span', 'dir ' + (dir > 0 ? 'up' : dir < 0 ? 'dn' : 'flat'), dir > 0 ? '偏多' : dir < 0 ? '偏空' : '不明確'));
-    c.append(h, el('div', 'sub', `依${intl ? '美國' : '陸期'} ${mmdd(cd.signal_date)} ${intl ? '收盤' : '日盤收盤'} → 台股 ${mmdd(cd.target)}${D.run_date === cd.target ? '（今天）' : '（下一交易日）'}`));
-    const sum = el('div', 'pchips');
-    cd.items.forEach(x => {
-      const ch = el('span', 'pchip' + (x.status !== '有效' ? ' obs' : ''));
-      ch.append(document.createTextNode(x.name + ' '), el('span', cls(x.ret), pct(x.ret)), document.createTextNode(' '),
-        x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', (x.dir > 0 ? '偏多' : '偏空') + (x.tier ? '・' + x.tier : '')) : el('span', 'flat', '不明確'));
-      sum.append(ch);
-    });
-    if (dir) c.append(sum);
-    const det0 = el('details', 'more'); det0.append(el('summary', null, dir ? '命中率與夜盤' : '今日訊號不明確（各商品 |z| < 0.5）・明細'));
-    if (!dir) det0.append(sum);
-    cd.items.forEach(x => {
-      const it = el('div', 'it');
-      const nm = el('div'); nm.append(document.createTextNode(x.name + ' '), el('span', cls(x.ret), pct(x.ret)),
-        document.createTextNode(x.z == null ? '' : `（${x.z > 0 ? '+' : ''}${x.z}σ）`));
-      if (x.status !== '有效') nm.append(el('span', 'tag new', '觀察'));
-      it.append(nm, x.strong ? el('b', x.dir > 0 ? 'up' : 'dn', x.dir > 0 ? '偏多' : '偏空') : el('span', 'flat', '不明確'));
-      it.append(el('div', 'k', (x.tier_n ? `${x.tier}訊號歷史：命中 ${Math.round(x.tier_hit * 100)}%、平均 ${x.tier_avg > 0 ? '+' : ''}${x.tier_avg}%（${x.tier_n} 天）・` : '') +
-        `全部命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}（${x.n} 次）・樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}` +
-        (x.night != null ? `・夜盤目前 ${pct(x.night)}（僅參考）` : '')));
-      det0.append(it);
-    });
-    det0.append(el('p', 'f-note', '強度：弱 |z| 0.5～1、中 1～2、強 ≥2。命中率多在 52～60%，只比隨機略好，請當成「機率略偏一邊」的參考；訊號越強，歷史平均報酬通常越高。樣本外＝最近 40% 期間。「觀察」為數據發現的關係，不影響預測方向。'));
-    c.append(det0);
-    if (cd.stocks.length) {
-      const det = el('details', 'more'); det.append(el('summary', null, `對應個股（${cd.stocks.length}）`));
-      const tl = intl ? '同日 t' : '隔日 t';
-      const rows = el('div', 'rows');
-      cd.stocks.forEach(x => {
-        const r = el('div', 'row stk static'), l = el('div', 'l');
-        const t = el('div', 't', x.name || x.code); t.append(el('span', 'cd', x.code));
-        l.append(t, el('div', 's', `經由 ${x.via}・${tl} ${tval(x.t1)}・歷史命中 ${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}／樣本外 ${x.hit_test == null ? '—' : Math.round(x.hit_test * 100) + '%'}`));
-        if (x.next_ok) { const tg = el('div', 'vt'); tg.append(el('span', 'tag lag', '隔日仍成立')); l.append(tg); }
-        const rr = el('div', 'r'); rr.append(el('b', cls(x.last_chg), pct(x.last_chg)), el('small', null, '最新收盤'));
-        r.append(l, rr); rows.append(r);
-      });
-      det.append(rows); c.append(det);
-    }
-    box.append(c);
-  });
-}
-function drawSectors() {
-  const box = $('#sectors'); box.replaceChildren();
-  const by = Object.fromEntries(D.sectors.map(s => [s.name, s]));
-  const focusMode = SIDE === 'focus';
-  const names = focusMode ? (D.focus?.sectors || []) : (D[SIDE] || []);
-  if (focusMode) box.append(el('p', 'f-note', '只列陸期（或國際隔夜）關聯在歷史資料中有效（|t|≥2、前後期間方向一致）的類股，依今日分數絕對值排序。「可預測」＝陸期收盤後對台股隔日仍有關係；「同步」＝只在同一天同步反映；「未驗證」＝沒有實測支持，分數僅供參考。'));
-  if (!names.length) { box.append(el('div', 'card empty', focusMode ? '尚無高信心族群資料（下次更新後出現）' : SIDE === 'bull' ? '今日沒有正向助攻的類股' : '今日沒有負向壓力的類股')); return; }
-  names.forEach((n, i) => {
-    const s = by[n]; if (!s) return; const c = el('div', 'card');
-    const side = focusMode ? (s.score >= 0 ? 'up' : 'dn') : (SIDE === 'bull' ? 'up' : 'dn');
-    c.style.borderLeft = `4px solid var(--${side})`;
-    const h = el('div', 'sc-h'); h.append(el('span', 'rk', '#' + (i + 1)), el('span', 'nm', s.name));
-    if (s.resonance) h.append(el('span', 'badge', '共振'));
-    h.append(confBadge(s));
-    h.append(el('span', 'scr ' + cls(s.score), sc(s.score)));
-    c.append(h, el('div', 'sub', `類股平均 ${pct(s.tw_avg_chg)}　漲 ${s.tw_up}／跌 ${s.tw_down}（${s.n} 檔）` +
-      (s.score_raw != null && s.score_raw !== s.score ? `｜已依可信度調整（原始 ${sc(s.score_raw)}）` : '') +
-      (s.score_combo != null ? `｜國際＋陸期合併 ${sc(s.score_combo)}` : '')));
-    if (s.confidence) c.append(el('div', 'links-line', '實測關聯：' + s.confidence.links.filter(x => x.status === '有效').slice(0, 4)
-      .map(x => `${x.name}${x.intl ? '（隔夜）' : ''} t${tval(x.t0)}${x.predictive && !x.intl ? `／隔日 t${tval(x.t1)}` : ''}${x.decay ? '（近期轉弱）' : ''}`).join('、')));
-    const chips = el('div', 'chips');
-    s.drivers.filter(d => d.contrib !== 0).slice(0, 8).forEach(d => {
-      const b = el('button', 'chip' + (d.at_limit ? ' lim' : '')); b.type = 'button';
-      b.append(document.createTextNode((d.kind === 'spread' ? '〔價差〕' : d.kind === 'intl' ? '〔國際〕' : '') + d.name));
-      const sm = el('small'); sm.append(el('span', cls(d.chg), pct(d.chg)), document.createTextNode(' → '), el('span', cls(d.contrib), sc(d.contrib)));
-      b.append(sm); b.onclick = () => openDetail(d.code); chips.append(b);
-    });
-    c.append(chips);
-    const ben = Object.values(benMap(s)).filter(x => x.name);
-    if (ben.length) {
-      const det = el('details', 'more'); det.append(el('summary', null, `直接受惠／受壓個股（${ben.length}）`));
-      const rows = el('div', 'rows');
-      ben.forEach(x => {
-        const ch = CHIPS[x.code];
-        rows.append(stockRow(x, `經由 ${x.via}`, ch ? `法人 ${lots(ch.inst)}` : null));
-      });
-      det.append(rows); c.append(det);
-    }
-    const sens = s.sensitive || [];
-    const det3 = el('details', 'more'); det3.open = sens.length > 0 && i === 0;
-    det3.append(el('summary', null, `最敏感個股（實測）（${sens.length}）`));
-    const rows3 = el('div', 'rows');
-    if (!sens.length) rows3.append(el('p', 'note', '此類股還沒有實測支持的個股，請參考下方當日漲跌排行。'));
-    sens.forEach(x => rows3.append(sensRow(x)));
-    det3.append(rows3); c.append(det3);
-    const det2 = el('details', 'more'); det2.append(el('summary', null, '當日漲跌 前5強／前5弱'));
-    const sp = el('div', 'split');
-    for (const [title, list] of [['前5強', s.strong], ['前5弱', s.weak]]) {
-      const col = el('div'); col.append(el('h4', null, title));
-      if (!list.length) col.append(el('div', 'flat', '無資料'));
-      list.forEach(x => { const m = el('div', 'mini'); m.append(el('span', null, x.name), el('span', cls(x.chg_pct), pct(x.chg_pct))); col.append(m); });
-      sp.append(col);
-    }
-    det2.append(sp); c.append(det2);
-    box.append(c);
-  });
 }
 
 // ── 看板 ──
 const INE = new Set(['SC', 'LU', 'NR', 'BC', 'EC']);
 const groupOf = c => c.kind === 'spread' ? '價差' : c.kind === 'intl' ? '國際' : (c.ex === '上期所' && INE.has(c.code) ? '能源中心' : c.ex);
 const GROUPS = ['全部', '上期所', '能源中心', '大商所', '鄭商所', '廣期所', '價差', '國際'];
-let GRP = '全部', SORT = 'chg';
+let GRP = '全部', SORT = 'chg', SHOW_UNVER = false;
 function drawBoard() {
+  const all = D.commodities.filter(c => SHOW_UNVER || c.verified !== false);
+  const nUn = D.commodities.filter(c => c.verified === false).length;
   const seg = $('#ex-seg'); seg.replaceChildren();
   GROUPS.forEach(g => {
-    const n = g === '全部' ? D.commodities.length : D.commodities.filter(c => groupOf(c) === g).length;
+    const n = g === '全部' ? all.length : all.filter(c => groupOf(c) === g).length;
     if (!n) return;
     const b = el('button', g === GRP ? 'on' : '', `${g} ${n}`); b.type = 'button';
     b.onclick = () => { GRP = g; drawn.board = false; draw('board'); }; seg.append(b);
@@ -289,8 +124,12 @@ function drawBoard() {
     b.classList.toggle('on', b.dataset.sort === SORT);
     b.onclick = () => { SORT = b.dataset.sort; drawn.board = false; draw('board'); };
   });
-  const key = c => SORT === 'chg' ? c.chg : SORT === 'z' ? c.z : c.m5;
-  const list = D.commodities.filter(c => GRP === '全部' || groupOf(c) === GRP)
+  const un = $('#unver-btn');
+  un.classList.toggle('hidden', !nUn);
+  un.textContent = SHOW_UNVER ? '只看有實測支持的商品' : `也顯示未驗證的 ${nUn} 個商品（不計分）`;
+  un.onclick = () => { SHOW_UNVER = !SHOW_UNVER; drawn.board = false; draw('board'); };
+  const key = c => SORT === 'chg' ? c.chg : c.z;
+  const list = all.filter(c => GRP === '全部' || groupOf(c) === GRP)
     .sort((a, b) => (key(b) ?? -99) - (key(a) ?? -99));
   const box = $('#board'); box.replaceChildren();
   list.forEach(c => {
@@ -298,10 +137,11 @@ function drawBoard() {
     const t = el('div', 't', c.name); t.append(el('span', 'cd', c.code));
     if (c.at_limit) t.append(el('span', 'tag new', c.at_limit === 'up' ? '漲停' : '跌停'));
     if (c.rolled) t.append(el('span', 'tag lag', '換月'));
+    if (c.verified === false) t.append(el('span', 'tag no', '未驗證'));
     const secs = [...new Set([...(c.links || []), ...(c.ref_links || [])].map(x => x.sector))];
-    l.append(t, el('div', 's', `${groupOf(c)}・${secs.join('、') || '實測不顯著，不計分'}`));
+    l.append(t, el('div', 's', `${groupOf(c)}・${secs.join('、') || '沒有實測支持，不計分'}`));
     const rr = el('div', 'r'); rr.append(el('b', cls(c.chg), pct(c.chg)));
-    rr.append(el('small', null, SORT === 'm5' ? `5日 ${sg(c.m5)}` : sg(c.z)));
+    if (c.z != null) rr.append(el('small', null, sg(c.z)));
     if (c.chg) r.style.background = `linear-gradient(90deg, transparent 55%, rgba(var(--${c.chg > 0 ? 'up' : 'dn'}-rgb),${Math.min(.25, .05 + Math.abs(c.z ?? c.chg / 3) * .07)}))`;
     r.append(l, rr); r.onclick = () => openDetail(c.code); box.append(r);
   });
@@ -309,57 +149,48 @@ function drawBoard() {
 }
 
 // ── 驗證 ──
-const LVL_NAME = { A: '可預測', B: '同步', none: '未驗證' };
-function drawBreakdown() {
-  const box = $('#tk-break'); box.replaceChildren();
-  const b = TRACK.summary.breakdown; if (!b) { box.append(el('div', 'empty', '下次更新後開始統計')); return; }
-  const line = (label, m) => {
-    const r = el('div', 'mini');
-    r.append(el('span', null, `${label}（${m?.n ?? 0} 次）`), el('span', cls(m?.avg), m?.n ? `${pp(m.avg)}・對 ${wr(m.win)}` : '—'));
-    return r;
-  };
-  box.append(el('h4', 'sub', '信心等級'));
-  for (const k of ['A', 'B', 'none']) box.append(line(LVL_NAME[k], b.by_level[k]));
-  box.append(line('隔日預測卡', b.cards));
-  const f = b.focus_rank, a = TRACK.summary.all.next;
-  box.append(el('p', 'note', `高信心排法前 3 多空價差：${f.n ? `${pp(f.spread_avg)}（${f.n} 次）` : '尚未開獎'}；原排法：${pp(a.spread_avg)}（${a.n} 次）`));
-  const det = el('details', 'more'); det.append(el('summary', null, '依類股'));
-  Object.entries(b.by_sector).forEach(([k, m]) => det.append(line(k, m)));
-  box.append(det, el('p', 'note', '數字 = 訊號方向 × 下一交易日超額報酬（正值代表方向對）。' +
-    (b.backfilled ? `${b.backfilled} 筆舊訊號的信心等級以目前校準回推。` : '') + '樣本很少時只供觀察。'));
-}
 async function drawVerify() {
   try { TRACK ??= await getJSON('../data/track.json'); } catch (e) { $('#track').replaceChildren(el('div', 'empty', '尚無追蹤資料')); }
   if (TRACK) {
-    const m = TRACK.summary.all.next, box = $('#track'); box.replaceChildren();
-    const k = el('div', 'kpis');
-    const kp = (t, v, s, c) => { const b = el('div', 'kpi'); b.append(el('div', 'k', t), el('div', 'v ' + (c || ''), v), el('div', 's', s)); k.append(b); };
-    kp('多頭隔日', pp(m.bull_avg), '勝率 ' + wr(m.bull_win), cls(m.bull_avg));
-    kp('空頭隔日', pp(m.bear_avg), '勝率 ' + wr(m.bear_win), cls(m.bear_avg));
-    kp('多空價差', pp(m.spread_avg), '為正 ' + wr(m.spread_win), cls(m.spread_avg));
-    box.append(k, el('p', 'note', `自 ${TRACK.since || '—'} 起，已開獎 ${m.n} 次${m.n < 20 ? '，樣本還太少，僅供觀察' : ''}。數字為類股扣掉大盤影響後的超額報酬。`));
-    drawBreakdown();
+    const g = TRACK.summary.gates || {}, box = $('#track'); box.replaceChildren();
+    const ST = { collecting: '累積中', ok: '達標', demoted: '已降級', info: '回顧用' };
+    for (const k of ['pre', 'day_same', 'day_next', 'cards_intl', 'cards_cn']) {
+      const m = g[k]; if (!m) continue;
+      const r = el('div', 'mini');
+      r.append(el('span', null, `${UI.GATE_LABEL[k]}（${m.state === 'collecting' ? `${m.total}/${m.need}` : m.total} 次・${ST[m.state] || ''}）`),
+        el('span', cls(m.avg), m.total ? `對 ${wr(m.win)}・${pp(m.avg)}` : '—'));
+      box.append(r);
+    }
+    const any = Object.values(g)[0], a = TRACK.summary.all.next;
+    box.append(el('p', 'note', `自 ${TRACK.since || '—'} 起。數字 = 訊號方向 × 實際超額報酬（正值代表方向對）。` +
+      (any ? `停損：滿 ${any.need} 次後，最近 ${any.window} 次命中低於 ${wr(any.min_hit)} 且平均為負，該區塊自動降級。` : '') +
+      `舊排法（多空前 3 名，已停用）：隔日價差 ${pp(a.spread_avg)}、為正 ${wr(a.spread_win)}（${a.n} 次）。`));
     const rows = $('#tk-rows'); rows.replaceChildren();
+    const res = v => v == null ? '待開獎' : `${v > 0 ? '✓' : '✗'} ${pp(v)}`;
     TRACK.rows.slice(0, 12).forEach(r => {
-      const x = el('div', 'row static'); const l = el('div', 'l');
+      const x = el('div', 'row static stk'); const l = el('div', 'l');
       const t = el('div', 't', `${r.run_at.replace('T', ' ').slice(5, 16)} ${r.session === 'night' ? '盤前' : '收盤'}`);
       if (!r.valid) t.append(el('span', 'tag no', '不計'));
-      l.append(t, el('div', 's', `多：${r.bull.join('、') || '—'}｜空：${r.bear.join('、') || '—'}`));
-      const rr = el('div', 'r'); rr.append(el('b', cls(r.next?.spread), r.next ? pp(r.next.spread) : '待開獎'), el('small', null, r.next_date ? r.next_date.slice(5) : ''));
+      const lit = (r.lights || []).map(q => `${q.name}${q.state > 0 ? '偏多' : '偏空'} ${res(r.session === 'day' && q.next == null ? q.same : q.next)}`);
+      const cs = (r.cards || []).filter(c => c.direction).map(c => `卡 ${c.sector}${c.direction > 0 ? '偏多' : '偏空'} ${res(c.ret)}`);
+      l.append(t, el('div', 's', [...lit, ...cs].join('；') || (r.lights ? '沒有亮燈、沒有預測卡方向' : '改版前的訊號')));
+      const rr = el('div', 'r'); rr.append(el('small', null, r.next_date ? r.next_date.slice(5) : '待開獎'));
       x.append(l, rr); rows.append(x);
     });
   }
   try { CAL ??= await getJSON('../data/calibration.json'); } catch (e) { $('#bt').replaceChildren(el('div', 'empty', '尚未校準')); }
   if (CAL) {
-    const bt = CAL.backtest, box = $('#bt'); box.replaceChildren();
-    const k = el('div', 'kpis two');
-    const add = (t, m) => { const b = el('div', 'kpi'); b.append(el('div', 'k', t), el('div', 'v ' + cls(m?.spread_avg), pp(m?.spread_avg)), el('div', 's', `t 值 ${m?.spread_t ?? '—'}・${m?.days ?? 0} 天`)); k.append(b); };
-    add('同日 多空價差', bt.calibrated_spreads_z?.lag0);
-    add('隔日 多空價差', bt.calibrated_spreads_z?.lag1);
-    if (bt.pre_combo) add('盤前版（國際＋陸期）', bt.pre_combo.lag0);
-    if (bt.pre_intl) add('盤前版（僅國際）', bt.pre_intl.lag0);
-    if (bt.factor_conf_only) add('只排高信心 隔日', bt.factor_conf_only.lag1);
-    box.append(k, el('p', 'note', `${bt.test[0]}～${bt.test[1]} 樣本外測試（實測權重＋價差、z 分數）。t 值絕對值大於 2 才算統計上顯著；「同日」代表同步，「隔日」才是預測力。`));
+    const box = $('#bt'); box.replaceChildren();
+    const f = m => m?.n ? `對 ${wr(m.hit)}・${pp(m.avg)}` : '—';
+    Object.values(CAL.robust || {}).forEach(r => {
+      box.append(el('h4', 'sub', `測試期 ${r.split} 起`));
+      const line = (lab, a, b) => { const x = el('div', 'mini'); x.append(el('span', null, lab), el('span', null, `亮 ${f(a)}｜未亮 ${f(b)}`)); box.append(x); };
+      line('盤前版・當天', r.lights_pre?.lit?.lag0, r.lights_pre?.unlit?.lag0);
+      line('收盤版・同日', r.lights?.lit?.lag0, r.lights?.unlit?.lag0);
+      line('收盤版・隔日', r.lights?.lit?.lag1, r.lights?.unlit?.lag1);
+    });
+    box.append(el('p', 'note', `狀態燈的樣本外表現：每格 = 方向命中率・訊號方向的平均超額報酬。換 3 個訓練／測試切點，亮燈日都優於未亮日才採用（目前：${CAL.lights?.robust_ok ? '通過' : '未通過'}）。同日是回顧；盤前版的「當天」才是開盤前可用的資訊；隔日優勢很小。`));
+    box.append(el('p', 'note', `試過但沒採用（3 個切點都要過關）：類股迴歸式 ${CAL.ridge?.passed ? '通過（待確認）' : '未通過'}、近期轉弱降權 ${CAL.decay_weight?.adopt ? '已採用' : '未通過'}、盤前只用國際 ${CAL.premarket_mode?.passed ? '通過（待確認）' : '未通過'}、共振標記 ${CAL.resonance?.adopt ? '保留' : '未通過，已移除'}。`));
   }
   try { HEAT ??= await getJSON('../data/score_history.json'); drawHeat(); } catch (e) { $('#heat-note').textContent = '尚無分數歷史'; }
 }
@@ -371,7 +202,8 @@ function drawHeat() {
   if (!HEAT) return;
   const days = (HEAT.days || []).filter(r => r.s && Object.keys(r.s).length).slice(-80);
   const tot = {}; days.forEach(r => Object.entries(r.s).forEach(([k, v]) => tot[k] = (tot[k] || 0) + Math.abs(v)));
-  const names = Object.keys(tot).filter(k => tot[k] / days.length >= 1).sort((a, b) => tot[b] - tot[a]);
+  const conf = new Set(D?.focus?.sectors || []);   // 只畫有實測支持的類股
+  const names = Object.keys(tot).filter(k => tot[k] / days.length >= 1 && (!conf.size || conf.has(k))).sort((a, b) => tot[b] - tot[a]);
   const cv = $('#heat'), dpr = Math.min(3, devicePixelRatio || 1);
   const LW = 64, CW = 7, CH = 18, TOP = 16, W = LW + days.length * CW, H = TOP + names.length * CH;
   cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -527,7 +359,6 @@ async function openDetail(code, push = true) {
   if (kind === 'commodity') {
     kp('最新價', String(c.last ?? '—'), `昨結算 ${c.base ?? '—'}`);
     kp('今日 z', sg(c.z), c.sigma ? `波動度 ${c.sigma}%` : '', cls(c.z));
-    kp('5 日動能', sg(c.m5), '', cls(c.m5)); kp('20 日動能', sg(c.m20), '', cls(c.m20));
     kp('漲跌停', c.limit ? `±${+c.limit.toFixed(2)}%` : '—', c.limit_src && c.limit_src !== '預設' ? c.limit_src : '預設值');
     kp('持倉量', c.oi ? Math.round(c.oi).toLocaleString() : '—', c.quote_date || '');
   } else if (kind === 'spread') {
@@ -561,9 +392,16 @@ async function openDetail(code, push = true) {
   fillSectors();
   if (!CAL) getJSON('../data/calibration.json').then(j => { CAL = j; fillSectors(); }).catch(() => {});
   if (c.stocks?.length) {
-    body.append(el('h2', null, '受惠／受壓個股'));
+    const good = c.stocks.filter(x => x.verdict === '一致' || x.verdict === '隔日一致'), rest = c.stocks.filter(x => !good.includes(x));
+    body.append(el('h2', null, `受惠／受壓個股（有實測支持 ${good.length} 檔）`));
     const card = el('div', 'card'), rows = el('div', 'rows'); card.append(rows);
-    c.stocks.forEach(x => rows.append(stockRow(x, x.why || '', null, true)));
+    if (!good.length) rows.append(el('div', 'empty', '這個商品的個股都還沒有實測支持'));
+    good.forEach(x => rows.append(stockRow(x, x.why || '')));
+    if (rest.length) {
+      const det = el('details', 'more'); det.append(el('summary', null, `其餘 ${rest.length} 檔（不顯著或方向相反）`));
+      rest.forEach(x => det.append(stockRow(x, x.why || '')));
+      card.append(det);
+    }
     body.append(card);
   }
   // 開啟
@@ -592,8 +430,6 @@ window.addEventListener('popstate', e => {
     D = await getJSON('../data/latest.json');
   } catch (e) { $('#meta').textContent = '資料載入失敗，請稍後重新整理'; return; }
   BOARD = Object.fromEntries(D.commodities.map(c => [c.code, c]));
-  if (D.params?.min_lots != null) $('#minlots').textContent = D.params.min_lots;
-  CHIPS = D.chips || {};
   $('#meta').textContent = `${D.premarket?.on ? '盤前版' : '收盤版'}・更新 ${fmtTime(D.generated_at)}・台股 ${D.tw_date || '—'}`;
   let v = 'home'; try { v = sessionStorage.getItem('mview') || 'home'; } catch (e) {}
   show(v, false);

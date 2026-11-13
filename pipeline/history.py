@@ -556,22 +556,3 @@ def update_limits(session, today: date, codes, log=print, lookback=7):
 
 def load_limits():
     return json.loads(LIMITS_JSON.read_text(encoding="utf-8")) if LIMITS_JSON.exists() else {}
-
-
-# ───────────── 多日動能 ─────────────
-MOM_COMBO_W = 0.5   # 組合訊號 = 1 日 z ＋ 0.5 × 5 日動能 z
-
-
-def momentum_z(ret, sig, n):
-    """{d: n 日累計漲跌 ÷ (σ_d × √n)}；σ_d 為 d 之前的滾動波動度（不偷看），累計含 d 當天"""
-    ds = sorted(ret)
-    out = {}
-    for i, d in enumerate(ds):
-        sd = sig.get(d)
-        if sd and i >= n - 1:
-            out[d] = sum(ret[x] for x in ds[i - n + 1:i + 1]) / (sd * n ** 0.5)
-    return out
-
-
-def combo_z(z1, z5, w=MOM_COMBO_W):
-    return z1 + w * z5 if z5 is not None else z1

@@ -2,15 +2,10 @@ name: Daily update
 
 on:
   schedule:
-    # 台北時間 週一~週五 17:10（陸期日盤 15:00 收盤、證交所 OpenAPI 當日資料已更新）
-    - cron: "10 9 * * 1-5"
-    # 台北時間 週一~週五 盤前版：06:17／06:47／07:13／07:41／08:07 多次嘗試（GitHub 排程常延遲），
-    # 第一個準時完成的生效，之後的自動略過；06:17 起跑確保美盤已收盤（夏令 05:00、冬令 06:00 台北時間）
-    - cron: "17 22 * * 0-4"
-    - cron: "47 22 * * 0-4"
-    - cron: "13 23 * * 0-4"
-    - cron: "41 23 * * 0-4"
-    - cron: "7 0 * * 1-5"
+    # 主要由 Cloudflare Worker 定時觸發（06:17、07:07 盤前版；17:10 收盤版）。GitHub 自己的排程常延遲數小時，
+    # 只各留一條當備援：今天已有準時的版本、或已經過了該版本的時段，就會略過（不更新、不部署）
+    - cron: "10 9 * * 1-5"      # 台北 17:10 收盤版備援
+    - cron: "47 22 * * 0-4"     # 台北 06:47 盤前版備援
   workflow_dispatch:
     inputs:
       session:
@@ -32,9 +27,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      updated: ${{ steps.build.outputs.updated }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - run: pip install --require-hashes -r requirements.txt
@@ -45,6 +42,7 @@ jobs:
       - name: Restore data branch
         run: python pipeline/datastore.py restore
       - name: Build data
+        id: build
         shell: bash
         env:
           PYTHONUNBUFFERED: "1"
@@ -56,6 +54,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p docs/data
+          stamp() { python -c "import json;print(json.load(open('docs/data/latest.json'))['generated_at'])" 2>/dev/null || echo none; }
+          before=$(stamp)
           {
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             case "$IN_SESSION" in
@@ -83,14 +83,17 @@ jobs:
             fi
           fi
           } 2>&1 | tee docs/data/run_log.txt
+          # 這次有沒有真的產生新資料（略過時不存檔、不部署，避免多餘的網站部署）
+          if [ "$(stamp)" != "$before" ]; then echo "updated=true" >> "$GITHUB_OUTPUT"; else echo "updated=false" >> "$GITHUB_OUTPUT"; echo "這次沒有產生新資料，不存檔、不部署"; fi
       - name: Save to data branch
-        if: always()
+        # 有新資料才存；執行失敗時也存（把失敗狀態寫進 status.json 給頁面顯示）
+        if: always() && steps.build.outputs.updated != 'false'
         run: |
           python pipeline/datastore.py save "data: $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
 
   deploy:
     needs: build
-    if: always()
+    if: needs.build.outputs.updated == 'true'
     uses: ./.github/workflows/deploy.yml
     permissions:
       contents: read
