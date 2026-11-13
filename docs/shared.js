@@ -213,7 +213,7 @@ const UI = (() => {
   function predCard(cd, d, opts = {}) {
     const intl = cd.kind === 'intl', dir = cd.direction;
     const gate = (d.gates || {})['cards_' + (cd.kind || 'cn')];
-    const c = el('div', 'u-pred' + (gate?.state === 'demoted' || cd.pre_weak ? ' dim' : ''));
+    const c = el('div', 'u-pred' + (gate?.state === 'demoted' || cd.pre_weak || cd.open_weak ? ' dim' : ''));
     c.dataset.kind = cd.kind || 'cn';
     const h = el('div', 'u-lh');
     h.append(el('span', 'u-name', `${intl ? '盤前預測' : '隔日預測'}：${cd.sector}`), el('span', 'u-pill a', intl ? '國際隔夜' : '陸期收盤'));
@@ -235,6 +235,8 @@ const UI = (() => {
       const t = el('div', 't', x.name); t.append(el('span', null, `${pct(x.ret)}${x.z == null ? '' : `（${x.z > 0 ? '+' : ''}${x.z}σ）`}`));
       l.append(t, el('div', 's', (x.tier_n ? `${x.tier}訊號歷史：方向對 ${hit(x.tier_hit)}、平均 ${pct(x.tier_avg)}（${x.tier_n} 天）・` : '') +
         `全部 ${hit(x.hit)}（${x.n} 次）・樣本外 ${hit(x.hit_test)}` + (x.night != null ? `・夜盤目前 ${pct(x.night)}（未回測，僅參考）` : '')));
+      if (x.open?.after?.n) l.append(el('div', 's', `開盤後才進場（${x.open.cut} → 收盤，${mmdd(x.open.from)} 起 ${x.open.after.n} 次）：方向對 ${hit(x.open.after.hit)}、平均 ${pct(x.open.after.avg)}、t ${tval(x.open.after.t)}` +
+        `；同期整天 ${pct(x.open.day.avg)}`));
       if (x.status !== '有效') { const tg = el('div', 'u-tags'); tg.append(el('span', 'u-pill no', '觀察（不影響方向）')); l.append(tg); }
       r.append(l, el('div', 'r', x.strong ? (x.dir > 0 ? '偏多' : '偏空') : '—'));
       det.append(r);
@@ -244,14 +246,17 @@ const UI = (() => {
       cd.stocks.forEach(x => {
         const r = el('div', 'u-row'), l = el('div', 'l');
         const t = el('div', 't', x.name || x.code); t.append(el('span', null, x.code));
-        l.append(t, el('div', 's', `經由 ${x.via}・${intl ? '同日' : '隔日'} t ${tval(x.t1)}・方向對 ${hit(x.hit)}／樣本外 ${hit(x.hit_test)}`));
+        l.append(t, el('div', 's', `經由 ${x.via}・${intl ? '同日' : '隔日'} t ${tval(x.t1)}・方向對 ${hit(x.hit)}／樣本外 ${hit(x.hit_test)}` +
+          (x.oc?.n ? `・開盤買到收盤（樣本外）對 ${hit(x.oc.hit)}、${pct(x.oc.avg)}、t ${tval(x.oc.t)}` : '')));
         const rr = el('div', 'r ' + cls(x.last_chg), pct(x.last_chg)); rr.append(el('small', null, '最新收盤'));
         r.append(l, rr); det.append(r);
       });
     }
     det.append(el('p', 'u-note', '強度：弱 |z| 0.5～1、中 1～2、強 ≥2。命中率多在 52～60%，只比隨機略好，請當成「機率略偏一邊」的參考。樣本外＝最近 40% 期間。'));
     if (cd.pre_weak) c.append(el('div', 'u-gate demoted', '近期實測未過關：這個類股的盤前訊號在最近幾個月（3 個切點）沒有通過檢驗，下面的命中率是較長期間的數字，僅供參考。'));
-    if (intl) det.append(el('p', 'u-note', '這裡的命中率用「昨收 → 今收」計算，包含開盤跳空；開盤後才進場還剩多少，請看下方狀態燈的實測。'));
+    if (cd.open_weak) c.append(el('div', 'u-gate demoted', intl ? '開盤後未過關：開盤後才進場到收盤的實測優勢不顯著（t < 2），這張卡只能當方向參考。'
+      : '開盤後未過關：訊號出來時台股已經收盤，最快隔天開盤才能進場；實測「開盤後到收盤」的優勢不顯著（t < 2），對應個股也一樣。這張卡只能當方向參考，不適合當進場依據。'));
+    det.append(el('p', 'u-note', '上面的命中率用「昨收 → 今收」計算，包含開盤跳空；每個商品另列「開盤後才進場」的實測。'));
     c.append(det);
     const gn = gateNote(gate, 'cards_' + (cd.kind || 'cn')); if (gn) c.append(gn);
     return c;

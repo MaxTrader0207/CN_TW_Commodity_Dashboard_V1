@@ -1284,10 +1284,23 @@ def main():
     print(f"個股日線：{ok_stocks}/{len(stock_meta)} 檔")
 
     # 高信心族群：隔日關係（陸期 D 日 → 台股下一交易日）的歷史命中率，給「隔日預測卡」使用
+    try:
+        _bars = ID._load(ID.TW_FILE)
+        card_segs = {cut: ID.tw_segments(_bars, betas, cut) for cut in F.OPEN_SHOW}
+    except Exception as e:  # noqa: BLE001
+        card_segs = {}
+        print("⚠ 類股盤中資料讀取失敗：", e)
     focus_pred = F.predictive_stats(pairs + discovered, stocks, cmd_ret,
-                                    {c: H.rolling_sigma(v) for c, v in cmd_ret.items()}, excess, closes_cache, split)
+                                    {c: H.rolling_sigma(v) for c, v in cmd_ret.items()}, excess, closes_cache, split,
+                                    segs=card_segs, stock_oc=stock_oc)
+    for r_ in focus_pred:
+        for cut, o in (r_.get("open") or {}).items():
+            print(f"  隔日預測卡 {r_['name']}→{r_['sector']} {cut} 進場（{o['from']} 起）：整天 {o['day']}｜到 {cut} {o['gap']}｜{cut}→收盤 {o['after']}"
+                  f"｜|z|≥1：整天 {o['day_strong']}・{cut}→收盤 {o['after_strong']}")
+        for x in r_["stocks"]:
+            print(f"      個股 {x['code']}：隔日整天 全期 {x['all']} 樣本外 {x['test']}｜開盤→收盤 全期 {x['oc']} 樣本外 {x['oc_test']}")
     focus_pred += F.predictive_stats_intl(intl_rows, intl_series, {c: H.rolling_sigma(v) for c, v in intl_series.items()},
-                                          excess, closes_cache, stocks, {code: cn for code, _s, _n, cn, _l in INTL}, split)
+                                          excess, closes_cache, stocks, {code: cn for code, _s, _n, cn, _l in INTL}, split, segs=card_segs, stock_oc=stock_oc)
     for r_ in focus_pred:
         print(f"  [隔日預測] {r_['name']}→{r_['sector']} t1={r_['t1']} 命中 {r_['all']} 樣本外 {r_['test']}")
     # 盤中／夜盤資料的初步檢驗（資料由每日更新累積；不足 40 天時只記錄天數）

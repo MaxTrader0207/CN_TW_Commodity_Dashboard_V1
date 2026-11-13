@@ -1,6 +1,6 @@
 // 離線快取（PWA）：網路優先、失敗時用上次的快取，所以有網路時永遠拿到最新版，沒網路時仍能看上一次的資料。
 // 只處理本站 GET；更新 Worker 等外部網址一律不經過快取。
-const CACHE = 'cntw-v8';
+const CACHE = 'cntw-v9';
 const SHELL = ['./', 'index.html', 'app.js', 'shared.js', 'shared.css', 'theme.js', 'config.js', 'redirect.js', 'manifest.webmanifest',
   'm/', 'm/index.html', 'm/m.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 

@@ -553,3 +553,25 @@ def test_basket_study_and_open_close():
     assert b["all"]["oc"]["n"] == 2 and b["all"]["oc"]["avg"] == -0.25          # 5/1 兩檔平均 0，5/4 只有一檔 −0.5
     res = {"timestamp": [1778000000, 1778086400], "indicators": {"quote": [{"open": [100, 50], "close": [102, None]}]}}
     assert list(C._open_close(res).values()) == [2.0]
+
+
+def test_open_stats_and_card_open_weak():
+    import focus as F
+    days = [f"2026-05-{i:02d}" for i in range(1, 29)]
+    ret = {d: (2.0 if i % 2 else -2.0) for i, d in enumerate(days)}          # 每天 |z| = 2
+    sig = {d: 1.0 for d in days}
+    nxt = {days[i + 1]: (1 if ret[days[i]] > 0 else -1) for i in range(len(days) - 1)}
+    target = {d: 1.0 * v for d, v in nxt.items()}                             # 整天：每次都對 +1%
+    segs = {"09:05": {"gap": {"電器電纜": {d: 1.0 * v for d, v in nxt.items()}},       # 全部在開盤前走完
+                      "after": {"電器電纜": {d: (0.1 if i % 2 else -0.1) for i, d in enumerate(nxt)}}}}
+    o = F.open_stats(ret, sig, target, segs, days, 1, "電器電纜")["09:05"]
+    assert o["day"]["hit"] == 1.0 and o["gap"]["avg"] == 1.0 and abs(o["after"]["avg"]) < 0.11 and (o["after"]["t"] or 0) < 2
+    assert F.hit_stats(ret, sig, target, days, 1)["n"] == 27
+    cal = {"focus": {"predictive": [{"code": "CU", "name": "銅", "sector": "電器電纜", "t1": 3.0, "status": "有效", "kind": "cn", "sign": 1,
+                                     "all": {"hit": 0.6, "n": 100, "avg": 0.3}, "test": {"hit": 0.55, "n": 40}, "tiers": {}, "stocks": [],
+                                     "open": {"09:05": o}}]}}
+    board = [{"code": "CU", "status": "ok", "quote_date": "2026-06-01", "chg": 1.5, "z": 1.2}]
+    cd = F.predict_cards(cal, {}, board, "day", "2026-06-01", "2026-06-02", {})[0]
+    assert cd["open_weak"] and cd["items"][0]["open"]["after"]["n"] == 27 and not cd["items"][0]["open_ok"]
+    o["after"]["t"] = 2.5
+    assert not F.predict_cards(cal, {}, board, "day", "2026-06-01", "2026-06-02", {})[0]["open_weak"]

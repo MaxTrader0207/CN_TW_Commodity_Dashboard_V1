@@ -75,7 +75,7 @@ def hit_stats(ret, sig, target, tw_dates, sign, d0=None, z_min=Z_MIN, shifted=Fa
     """陸期 D 日（|z|≥z_min）的方向 × sign，對台股下一交易日 target 的命中率與平均報酬（預測方向）。
     shifted=True：ret 已對齊到要預測的台股日（國際隔夜），直接比對同一天。"""
     n = hit = 0
-    tot = 0.0
+    tot = sq = 0.0
     for d, r in ret.items():
         if d0 and d < d0:
             continue
@@ -90,10 +90,33 @@ def hit_stats(ret, sig, target, tw_dates, sign, d0=None, z_min=Z_MIN, shifted=Fa
         n += 1
         hit += (y > 0) == (dirn > 0)
         tot += y * dirn
-    return {"n": n, "hit": round(hit / n, 3) if n else None, "avg": round(tot / n, 3) if n else None}
+        sq += y * y
+    t = None
+    if n > 2:
+        var = (sq - tot * tot / n) / (n - 1)
+        t = round(tot / n / (var / n) ** 0.5, 2) if var > 0 else None
+    return {"n": n, "hit": round(hit / n, 3) if n else None, "avg": round(tot / n, 3) if n else None, "t": t}
 
 
-def predictive_stats(cal_pairs, cal_stocks, cmd_ret, sigmas, excess, stock_res, split):
+OPEN_SHOW = ("09:05", "09:30")      # 預測卡顯示的開盤後進場時間
+
+
+def open_stats(ret, sig, target, segs, tw_dates, sign, sector, shifted=False):
+    """預測卡訊號「開盤後才進場」還剩多少。segs = {進場時間: {"gap": {類股: {日: %}}, "after": {...}}}。
+    同一批日子比較：day 昨收→今收、gap 昨收→進場時間、after 進場時間→收盤；另列訊號較強（|z| ≥ 1）的日子"""
+    out = {}
+    for cut, sg in (segs or {}).items():
+        aft, gap = sg["after"].get(sector) or {}, sg["gap"].get(sector) or {}
+        if not aft:
+            continue
+        day = {d: v for d, v in target.items() if d in aft}
+        one = lambda tg, zmin: hit_stats(ret, sig, tg, tw_dates, sign, z_min=zmin, shifted=shifted)  # noqa: E731
+        out[cut] = {"from": min(aft), "day": one(day, Z_MIN), "gap": one(gap, Z_MIN), "after": one(aft, Z_MIN),
+                    "day_strong": one(day, 1.0), "after_strong": one(aft, 1.0)}
+    return out
+
+
+def predictive_stats(cal_pairs, cal_stocks, cmd_ret, sigmas, excess, stock_res, split, segs=None, stock_oc=None):
     """校準時呼叫：每個隔日關係（陸期 → 類股）與其實測個股的歷史命中率"""
     tw_dates = sorted(excess)
     out = []
@@ -106,7 +129,8 @@ def predictive_stats(cal_pairs, cal_stocks, cmd_ret, sigmas, excess, stock_res, 
         row = {"code": code, "name": p["name"], "sector": sector, "t1": p["t1"], "status": p["status"],
                "kind": "cn", "sign": sign, "all": hit_stats(cmd_ret[code], sigmas[code], target, tw_dates, sign),
                "test": hit_stats(cmd_ret[code], sigmas[code], target, tw_dates, sign, d0=split),
-               "tiers": tier_stats(cmd_ret[code], sigmas[code], target, tw_dates, sign), "stocks": []}
+               "tiers": tier_stats(cmd_ret[code], sigmas[code], target, tw_dates, sign), "stocks": [],
+               "open": open_stats(cmd_ret[code], sigmas[code], target, segs, tw_dates, sign, sector)}
         st_dates = sorted({d for v in stock_res.values() for d in v})
         for s in cal_stocks.get(code, []):
             res = stock_res.get(s["code"])
@@ -115,7 +139,10 @@ def predictive_stats(cal_pairs, cal_stocks, cmd_ret, sigmas, excess, stock_res, 
             row["stocks"].append({"code": s["code"], "why": s["why"], "t1": s["t1"],
                                   "next_ok": (s.get("oos") or {}).get("next_ok"),
                                   "all": hit_stats(cmd_ret[code], sigmas[code], res, st_dates, sign),
-                                  "test": hit_stats(cmd_ret[code], sigmas[code], res, st_dates, sign, d0=split)})
+                                  "test": hit_stats(cmd_ret[code], sigmas[code], res, st_dates, sign, d0=split),
+                                  # 開盤買到收盤（隔天開盤才進得了場）：全期與樣本外
+                                  "oc": hit_stats(cmd_ret[code], sigmas[code], (stock_oc or {}).get(s["code"]) or {}, st_dates, sign),
+                                  "oc_test": hit_stats(cmd_ret[code], sigmas[code], (stock_oc or {}).get(s["code"]) or {}, st_dates, sign, d0=split)})
         row["stocks"].sort(key=lambda x: -(x["t1"] * sign))
         out.append(row)
     out.sort(key=lambda r: (r["sector"], -abs(r["t1"])))
@@ -128,7 +155,7 @@ def tier_stats(ret, sig, target, tw_dates, sign, shifted=False):
     return {k: hit_stats(ret, sig, target, tw_dates, sign, z_min=a, z_max=b, shifted=shifted) for k, (a, b) in bands.items()}
 
 
-def predictive_stats_intl(intl_pairs, intl_series, sigmas, excess, stock_res, cal_stocks, intl_cn, split):
+def predictive_stats_intl(intl_pairs, intl_series, sigmas, excess, stock_res, cal_stocks, intl_cn, split, segs=None, stock_oc=None):
     """國際隔夜（已對齊到台股日）→ 台股當天：命中率、強度分級、對應個股"""
     tw_dates = sorted(excess)
     st_dates = sorted({d for v in stock_res.values() for d in v})
@@ -143,7 +170,8 @@ def predictive_stats_intl(intl_pairs, intl_series, sigmas, excess, stock_res, ca
         row = {"code": code, "name": p["name"], "sector": sector, "t1": p["t0"], "status": p["status"], "kind": "intl",
                "sign": sign, "all": hit_stats(ret, sg, target, tw_dates, sign, shifted=True),
                "test": hit_stats(ret, sg, target, tw_dates, sign, d0=split, shifted=True),
-               "tiers": tier_stats(ret, sg, target, tw_dates, sign, shifted=True), "stocks": []}
+               "tiers": tier_stats(ret, sg, target, tw_dates, sign, shifted=True), "stocks": [],
+               "open": open_stats(ret, sg, target, segs, tw_dates, sign, sector, shifted=True)}
         seen = set()
         for cn in intl_cn.get(code, []):
             for s in cal_stocks.get(cn, []):
@@ -153,7 +181,10 @@ def predictive_stats_intl(intl_pairs, intl_series, sigmas, excess, stock_res, ca
                 seen.add(s["code"])
                 a = hit_stats(ret, sg, res, st_dates, sign, shifted=True)
                 row["stocks"].append({"code": s["code"], "why": s["why"], "t1": s["t0"], "next_ok": None,
-                                      "all": a, "test": hit_stats(ret, sg, res, st_dates, sign, d0=split, shifted=True)})
+                                      "all": a, "test": hit_stats(ret, sg, res, st_dates, sign, d0=split, shifted=True),
+                                      "oc": hit_stats(ret, sg, (stock_oc or {}).get(s["code"]) or {}, st_dates, sign, shifted=True),
+                                      "oc_test": hit_stats(ret, sg, (stock_oc or {}).get(s["code"]) or {}, st_dates, sign,
+                                                           d0=split, shifted=True)})
         out.append(row)
     return out
 
@@ -218,7 +249,10 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
         dirn = (1 if ret > 0 else -1) * p["sign"] if ret else 0
         tier = tier_of(z)
         ts = (p.get("tiers") or {}).get(tier) or {}
+        op = (p.get("open") or {}).get(OPEN_SHOW[0])          # 開盤後才進場還剩多少（訊號出來時台股還沒開盤）
         card["items"].append({
+            "open": {"cut": OPEN_SHOW[0], "from": op["from"], "day": op["day"], "after": op["after"]} if op else None,
+            "open_ok": bool(op and (op["after"].get("t") or 0) >= T_VALID),
             "code": p["code"], "name": p["name"], "status": p["status"], "ret": ret, "z": z,
             "strong": tier is not None, "tier": tier, "dir": dirn, "t1": p["t1"],
             "hit": p["all"]["hit"], "n": p["all"]["n"], "hit_test": p["test"]["hit"], "n_test": p["test"]["n"],
@@ -233,6 +267,7 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
                                          "t1": round(s["t1"] * p["sign"], 2), "next_ok": s["next_ok"],
                                          "dir": dirn if p["status"] == "有效" else 0,
                                          "hit": s["all"]["hit"], "n": s["all"]["n"], "hit_test": s["test"]["hit"],
+                                         "oc": s.get("oc_test") if (s.get("oc_test") or {}).get("n") else None,
                                          "last_chg": st.get("chg_pct")}
     out = []
     rank = {None: 0, "弱": 1, "中": 2, "強": 3}
@@ -243,6 +278,8 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
         card["direction"] = 1 if vote > 0 else -1 if vote < 0 else 0
         agree = [x for x in main if x["dir"] == card["direction"]]
         card["tier"] = max((x["tier"] for x in agree), key=lambda t: rank[t], default=None) if card["direction"] else None
+        valid = [x for x in card["items"] if x["status"] == "有效" and x.get("open")]
+        card["open_weak"] = bool(valid) and not any(x["open_ok"] for x in valid)     # 有資料可驗，但沒有一個過關
         card["items"].sort(key=lambda x: (x["status"] != "有效", -abs(x["t1"])))
         card["stocks"] = sorted(card["stocks"].values(), key=lambda x: -x["t1"])
         out.append(card)
