@@ -700,6 +700,18 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         s["confidence"] = ({"level": c["level"], "label": c["label"], "best_t0": c["best_t0"], "best_t1": c["best_t1"],
                             "links": c["links"][:6]} if c else None)
         s["sensitive"] = focus.sensitive_stocks(cal, s["name"], stocks, industry) if cal else []
+    if session == "night":      # 只用國際隔夜的類股分數（盤前亮燈類股用；算法同 score_sectors，只取國際商品）
+        num, den = {}, {}
+        for c in board:
+            if c.get("kind") != "intl":
+                continue
+            for l in c["links"]:
+                den[l["sector"]] = den.get(l["sector"], 0.0) + abs(l["w"])
+                if c["status"] == "ok":
+                    num[l["sector"]] = num.get(l["sector"], 0.0) + l["w"] * c["signal"]
+        for s in sectors:
+            if den.get(s["name"]):
+                s["score_intl"] = round(num.get(s["name"], 0.0) / norm(den[s["name"]]) * 100, 1)
     names = focus.apply_lights(cal, sectors, session)      # 狀態燈順序：|z| 由大到小
     # 盤前版：預測台股今天；日盤收盤版：預測下一個台股交易日
     target = next_tw_day(now.date(), include_today=(session == "night"))
@@ -712,7 +724,10 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
     if session == "night" and sc.get("adopt"):
         ts = list((sc.get("tests") or {}).values())
         rng = lambda k: [f(t[k]["all"]["hit"] for t in ts) for f in (min, max)] if ts else None  # noqa: E731
-        scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only")}
+        basis = "pre_intl" if sc.get("score") == "intl" and L.get("pre_intl") else "pre"
+        scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only"),
+                 "score": "intl" if basis == "pre_intl" else "combo", "open_cut": L.get("open_cut"),
+                 "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open")}
     return {"sectors": names, "cards": cards, "z_min": focus.Z_MIN, "target": target,
             "lights": {"z": L.get("z", 1.0), "z_strong": L.get("z_strong", 2.0), "robust_ok": L.get("robust_ok"),
                        "test_from": L.get("test_from"), "pooled": mode.get("pooled"), "pre_scope": scope},

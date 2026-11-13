@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import focus as F  # noqa: E402
 import history as H  # noqa: E402
+import intraday as ID  # noqa: E402
 from build import LIMIT_BONUS, TPE, UA, norm  # noqa: E402
 from mapping import BENEFICIARIES, COMMODITIES, INTL, SPREADS  # noqa: E402
 
@@ -362,6 +363,25 @@ def light_stats(by, sd, d0):
     return per, {k: {"lag0": _agg(v[0]), "lag1": _agg(v[1])} for k, v in pool.items()}
 
 
+OPEN_CUT = "09:30"       # 頁面顯示的「開盤後」進場時間
+
+
+def light_open_stats(by, sd, d0, seg_after):
+    """亮燈日「進場時間 → 收盤」的方向報酬（d0 之後）：開盤前看到訊號、開盤後才進場還吃得到多少。回傳 (各類股, 合計)"""
+    per, pool = {}, []
+    for sct, m in by.items():
+        if sct not in sd:
+            continue
+        xs = []
+        for d, (v, _r0, _r1) in m.items():
+            r = (seg_after.get(sct) or {}).get(d)
+            if d >= d0 and r is not None and abs(v) >= LIGHT_Z * sd[sct]:
+                xs.append((1 if v > 0 else -1) * r)
+        per[sct] = _agg(xs)
+        pool += xs
+    return per, _aggt(pool)
+
+
 def resonance_stats(by, d0):
     """共振（陸期方向與類股當天實際超額報酬同向）之後，隔日是否較容易延續：
     d0 之後每個「類股 × 日」的 訊號方向 × 隔日超額報酬，分成共振／非共振"""
@@ -385,17 +405,21 @@ def _aggt(xs):
     return a
 
 
-def _dir_stats(by, d0, sectors=None):
+def _dir_stats(by, d0, sectors=None, alt=None):
     """d0 之後、指定類股的「分數方向 × 當天超額報酬」：全部（|分數| ≥ 1）與亮燈（達到這段期間自己幅度的 LIGHT_Z 倍）"""
     allx, lit = [], []
     for sct, m in by.items():
         if sectors is not None and sct not in sectors:
             continue
-        rows = [(v, r0) for d, (v, r0, _r1) in m.items() if d >= d0 and r0 is not None and abs(v) >= 1]
+        rows = [(v, r0, d) for d, (v, r0, _r1) in m.items() if d >= d0 and r0 is not None and abs(v) >= 1]
         if len(rows) < 20:
             continue
-        sd = math.sqrt(sum(v * v for v, _ in rows) / len(rows))
-        for v, r0 in rows:
+        sd = math.sqrt(sum(v * v for v, _, _ in rows) / len(rows))     # 亮燈門檻一律用整天版本的幅度，各段比的是同一批日子
+        for v, r0, d in rows:
+            if alt is not None:
+                r0 = (alt.get(sct) or {}).get(d)
+                if r0 is None:
+                    continue
             x = (1 if v > 0 else -1) * r0
             allx.append(x)
             if abs(v) >= LIGHT_Z * sd:
@@ -403,7 +427,7 @@ def _dir_stats(by, d0, sectors=None):
     return {"all": _aggt(allx), "lit": _aggt(lit)}
 
 
-def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp):
+def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs=None):
     """用真正的陸期夜盤資料，檢驗盤前版對台股當天的預測力（權重只用切點 sp 之前估計的）：
       cn_only    沒有國際商品可對應的類股：只靠陸期夜盤的分數
       intl_only  有國際商品的類股：只用國際隔夜的分數
@@ -417,7 +441,15 @@ def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, 
     by_i = sector_records(intl_items, intl_series, ex, tw_dates, il, zpre)
     by_c = sector_records(intl_items + items, {**night_series, **intl_series}, ex, tw_dates, {**lv, **il}, {**zn, **zpre})
     cn_secs = {s for s in by_n if s not in intl_secs}
+    # 開盤後還剩多少：把當天報酬拆成「昨收 → 進場時間」與「進場時間 → 收盤」，同一批日子比較
+    after = {}
+    for cut, sg in (segs or {}).items():
+        day = {sct: {d: g + sg["after"][sct][d] for d, g in m.items() if d in sg["after"].get(sct, {})} for sct, m in sg["gap"].items()}
+        after[cut] = {k: {"day": _dir_stats(by, d0, intl_secs, day), "gap": _dir_stats(by, d0, intl_secs, sg["gap"]),
+                          "after": _dir_stats(by, d0, intl_secs, sg["after"])}
+                      for k, by in (("intl_only", by_i), ("intl_combo", by_c))}
     return {"from": d0, "days": sum(1 for d in days if d >= d0), "sectors_intl": sorted(intl_secs), "sectors_cn": sorted(cn_secs),
+            "open": after,
             "cn_only": _dir_stats(by_n, d0, cn_secs), "intl_only": _dir_stats(by_i, d0, intl_secs),
             "intl_combo": _dir_stats(by_c, d0, intl_secs)}
 
@@ -436,7 +468,12 @@ def premarket_scope_decision(tests):
     cn_weak = all(t(r["cn_only"]["all"]) < 2 and t(r["cn_only"]["lit"]) < 2 for r in rows)
     intl_ok = all(t(r["intl_only"]["all"]) >= 2 for r in rows)
     adopt = cn_weak and intl_ok
-    return {"adopt": adopt, "mode": "intl_only" if adopt else "all",
+    # 亮燈類股的分數用哪一種：看「開盤後進場還剩多少」。三個切點都是只用國際的亮燈日顯著（t ≥ 2）且優於合併 → 只用國際
+    def _a(r, k):
+        return ((r.get("open") or {}).get(OPEN_CUT) or {}).get(k, {}).get("after", {}).get("lit") or {}
+    use_intl = all((_a(r, "intl_only").get("t") or 0) >= 2 and
+                   (_a(r, "intl_only").get("avg") or 0) > (_a(r, "intl_combo").get("avg") or 0) for r in rows)
+    return {"adopt": adopt, "mode": "intl_only" if adopt else "all", "score": "intl" if adopt and use_intl else "combo", "open_cut": OPEN_CUT,
             "pre_sectors": sorted(set.intersection(*[set(r["sectors_intl"]) for r in rows])) if adopt else None, "days": min(r["days"] for r in rows),
             "cn_weak": cn_weak, "intl_ok": intl_ok, "rule": rule, "tests": tests}
 
@@ -492,25 +529,32 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
     return out
 
 
-def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series):
+def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series, tw_bars=None):
     """盤前版的夜盤實測，換 3 個切點。夜盤資料只有近幾個月，切點比 ROBUST_FRACS 晚（訓練期夠長才估得出國際商品的關聯）。"""
     intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
     zn = {c: H.rolling_sigma(v) for c, v in night_series.items()}
     out = {}
     for frac in NIGHT_FRACS:
         sp = tw_dates[int(len(tw_dates) * frac)]
-        ex = H.excess_returns(idx_ret, H.estimate_betas(idx_ret, d_end=sp))
+        betas = H.estimate_betas(idx_ret, d_end=sp)
+        ex = H.excess_returns(idx_ret, betas)
         sp_items, _ = spread_items(spr_ret, d_end=sp)
         items = commodity_items() + sp_items
         _pr, _dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
         _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
-        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp)
+        segs = {cut: ID.tw_segments(tw_bars, betas, cut) for cut in ID.OPEN_CUTS} if tw_bars else None
+        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs)
         if N is None:
             continue
         out[str(frac)] = N
         print(f"  夜盤實測 切點 {sp}（{N['from']} 起 {N['days']} 天）：只靠陸期夜盤的類股 {N['cn_only']['all']}｜亮燈 {N['cn_only']['lit']}")
         print(f"      有國際商品的類股 {N['sectors_intl']}：只用國際 {N['intl_only']['all']}｜亮燈 {N['intl_only']['lit']}"
               f"｜國際＋夜盤 {N['intl_combo']['all']}｜亮燈 {N['intl_combo']['lit']}")
+        for cut, o in N["open"].items():
+            for k, lab in (("intl_only", "只用國際"), ("intl_combo", "國際＋夜盤")):
+                x = o[k]
+                print(f"      開盤後 {cut} 進場・{lab}：整天 {x['day']['all']}｜到 {cut} {x['gap']['all']}｜{cut}→收盤 {x['after']['all']}"
+                      f"｜亮燈 {cut}→收盤 {x['after']['lit']}")
     return out
 
 
@@ -1037,17 +1081,17 @@ def main():
     # 穩健性：3 個切點都通過才採用（盤前排名、可信度調整）
     # 真正的陸期夜盤漲跌（由每日更新累積的分鐘線算出），用來檢驗盤前版；沒有資料時略過
     try:
-        import intraday as ID
         night_series = ID.cn_moves(ID._load(ID.CN_FILE), tw_dates)["night"]
         night_series = {c: m for c, m in night_series.items() if c in cmd_ret and len(m) >= 30}
     except Exception as e:  # noqa: BLE001
         night_series = {}
         print("⚠ 夜盤資料讀取失敗：", e)
     robust = robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, cn_shift)
-    night_tests = night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series) if night_series else {}
+    night_tests = night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series,
+                               ID._load(ID.TW_FILE)) if night_series else {}
     premarket_scope = premarket_scope_decision(night_tests)
     print(f"盤前版亮燈範圍：{premarket_scope['mode']}（{premarket_scope.get('reason') or ''}"
-          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}；"
+          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}、分數用 {premarket_scope.get('score')}；"
           f"盤前亮燈類股 {premarket_scope.get('pre_sectors')}）")
     pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
                  for r_ in robust.values())
@@ -1080,11 +1124,30 @@ def main():
     by_pre = sector_records(intl_items + items, pre_series, excess, tw_dates, {**live, **intl_live}, zpre)
     per_d, pool_d = light_stats(by_day_tr, score_sd(by_day_tr, split), split)
     per_p, pool_p = light_stats(by_pre_tr, score_sd(by_pre_tr, split), split)
+    # 只用國際隔夜的盤前分數（盤前亮燈類股用），另算「開盤後進場」還剩多少
+    by_pi_tr = sector_records(intl_items, intl_series, excess_bt, tw_dates, intl_live_tr, zpre)
+    by_pi = sector_records(intl_items, intl_series, excess, tw_dates, intl_live, zpre)
+    sd_pi_tr = score_sd(by_pi_tr, split)
+    per_i, pool_i = light_stats(by_pi_tr, sd_pi_tr, split)
+    try:
+        seg_after = ID.tw_segments(ID._load(ID.TW_FILE), betas_tr, OPEN_CUT)["after"]
+    except Exception as e:  # noqa: BLE001
+        seg_after = {}
+        print("⚠ 類股盤中資料讀取失敗：", e)
+    open_i, open_pool_i = light_open_stats(by_pi_tr, sd_pi_tr, split, seg_after)
+    open_p, open_pool_p = light_open_stats(by_pre_tr, score_sd(by_pre_tr, split), split, seg_after)
+    for sct, v in per_i.items():
+        v["open"] = open_i.get(sct)
+    for sct, v in per_p.items():
+        v["open"] = open_p.get(sct)
+    print(f"盤前亮燈後 {OPEN_CUT} 進場到收盤（樣本外）：只用國際 {open_pool_i}｜{open_i}；合併 {open_pool_p}")
     lit_ok = all(r_["lights"]["lit"]["lag0"]["avg"] > r_["lights"]["unlit"]["lag0"]["avg"]
                  and r_["lights_pre"]["lit"]["lag0"]["avg"] > r_["lights_pre"]["unlit"]["lag0"]["avg"] for r_ in robust.values())
     lights = {"z": LIGHT_Z, "z_strong": LIGHT_Z_STRONG, "test_from": split, "robust_ok": lit_ok,
               "day": {"sd": score_sd(by_day), "stats": per_d, "pooled": pool_d},
-              "pre": {"sd": score_sd(by_pre), "stats": per_p, "pooled": pool_p}}
+              "pre": {"sd": score_sd(by_pre), "stats": per_p, "pooled": pool_p, "open": open_pool_p},
+              "pre_intl": {"sd": score_sd(by_pi), "stats": per_i, "pooled": pool_i, "open": open_pool_i},
+              "open_cut": OPEN_CUT}
     print(f"狀態燈：亮燈日優於未亮日（3 個切點）{lit_ok}；收盤版 {pool_d['lit']}；盤前版 {pool_p['lit']['lag0']}")
     # 共振：3 個切點都是「共振後隔日」的命中率與平均報酬高於非共振，才保留這個標記
     rs = [r_["resonance"] for r_ in robust.values()]
@@ -1116,7 +1179,6 @@ def main():
         print(f"  [隔日預測] {r_['name']}→{r_['sector']} t1={r_['t1']} 命中 {r_['all']} 樣本外 {r_['test']}")
     # 盤中／夜盤資料的初步檢驗（資料由每日更新累積；不足 40 天時只記錄天數）
     try:
-        import intraday as ID
         intraday_study = ID.study(ID._load(ID.CN_FILE), ID._load(ID.TW_FILE), live, betas, daily_excess=excess)
         print(f"盤中資料：台股 {intraday_study['tw_days']} 天，{'初步檢驗 ' + json.dumps(intraday_study['tests'], ensure_ascii=False) if intraday_study['ready'] else '還不夠 ' + str(ID.MIN_STUDY_DAYS) + ' 天，先累積'}")
     except Exception as e:  # noqa: BLE001

@@ -53,10 +53,12 @@ const UI = (() => {
     m.append(fill, el('i', 'mid'));
     return m;
   }
+  let OPEN = '09:30';
   function evidence(s, night) {
     const st = s.light?.stats, box = el('div', 'u-ev');
     const one = (lab, m) => m?.n ? `${lab}方向對 ${hit(m.hit)}、平均 ${pct(m.avg)}（${m.n} 天）` : null;
-    const parts = night ? [one('當天', st?.lag0)] : [one('同日', st?.lag0), one('隔日', st?.lag1)];
+    const parts = night ? [one('整天（昨收→今收）', st?.lag0), st?.open?.n ? `其中 ${OPEN} 之後進場到收盤：方向對 ${hit(st.open.hit)}、平均 ${pct(st.open.avg)}（${st.open.n} 天）` : null]
+      : [one('同日', st?.lag0), one('隔日', st?.lag1)];
     const ok = parts.filter(Boolean);
     if (ok.length) { box.append(el('b', null, '這個類股過去亮燈時（樣本外）：'), txt(ok.join('；') + '。')); }
     else box.append(txt('這個類股的樣本外亮燈紀錄還不夠，請參考上方的整體數字。'));
@@ -93,7 +95,8 @@ const UI = (() => {
     if (L.strong) h.append(el('span', 'u-pill strong', '強'));
     const lv = s.confidence?.level;
     h.append(el('span', 'u-pill' + (lv === 'A' ? ' a' : ''), lv === 'A' ? '可預測' : '同步'));
-    h.append(el('span', 'u-score ' + cls(s.score), sc(s.score)));
+    const score = L.score ?? s.score;
+    h.append(el('span', 'u-score ' + cls(score), sc(score)));
     card.append(h, meter(L.z));
     const lean = L.z == null ? '' : L.state ? '' : L.z > 0.15 ? '，略偏多' : L.z < -0.15 ? '，略偏空' : '';
     card.append(el('div', 'u-sub', L.z == null ? '還沒有足夠的歷史分數可以比較' :
@@ -105,13 +108,14 @@ const UI = (() => {
       card.append(a);
     }
     const drv = el('div', 'u-drv');
-    (s.drivers || []).filter(x => x.contrib).slice(0, 5).forEach(x => {
+    (s.drivers || []).filter(x => x.contrib && (L.basis !== 'intl' || x.kind === 'intl')).slice(0, 5).forEach(x => {
       const b = el('button', 'u-chip'); b.type = 'button';
       b.append(txt(x.name + ' '), el('span', cls(x.chg), pct(x.chg)), el('small', null, sc(x.contrib)));
       if (opts.openDetail) b.onclick = () => opts.openDetail(x.code);
       drv.append(b);
     });
     if (drv.childElementCount) card.append(drv);
+    if (L.basis === 'intl') card.append(el('div', 'u-sub', '盤前只看國際隔夜：實測開盤後還有效的是這個算法，陸期夜盤不計入。'));
     card.append(evidence(s, night));
     const sens = s.sensitive || [];
     if (sens.length) {
@@ -125,6 +129,7 @@ const UI = (() => {
   function lightsBlock(box, d, opts = {}) {
     box.replaceChildren();
     const night = d.session === 'night', f = d.focus || {};
+    OPEN = f.lights?.pre_scope?.open_cut || OPEN;
     const head = el('div', 'u-head'); head.append(el('h2', null, '類股狀態燈'), el('span', 'u-when', '只列通過實測檢驗的類股'));
     box.append(head);
     const by = Object.fromEntries((d.sectors || []).map(s => [s.name, s]));
@@ -147,6 +152,13 @@ const UI = (() => {
         txt(`用實際的陸期夜盤資料檢驗（至少 ${PS.days} 個交易日、3 個切點），有國際商品可對應的類股，當天方向對 ${r(PS.intl_hit)}；` +
           `只靠陸期夜盤的類股 ${r(PS.cn_hit)}，跟丟銅板差不多，所以盤前不亮燈。每週重新檢驗，證據改變會自動調整。`));
       box.append(p);
+      if (PS.open?.n) {
+        const q = el('p', 'u-lead');
+        q.append(el('b', null, '開盤後還剩多少：'), txt(`上面的命中率是用「昨收 → 今收」算的，包含開盤跳空，開盤前看到訊號的人買不到那一段。` +
+          `亮燈日整天平均 ${pct(PS.lit?.avg)}，其中 ${PS.open_cut} 之後進場到收盤還有 ${pct(PS.open.avg)}（方向對 ${hit(PS.open.hit)}、${PS.open.n} 次）` +
+          `。大部分反應在 ${PS.open_cut} 之前（開盤跳空加上開盤後半小時）就走完，不要用整天的數字估計實際能賺到的幅度。`));
+        box.append(q);
+      }
     }
     const g = d.gates || {};
     for (const k of night ? ['pre'] : ['day_same', 'day_next']) { const n = gateNote(g[k], k); if (n) box.append(n); }
@@ -216,6 +228,7 @@ const UI = (() => {
       });
     }
     det.append(el('p', 'u-note', '強度：弱 |z| 0.5～1、中 1～2、強 ≥2。命中率多在 52～60%，只比隨機略好，請當成「機率略偏一邊」的參考。樣本外＝最近 40% 期間。'));
+    if (intl) det.append(el('p', 'u-note', '這裡的命中率用「昨收 → 今收」計算，包含開盤跳空；開盤後才進場還剩多少，請看下方狀態燈的實測。'));
     c.append(det);
     const gn = gateNote(gate, 'cards_' + (cd.kind || 'cn')); if (gn) c.append(gn);
     return c;

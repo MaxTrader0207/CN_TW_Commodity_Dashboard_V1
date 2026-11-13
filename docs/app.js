@@ -139,7 +139,9 @@ function scopeNote(c) {
   if (!ts.length) return ' 盤前版亮燈範圍：夜盤資料還不夠，暫時全部類股都亮燈。';
   const f = x => `${x.hit == null ? '—' : Math.round(x.hit * 100) + '%'}（t ${x.t ?? '—'}）`;
   return ` 盤前版亮燈範圍（用實際夜盤資料、3 個切點檢驗）：${S.adopt ? '已切換為只有 ' + (S.pre_sectors || []).join('、') + ' 在盤前亮燈' : '未過關，全部類股照常亮燈'}。` +
-    '各切點當天方向命中：' + ts.map(t => `只靠陸期夜盤 ${f(t.cn_only.all)}、只用國際隔夜 ${f(t.intl_only.all)}`).join('；') + '。';
+    '各切點當天方向命中：' + ts.map(t => `只靠陸期夜盤 ${f(t.cn_only.all)}、只用國際隔夜 ${f(t.intl_only.all)}`).join('；') + '。' +
+    (ts[0].open?.[S.open_cut] ? ` 開盤後（${S.open_cut} 進場到收盤）亮燈日：` + ts.map(t => { const o = t.open[S.open_cut]; return `只用國際 ${f(o.intl_only.after.lit)}、國際＋夜盤 ${f(o.intl_combo.after.lit)}`; }).join('；') +
+      `。盤前亮燈類股的分數${S.score === 'intl' ? '已改為只用國際隔夜' : '維持國際＋陸期夜盤'}。` : '');
 }
 function kpiBox(k, v, s, vcls) {
   const b = el('div', 'kpi'); b.append(el('div', 'k', k), el('div', 'v ' + (vcls || ''), v));

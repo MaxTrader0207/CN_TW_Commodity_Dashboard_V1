@@ -223,6 +223,27 @@ def _agg(xs):
             "t": round(m / (sd / math.sqrt(n)), 2) if sd else None}
 
 
+OPEN_CUTS = ("09:30", "10:00")     # 「開盤後」的進場時間點（證交所指數 09:00 那一筆是前一天收盤）
+
+
+def tw_segments(tw_bars, betas, cut="09:30", taiex="加權指數"):
+    """把每個類股當天的 β 調整超額報酬拆成兩段：
+      gap   前一天收盤 → cut（開盤跳空＋開盤後到 cut 的反應，開盤前看到訊號的人買不到這段）
+      after cut → 收盤（cut 進場還吃得到的部分）
+    回傳 {"gap": {類股: {日期: %}}, "after": {...}}"""
+    out = {"gap": {}, "after": {}}
+    for d, bars in tw_bars.items():
+        a, b, c = bars.get("09:00"), bars.get(cut), bars.get("13:30")
+        if not (a and b and c) or not all(x.get(taiex) for x in (a, b, c)):
+            continue
+        mg, ma = (b[taiex] / a[taiex] - 1) * 100, (c[taiex] / b[taiex] - 1) * 100
+        for sct, beta in betas.items():
+            if a.get(sct) and b.get(sct) and c.get(sct):
+                out["gap"].setdefault(sct, {})[d] = (b[sct] / a[sct] - 1) * 100 - beta * mg
+                out["after"].setdefault(sct, {})[d] = (c[sct] / b[sct] - 1) * 100 - beta * ma
+    return out
+
+
 def study(cn_bars, tw_bars, links, betas, daily_excess=None, taiex="加權指數"):
     """用累積的盤中資料檢驗（全部是樣本內的初步觀察，資料不足 MIN_STUDY_DAYS 天時回傳 ready=False）：
       盤中：到 10:30／12:00 為止的陸期走勢 → 該時間到台股收盤的類股超額報酬

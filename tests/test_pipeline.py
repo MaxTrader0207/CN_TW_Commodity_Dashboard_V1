@@ -506,3 +506,23 @@ def test_apply_lights_pre_scope():
     cal["premarket_scope"]["adopt"] = False
     s = mk(); F.apply_lights(cal, s, "night")         # 沒過關：照常亮燈
     assert s[0]["light"]["state"] == 1
+
+
+def test_apply_lights_intl_basis_and_segments():
+    import focus as F
+    import intraday as ID
+    cal = {"lights": {"z": 1.0, "z_strong": 2.0, "pre": {"sd": {"油電燃氣": 10}, "stats": {}},
+                      "pre_intl": {"sd": {"油電燃氣": 20}, "stats": {"油電燃氣": {"lag0": {"n": 50, "hit": 0.6, "avg": 0.5}, "open": {"n": 40, "hit": 0.6, "avg": 0.2}}}}},
+           "premarket_scope": {"adopt": True, "pre_sectors": ["油電燃氣"], "score": "intl"}}
+    s = [{"name": "油電燃氣", "score": 30, "score_intl": -25, "confidence": {"level": "A"}}]
+    F.apply_lights(cal, s, "night")      # 合併分數偏多，但只用國際是偏空 → 以國際為準
+    L = s[0]["light"]
+    assert L["basis"] == "intl" and L["state"] == -1 and L["score"] == -25 and L["z"] == -1.25 and L["stats"]["open"]["n"] == 40
+    cal["premarket_scope"]["score"] = "combo"
+    s[0].pop("light"); F.apply_lights(cal, s, "night")
+    assert s[0]["light"]["state"] == 1 and "basis" not in s[0]["light"]
+    # 當天報酬拆兩段：09:00 那筆是前一天收盤
+    bars = {"2026-11-12": {"09:00": {"加權指數": 100, "鋼鐵": 100}, "09:30": {"加權指數": 101, "鋼鐵": 103},
+                           "13:30": {"加權指數": 101, "鋼鐵": 104.03}}}
+    sg = ID.tw_segments(bars, {"鋼鐵": 1.0}, "09:30")
+    assert abs(sg["gap"]["鋼鐵"]["2026-11-12"] - 2.0) < 1e-6 and abs(sg["after"]["鋼鐵"]["2026-11-12"] - 1.0) < 1e-6

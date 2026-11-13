@@ -282,24 +282,33 @@ def apply_lights(cal, sectors, session):
     # 盤前版的亮燈範圍：每週校準用實際夜盤資料檢驗，過關時只有對得到國際商品的類股在盤前亮燈
     scope = (cal or {}).get("premarket_scope") or {}
     pre_only = set(scope.get("pre_sectors") or []) if session == "night" and scope.get("adopt") else None
+    PI = L.get("pre_intl") or {}
+    use_intl = scope.get("score") == "intl"
+    intl_sd, intl_stats = PI.get("sd") or {}, PI.get("stats") or {}
     order = []
     for s in sectors:
         s["light"] = None
         if not s.get("confidence"):
             continue
         d = sd.get(s["name"])
-        z = s["score"] / d if d else None
+        score, basis, st = s["score"], None, stats.get(s["name"])
+        if pre_only is not None and s["name"] in pre_only and use_intl and s.get("score_intl") is not None \
+                and intl_sd.get(s["name"]):
+            # 盤前亮燈類股：只用國際隔夜的分數（實測開盤後進場仍有效的是這個算法）
+            score, basis, d, st = s["score_intl"], "intl", intl_sd[s["name"]], intl_stats.get(s["name"])
+        z = score / d if d else None
         if pre_only is not None and s["name"] not in pre_only:
             s["light"] = {"z": None if z is None else round(z, 2), "state": 0, "sd": d, "strong": False, "stats": None,
                           "weak_oos": False, "pre_off": True}
             order.append((1e6, s["name"]))
             continue
         state = 0 if z is None or abs(z) < z_on else (1 if z > 0 else -1)
-        st = stats.get(s["name"])
         key = (st or {}).get("lag0") or {}
         s["light"] = {"z": None if z is None else round(z, 2), "state": state, "sd": d,
                       "strong": z is not None and abs(z) >= z_strong, "stats": st,
                       # 這個類股自己的樣本外亮燈紀錄不到五成：照樣亮燈，但頁面會註明
                       "weak_oos": bool(key.get("n", 0) >= 30 and key.get("hit") is not None and key["hit"] < 0.5)}
+        if basis:
+            s["light"].update(basis=basis, score=score)
         order.append((-(abs(z) if z is not None else 0), s["name"]))
     return [n for _, n in sorted(order)]
