@@ -427,7 +427,7 @@ def _dir_stats(by, d0, sectors=None, alt=None):
     return {"all": _aggt(allx), "lit": _aggt(lit)}
 
 
-def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs=None):
+def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs=None, intl_secs=None):
     """用真正的陸期夜盤資料，檢驗盤前版對台股當天的預測力（權重只用切點 sp 之前估計的）：
       cn_only    沒有國際商品可對應的類股：只靠陸期夜盤的分數
       intl_only  有國際商品的類股：只用國際隔夜的分數
@@ -436,7 +436,8 @@ def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, 
     if not days:
         return None
     d0 = max(sp, days[0])
-    intl_secs = {l["sector"] for ls in il.values() for l in ls}
+    if intl_secs is None:
+        intl_secs = {l["sector"] for ls in il.values() for l in ls}
     by_n = sector_records(items, night_series, ex, tw_dates, lv, zn)
     by_i = sector_records(intl_items, intl_series, ex, tw_dates, il, zpre)
     by_c = sector_records(intl_items + items, {**night_series, **intl_series}, ex, tw_dates, {**lv, **il}, {**zn, **zpre})
@@ -530,10 +531,12 @@ def robust_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zsig, zpre, c
 
 
 def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_series, tw_bars=None):
-    """盤前版的夜盤實測，換 3 個切點。夜盤資料只有近幾個月，切點比 ROBUST_FRACS 晚（訓練期夠長才估得出國際商品的關聯）。"""
+    """盤前版的夜盤實測，換 3 個切點。夜盤資料只有近幾個月，切點比 ROBUST_FRACS 晚（訓練期夠長才估得出國際商品的關聯）。
+    「有國際商品的類股」只取三個切點的訓練期都找得到國際關聯的（就是切換後盤前真的會亮燈的那幾個）；
+    只在某個切點偶然出現的，歸在另一組。"""
     intl_items = [("國際", code, name, 1.0, links, False) for code, sym, name, cn, links in INTL if code in intl_series]
     zn = {c: H.rolling_sigma(v) for c, v in night_series.items()}
-    out = {}
+    prep = []
     for frac in NIGHT_FRACS:
         sp = tw_dates[int(len(tw_dates) * frac)]
         betas = H.estimate_betas(idx_ret, d_end=sp)
@@ -542,8 +545,12 @@ def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_se
         items = commodity_items() + sp_items
         _pr, _dc, lv = build_links(items, series, ex, tw_dates, d1=sp)
         _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
+        prep.append((frac, sp, betas, ex, items, lv, il))
+    common = set.intersection(*[{l["sector"] for ls in p[6].values() for l in ls} for p in prep])
+    out = {}
+    for frac, sp, betas, ex, items, lv, il in prep:
         segs = {cut: ID.tw_segments(tw_bars, betas, cut) for cut in ID.OPEN_CUTS} if tw_bars else None
-        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs)
+        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs, common)
         if N is None:
             continue
         out[str(frac)] = N
@@ -556,7 +563,6 @@ def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_se
                 print(f"      開盤後 {cut} 進場・{lab}：整天 {x['day']['all']}｜到 {cut} {x['gap']['all']}｜{cut}→收盤 {x['after']['all']}"
                       f"｜亮燈 {cut}→收盤 {x['after']['lit']}")
     return out
-
 
 def commodity_items():
     """(交易所, 代碼, 名稱, 訊號滿格幅度, 對照, 漲跌停加成)；價差的滿格幅度由 2σ 決定，見 spread_items()"""
