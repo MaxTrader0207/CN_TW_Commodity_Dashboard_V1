@@ -725,6 +725,9 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
         ts = list((sc.get("tests") or {}).values())
         rng = lambda k: [f(t[k]["all"]["hit"] for t in ts) for f in (min, max)] if ts else None  # noqa: E731
         basis = "pre_intl" if sc.get("score") == "intl" and L.get("pre_intl") else "pre"
+        for cd in cards:        # 國際預測卡的類股若沒通過盤前檢驗：照樣列出，但標示近期未過關
+            if cd.get("kind") == "intl" and cd.get("sector") not in (sc.get("pre_sectors") or []):
+                cd["pre_weak"] = True
         scope = {"pre_sectors": sc.get("pre_sectors"), "days": sc.get("days"), "cn_hit": rng("cn_only"), "intl_hit": rng("intl_only"),
                  "score": "intl" if basis == "pre_intl" else "combo", "open_cut": L.get("open_cut"),
                  "lit": ((L[basis].get("pooled") or {}).get("lit") or {}).get("lag0"), "open": L[basis].get("open"), "open_curve": L[basis].get("open_curve")}

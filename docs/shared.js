@@ -86,7 +86,7 @@ const UI = (() => {
       card.dataset.sector = s.name;
       const h = el('div', 'u-lh');
       h.append(el('span', 'u-name', s.name), el('span', 'u-state', '盤前不亮燈'), el('span', 'u-score flat', sc(s.score)));
-      card.append(h, el('div', 'u-sub', '開盤前沒有預測力（實測）：這個類股只對得到陸期商品，夜盤走勢對台股當天的方向沒有參考價值。請等收盤後看「今日回顧」。'));
+      card.append(h, el('div', 'u-sub', '開盤前沒有預測力（實測）：開盤前拿得到的訊號（陸期夜盤、國際隔夜），對這個類股當天的方向沒有通過檢驗。請等收盤後看「今日回顧」。'));
       return card;
     }
     const card = el('div', `u-light s-${c}` + (L.weak_oos && L.state ? ' dim' : ''));
@@ -150,8 +150,8 @@ const UI = (() => {
       const r = a => !a ? '—' : a[0] === a[1] ? hit(a[0]) : `${hit(a[0])}～${hit(a[1])}`;
       const p = el('p', 'u-lead');
       p.append(el('b', null, `開盤前只有 ${(PS.pre_sectors || []).join('、')} 會亮燈：`),
-        txt(`用實際的陸期夜盤資料檢驗（至少 ${PS.days} 個交易日、3 個切點），有國際商品可對應的類股，當天方向對 ${r(PS.intl_hit)}；` +
-          `只靠陸期夜盤的類股 ${r(PS.cn_hit)}，跟丟銅板差不多，所以盤前不亮燈。每週重新檢驗，證據改變會自動調整。`));
+        txt(`每個類股逐一用實際資料檢驗（至少 ${PS.days} 個交易日、3 個切點），通過的類股當天方向對 ${r(PS.intl_hit)}；` +
+          `其餘類股 ${r(PS.cn_hit)}，跟丟銅板差不多，所以盤前不亮燈。每週重新檢驗，證據改變會自動調整。`));
       box.append(p);
       if (PS.open?.n) {
         const q = el('p', 'u-lead');
@@ -194,7 +194,7 @@ const UI = (() => {
   function predCard(cd, d, opts = {}) {
     const intl = cd.kind === 'intl', dir = cd.direction;
     const gate = (d.gates || {})['cards_' + (cd.kind || 'cn')];
-    const c = el('div', 'u-pred' + (gate?.state === 'demoted' ? ' dim' : ''));
+    const c = el('div', 'u-pred' + (gate?.state === 'demoted' || cd.pre_weak ? ' dim' : ''));
     c.dataset.kind = cd.kind || 'cn';
     const h = el('div', 'u-lh');
     h.append(el('span', 'u-name', `${intl ? '盤前預測' : '隔日預測'}：${cd.sector}`), el('span', 'u-pill a', intl ? '國際隔夜' : '陸期收盤'));
@@ -231,6 +231,7 @@ const UI = (() => {
       });
     }
     det.append(el('p', 'u-note', '強度：弱 |z| 0.5～1、中 1～2、強 ≥2。命中率多在 52～60%，只比隨機略好，請當成「機率略偏一邊」的參考。樣本外＝最近 40% 期間。'));
+    if (cd.pre_weak) c.append(el('div', 'u-gate demoted', '近期實測未過關：這個類股的盤前訊號在最近幾個月（3 個切點）沒有通過檢驗，下面的命中率是較長期間的數字，僅供參考。'));
     if (intl) det.append(el('p', 'u-note', '這裡的命中率用「昨收 → 今收」計算，包含開盤跳空；開盤後才進場還剩多少，請看下方狀態燈的實測。'));
     c.append(det);
     const gn = gateNote(gate, 'cards_' + (cd.kind || 'cn')); if (gn) c.append(gn);

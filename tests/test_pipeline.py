@@ -489,6 +489,11 @@ def test_premarket_scope_decision():
     # 資料不夠、切點不足 → 不切換
     assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 2.5), "0.8": row(0.1, 2.1, days=40)})["adopt"]
     assert not C.premarket_scope_decision({})["adopt"]
+    # 逐一檢查：只有自己過關的類股才在盤前亮燈
+    rows = {k: {**row(0.5, 3.0), "qualified": ["油電燃氣"]} for k in ("0.6", "0.7", "0.8")}
+    assert C.premarket_scope_decision(rows)["pre_sectors"] == ["油電燃氣"]
+    rows = {k: {**row(0.5, 3.0), "qualified": []} for k in ("0.6", "0.7", "0.8")}
+    assert not C.premarket_scope_decision(rows)["adopt"]
 
 
 def test_apply_lights_pre_scope():

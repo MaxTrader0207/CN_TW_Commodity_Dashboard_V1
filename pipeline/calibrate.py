@@ -450,7 +450,7 @@ def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, 
                           "after": _dir_stats(by, d0, intl_secs, sg["after"])}
                       for k, by in (("intl_only", by_i), ("intl_combo", by_c))}
     return {"from": d0, "days": sum(1 for d in days if d >= d0), "sectors_intl": sorted(intl_secs), "sectors_cn": sorted(cn_secs),
-            "open": after,
+            "open": after, "per_sector": {sct: _dir_stats(by_i, d0, {sct}) for sct in sorted(intl_secs)},
             "cn_only": _dir_stats(by_n, d0, cn_secs), "intl_only": _dir_stats(by_i, d0, intl_secs),
             "intl_combo": _dir_stats(by_c, d0, intl_secs)}
 
@@ -458,16 +458,17 @@ def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, 
 def premarket_scope_decision(tests):
     """盤前版該讓哪些類股亮燈。三個切點（三組權重）都符合才切換：
       1. 只靠陸期夜盤的類股：方向報酬的 t 值不到 2（看不到預測力）→ 盤前不亮燈
-      2. 有國際商品的類股：只用國際隔夜的 t 值達 2（確實有預測力）→ 盤前照常亮燈
+      2. 有國際對應的類股：逐一檢查，自己只用國際隔夜的 t 值達 2（確實有預測力）→ 盤前照常亮燈；沒過的一樣不亮燈
     切換後這些類股的分數算法不變（國際隔夜＋陸期夜盤），只是其餘類股盤前不亮燈；之後證據改變會自動切回。"""
     rows = list(tests.values())
     rule = (f"每個切點的測試期至少 {NIGHT_MIN_DAYS} 天夜盤資料；3 個切點都是：只靠陸期夜盤的類股 t 值 < 2、"
-            "有國際商品的類股只用國際隔夜 t 值 ≥ 2")
+            "有國際對應的類股逐一檢查，自己只用國際隔夜 t 值 ≥ 2 才在盤前亮燈")
     if len(rows) < len(NIGHT_FRACS) or any(r["days"] < NIGHT_MIN_DAYS for r in rows):
         return {"adopt": False, "mode": "all", "rule": rule, "reason": "夜盤資料還不夠", "tests": tests}
     t = lambda x: x["t"] if x["t"] is not None else 0  # noqa: E731
     cn_weak = all(t(r["cn_only"]["all"]) < 2 and t(r["cn_only"]["lit"]) < 2 for r in rows)
-    intl_ok = all(t(r["intl_only"]["all"]) >= 2 for r in rows)
+    quals = [set(r["qualified"]) if "qualified" in r else set(r["sectors_intl"]) for r in rows]
+    intl_ok = bool(set.intersection(*quals)) and all(t(r["intl_only"]["all"]) >= 2 for r in rows)
     adopt = cn_weak and intl_ok
     # 亮燈類股的分數用哪一種：看「開盤後進場還剩多少」。三個切點都是只用國際的亮燈日顯著（t ≥ 2）且優於合併 → 只用國際
     def _a(r, k):
@@ -475,7 +476,7 @@ def premarket_scope_decision(tests):
     use_intl = all((_a(r, "intl_only").get("t") or 0) >= 2 and
                    (_a(r, "intl_only").get("avg") or 0) > (_a(r, "intl_combo").get("avg") or 0) for r in rows)
     return {"adopt": adopt, "mode": "intl_only" if adopt else "all", "score": "intl" if adopt and use_intl else "combo", "open_cut": OPEN_CUT,
-            "pre_sectors": sorted(set.intersection(*[set(r["sectors_intl"]) for r in rows])) if adopt else None, "days": min(r["days"] for r in rows),
+            "pre_sectors": sorted(set.intersection(*quals)) if adopt else None, "days": min(r["days"] for r in rows),
             "cn_weak": cn_weak, "intl_ok": intl_ok, "rule": rule, "tests": tests}
 
 
@@ -547,16 +548,28 @@ def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_se
         _, _, il = build_links(intl_items, intl_series, ex, tw_dates, d1=sp)
         prep.append((frac, sp, betas, ex, items, lv, il))
     common = set.intersection(*[{l["sector"] for ls in p[6].values() for l in ls} for p in prep])
+    # 第一輪：每個候選類股「自己」只用國際隔夜的表現。合在一起算會被最強的類股帶過關，所以逐一檢查：
+    # 三個切點都 t ≥ 2 的才算有盤前預測力，其餘歸到「盤前不亮燈」那一組
+    cand = {}
+    for frac, sp, betas, ex, items, lv, il in prep:
+        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, None, common)
+        if N:
+            cand[str(frac)] = N["per_sector"]
+    ok = {sct for sct in common if len(cand) == len(prep) and all((c[sct]["all"]["t"] or 0) >= 2 for c in cand.values())}
+    print(f"  盤前候選類股（各自只用國際隔夜，3 個切點）：" +
+          "；".join(f"{sct} t {[c[sct]['all']['t'] for c in cand.values()]}{' ✓' if sct in ok else ''}" for sct in sorted(common)))
     out = {}
     for frac, sp, betas, ex, items, lv, il in prep:
         segs = {cut: ID.tw_segments(tw_bars, betas, cut) for cut in ID.OPEN_CUTS} if tw_bars else None
-        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs, common)
+        N = night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, il, zn, zpre, sp, segs, ok or common)
         if N is None:
             continue
+        N["candidates"], N["qualified"] = cand.get(str(frac)), sorted(ok)
         out[str(frac)] = N
         print(f"  夜盤實測 切點 {sp}（{N['from']} 起 {N['days']} 天）：只靠陸期夜盤的類股 {N['cn_only']['all']}｜亮燈 {N['cn_only']['lit']}")
         print(f"      有國際商品的類股 {N['sectors_intl']}：只用國際 {N['intl_only']['all']}｜亮燈 {N['intl_only']['lit']}"
               f"｜國際＋夜盤 {N['intl_combo']['all']}｜亮燈 {N['intl_combo']['lit']}")
+        print(f"      各類股只用國際：{N['per_sector']}")
         for cut, o in N["open"].items():
             for k, lab in (("intl_only", "只用國際"), ("intl_combo", "國際＋夜盤")):
                 x = o[k]
@@ -1134,13 +1147,17 @@ def main():
     by_pi_tr = sector_records(intl_items, intl_series, excess_bt, tw_dates, intl_live_tr, zpre)
     by_pi = sector_records(intl_items, intl_series, excess, tw_dates, intl_live, zpre)
     sd_pi_tr = score_sd(by_pi_tr, split)
-    per_i, pool_i = light_stats(by_pi_tr, sd_pi_tr, split)
+    per_i, _ = light_stats(by_pi_tr, sd_pi_tr, split)
+    _ps = set(premarket_scope.get("pre_sectors") or by_pi_tr)          # 合計數字只算盤前真的會亮燈的類股
+    by_pi_ps = {k: v for k, v in by_pi_tr.items() if k in _ps}
+    _, pool_i = light_stats(by_pi_ps, sd_pi_tr, split)
     try:
         seg_after = ID.tw_segments(ID._load(ID.TW_FILE), betas_tr, OPEN_CUT)["after"]
     except Exception as e:  # noqa: BLE001
         seg_after = {}
         print("⚠ 類股盤中資料讀取失敗：", e)
-    open_i, open_pool_i = light_open_stats(by_pi_tr, sd_pi_tr, split, seg_after)
+    open_i, _ = light_open_stats(by_pi_tr, sd_pi_tr, split, seg_after)
+    _, open_pool_i = light_open_stats(by_pi_ps, sd_pi_tr, split, seg_after)
     open_p, open_pool_p = light_open_stats(by_pre_tr, score_sd(by_pre_tr, split), split, seg_after)
     for sct, v in per_i.items():
         v["open"] = open_i.get(sct)
@@ -1153,7 +1170,8 @@ def main():
             sa = ID.tw_segments(ID._load(ID.TW_FILE), betas_tr, cut)["after"]
         except Exception:  # noqa: BLE001
             continue
-        pc, pl = light_open_stats(by_pi_tr, sd_pi_tr, split, sa)
+        pc, _ = light_open_stats(by_pi_tr, sd_pi_tr, split, sa)
+        _, pl = light_open_stats(by_pi_ps, sd_pi_tr, split, sa)
         if pl["n"]:
             open_curve[cut] = pl
             for sct, v in per_i.items():
