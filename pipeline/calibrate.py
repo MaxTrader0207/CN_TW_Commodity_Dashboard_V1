@@ -451,32 +451,37 @@ def night_check(items, intl_items, night_series, intl_series, ex, tw_dates, lv, 
                       for k, by in (("intl_only", by_i), ("intl_combo", by_c))}
     return {"from": d0, "days": sum(1 for d in days if d >= d0), "sectors_intl": sorted(intl_secs), "sectors_cn": sorted(cn_secs),
             "open": after, "per_sector": {sct: _dir_stats(by_i, d0, {sct}) for sct in sorted(intl_secs)},
+            "per_sector_cn": {sct: _dir_stats(by_n, d0, {sct}) for sct in sorted(by_n)},
             "cn_only": _dir_stats(by_n, d0, cn_secs), "intl_only": _dir_stats(by_i, d0, intl_secs),
             "intl_combo": _dir_stats(by_c, d0, intl_secs)}
 
 
 def premarket_scope_decision(tests):
-    """盤前版該讓哪些類股亮燈。三個切點（三組權重）都符合才切換：
-      1. 只靠陸期夜盤的類股：方向報酬的 t 值不到 2（看不到預測力）→ 盤前不亮燈
-      2. 有國際對應的類股：逐一檢查，自己只用國際隔夜的 t 值達 2（確實有預測力）→ 盤前照常亮燈；沒過的一樣不亮燈
-    切換後這些類股的分數算法不變（國際隔夜＋陸期夜盤），只是其餘類股盤前不亮燈；之後證據改變會自動切回。"""
+    """盤前版該讓哪些類股亮燈。原則：要亮燈，類股得「自己」證明有盤前預測力，三個切點都過才算。
+      國際對應（商品或同業股票）：只用國際隔夜的方向報酬 t ≥ 2
+      陸期夜盤：只用夜盤的方向報酬 t ≥ 2
+    兩種都沒過的類股盤前不亮燈。逐一檢查而不合併，是因為合併的數字會被最強的類股帶著走，
+    也會因為多一天資料就在門檻上下跳動（頁面跟著一週開、一週關）。"""
     rows = list(tests.values())
-    rule = (f"每個切點的測試期至少 {NIGHT_MIN_DAYS} 天夜盤資料；3 個切點都是：只靠陸期夜盤的類股 t 值 < 2、"
-            "有國際對應的類股逐一檢查，自己只用國際隔夜 t 值 ≥ 2 才在盤前亮燈")
+    rule = (f"每個切點的測試期至少 {NIGHT_MIN_DAYS} 天夜盤資料；類股逐一檢查，3 個切點都是自己只用國際隔夜"
+            "（或只用陸期夜盤）t 值 ≥ 2 才在盤前亮燈")
     if len(rows) < len(NIGHT_FRACS) or any(r["days"] < NIGHT_MIN_DAYS for r in rows):
         return {"adopt": False, "mode": "all", "rule": rule, "reason": "夜盤資料還不夠", "tests": tests}
     t = lambda x: x["t"] if x["t"] is not None else 0  # noqa: E731
-    cn_weak = all(t(r["cn_only"]["all"]) < 2 and t(r["cn_only"]["lit"]) < 2 for r in rows)
     quals = [set(r["qualified"]) if "qualified" in r else set(r["sectors_intl"]) for r in rows]
-    intl_ok = bool(set.intersection(*quals)) and all(t(r["intl_only"]["all"]) >= 2 for r in rows)
-    adopt = cn_weak and intl_ok
+    intl_q = set.intersection(*quals) if all(t(r["intl_only"]["all"]) >= 2 for r in rows) else set()
+    cn_all = set.intersection(*[set(r.get("per_sector_cn") or {}) for r in rows])
+    cn_q = {sct for sct in cn_all if all(t(r["per_sector_cn"][sct]["all"]) >= 2 for r in rows)} - intl_q
+    cn_weak, intl_ok = not cn_q, bool(intl_q)
+    adopt = True          # 資料足夠就一律逐一把關；沒有任何類股過關時，盤前全部不亮燈
     # 亮燈類股的分數用哪一種：看「開盤後進場還剩多少」。三個切點都是只用國際的亮燈日顯著（t ≥ 2）且優於合併 → 只用國際
     def _a(r, k):
         return ((r.get("open") or {}).get(OPEN_CUT) or {}).get(k, {}).get("after", {}).get("lit") or {}
     use_intl = all((_a(r, "intl_only").get("t") or 0) >= 2 and
                    (_a(r, "intl_only").get("avg") or 0) > (_a(r, "intl_combo").get("avg") or 0) for r in rows)
-    return {"adopt": adopt, "mode": "intl_only" if adopt else "all", "score": "intl" if adopt and use_intl else "combo", "open_cut": OPEN_CUT,
-            "pre_sectors": sorted(set.intersection(*quals)) if adopt else None, "days": min(r["days"] for r in rows),
+    return {"adopt": adopt, "mode": "per_sector", "score": "intl" if intl_q and use_intl else "combo", "open_cut": OPEN_CUT,
+            "pre_sectors": sorted(intl_q | cn_q), "intl_sectors": sorted(intl_q), "night_sectors": sorted(cn_q),
+            "days": min(r["days"] for r in rows),
             "cn_weak": cn_weak, "intl_ok": intl_ok, "rule": rule, "tests": tests}
 
 
@@ -570,6 +575,8 @@ def night_checks(idx_ret, tw_dates, series, spr_ret, intl_series, zpre, night_se
         print(f"      有國際商品的類股 {N['sectors_intl']}：只用國際 {N['intl_only']['all']}｜亮燈 {N['intl_only']['lit']}"
               f"｜國際＋夜盤 {N['intl_combo']['all']}｜亮燈 {N['intl_combo']['lit']}")
         print(f"      各類股只用國際：{N['per_sector']}")
+        print("      各類股只用陸期夜盤 t（全部／亮燈）：" + "；".join(
+            f"{k} {v['all']['t']}／{v['lit']['t']}" for k, v in N["per_sector_cn"].items() if v["all"]["n"]))
         for cut, o in N["open"].items():
             for k, lab in (("intl_only", "只用國際"), ("intl_combo", "國際＋夜盤")):
                 x = o[k]
@@ -1177,7 +1184,7 @@ def main():
                                ID._load(ID.TW_FILE)) if night_series else {}
     premarket_scope = premarket_scope_decision(night_tests)
     print(f"盤前版亮燈範圍：{premarket_scope['mode']}（{premarket_scope.get('reason') or ''}"
-          f"只靠夜盤的類股無預測力 {premarket_scope.get('cn_weak')}、國際有預測力 {premarket_scope.get('intl_ok')}、分數用 {premarket_scope.get('score')}；"
+          f"靠國際過關 {premarket_scope.get('intl_sectors')}、靠陸期夜盤過關 {premarket_scope.get('night_sectors')}、分數用 {premarket_scope.get('score')}；"
           f"盤前亮燈類股 {premarket_scope.get('pre_sectors')}）")
     pm_all = all(r_["pre_intl"]["lag0"] > r_["pre_combo"]["lag0"] + 0.3 and r_["pre_intl"]["dir0"] >= r_["pre_combo"]["dir0"] - 0.3
                  for r_ in robust.values())

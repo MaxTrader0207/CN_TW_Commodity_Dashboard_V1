@@ -482,10 +482,16 @@ def test_premarket_scope_decision():
                 "cn_only": {"all": a(cn_t), "lit": a(cn_t)}, "intl_only": {"all": a(intl_t), "lit": a(intl_t)},
                 "intl_combo": {"all": a(2.0), "lit": a(2.0)}}
     ok = C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 2.5), "0.8": row(-0.3, 2.1)})
-    assert ok["adopt"] and ok["mode"] == "intl_only" and ok["pre_sectors"] == ["油電燃氣", "電器電纜"]
-    # 任何一個切點：陸期夜盤有預測力，或國際不夠顯著 → 不切換
-    assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(2.3, 2.5), "0.8": row(0.1, 2.1)})["adopt"]
-    assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 1.5), "0.8": row(0.1, 2.1)})["adopt"]
+    assert ok["adopt"] and ok["mode"] == "per_sector" and ok["pre_sectors"] == ["油電燃氣", "電器電纜"]
+    # 合併的陸期夜盤數字在某個切點偏高不影響結果（逐一檢查才算數）；國際有一個切點不夠顯著 → 沒有類股亮燈
+    assert C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(2.3, 2.5), "0.8": row(0.1, 2.1)})["pre_sectors"] == ["油電燃氣", "電器電纜"]
+    assert C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 1.5), "0.8": row(0.1, 2.1)})["pre_sectors"] == []
+    # 陸期夜盤：類股自己三個切點都過才亮燈
+    cn = lambda *ts: {k: {**row(0.5, 3.0), "qualified": ["油電燃氣"], "per_sector_cn": {"水泥": {"all": a(tt), "lit": a(tt)}}}  # noqa: E731
+                      for k, tt in zip(("0.6", "0.7", "0.8"), ts)}
+    d = C.premarket_scope_decision(cn(2.4, 2.1, 2.6))
+    assert d["pre_sectors"] == ["水泥", "油電燃氣"] and d["intl_sectors"] == ["油電燃氣"] and d["night_sectors"] == ["水泥"]
+    assert C.premarket_scope_decision(cn(2.4, 1.6, 2.6))["pre_sectors"] == ["油電燃氣"]
     # 資料不夠、切點不足 → 不切換
     assert not C.premarket_scope_decision({"0.6": row(0.5, 3.0), "0.7": row(1.2, 2.5), "0.8": row(0.1, 2.1, days=40)})["adopt"]
     assert not C.premarket_scope_decision({})["adopt"]
@@ -493,7 +499,7 @@ def test_premarket_scope_decision():
     rows = {k: {**row(0.5, 3.0), "qualified": ["油電燃氣"]} for k in ("0.6", "0.7", "0.8")}
     assert C.premarket_scope_decision(rows)["pre_sectors"] == ["油電燃氣"]
     rows = {k: {**row(0.5, 3.0), "qualified": []} for k in ("0.6", "0.7", "0.8")}
-    assert not C.premarket_scope_decision(rows)["adopt"]
+    assert C.premarket_scope_decision(rows)["pre_sectors"] == []
 
 
 def test_apply_lights_pre_scope():

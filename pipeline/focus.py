@@ -319,6 +319,7 @@ def apply_lights(cal, sectors, session):
     # 盤前版的亮燈範圍：每週校準用實際夜盤資料檢驗，過關時只有對得到國際商品的類股在盤前亮燈
     scope = (cal or {}).get("premarket_scope") or {}
     pre_only = set(scope.get("pre_sectors") or []) if session == "night" and scope.get("adopt") else None
+    intl_only = set(scope["intl_sectors"]) if scope.get("intl_sectors") is not None else (pre_only or set())
     PI = L.get("pre_intl") or {}
     use_intl = scope.get("score") == "intl"
     intl_sd, intl_stats = PI.get("sd") or {}, PI.get("stats") or {}
@@ -329,7 +330,7 @@ def apply_lights(cal, sectors, session):
             continue
         d = sd.get(s["name"])
         score, basis, st = s["score"], None, stats.get(s["name"])
-        if pre_only is not None and s["name"] in pre_only and use_intl and s.get("score_intl") is not None \
+        if pre_only is not None and s["name"] in intl_only and use_intl and s.get("score_intl") is not None \
                 and intl_sd.get(s["name"]):
             # 盤前亮燈類股：只用國際隔夜的分數（實測開盤後進場仍有效的是這個算法）
             score, basis, d, st = s["score_intl"], "intl", intl_sd[s["name"]], intl_stats.get(s["name"])

@@ -168,7 +168,7 @@ const UI = (() => {
     if (PS) {
       const r = a => !a ? '—' : a[0] === a[1] ? hit(a[0]) : `${hit(a[0])}～${hit(a[1])}`;
       const p = el('p', 'u-lead');
-      p.append(el('b', null, `開盤前只有 ${(PS.pre_sectors || []).join('、')} 會亮燈：`),
+      p.append(el('b', null, (PS.pre_sectors || []).length ? `開盤前只有 ${PS.pre_sectors.join('、')} 會亮燈：` : '目前沒有類股通過盤前檢驗，開盤前全部不亮燈：'),
         txt(`每個類股逐一用實際資料檢驗（至少 ${PS.days} 個交易日、3 個切點），通過的類股當天方向對 ${r(PS.intl_hit)}；` +
           `其餘類股 ${r(PS.cn_hit)}，跟丟銅板差不多，所以盤前不亮燈。每週重新檢驗，證據改變會自動調整。`));
       box.append(p);
