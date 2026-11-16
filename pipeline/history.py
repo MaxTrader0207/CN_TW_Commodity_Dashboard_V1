@@ -374,10 +374,25 @@ def fetch_yahoo(session, symbol, rng="2y"):
     ind = res.get("indicators") or {}
     closes = ((ind.get("adjclose") or [{}])[0].get("adjclose")) or (ind.get("quote") or [{}])[0].get("close") or []
     out = {}
-    for t, c in zip(ts, closes):
+    n = len(ts)
+    for i, (t, c) in enumerate(zip(ts, closes)):
         if c:
-            out[datetime.utcfromtimestamp(t + off).date().isoformat()] = float(c)
+            out[_bar_date(t + off, last=i == n - 1 and symbol.endswith("=F"))] = float(c)     # 只有期貨有跨日的盤
     return out, meta
+
+
+def _bar_date(local_ts, last=False):
+    """日線的交易日。最後一根若是「交易中」的即時報價，Yahoo 用當下時間當時間戳：
+    美國期貨 17:00 收盤、18:00 開下一個交易日的盤（週日傍晚開的是週一的盤），
+    這時時間戳還是當天（或週日）的日期，會被誤認成當天已收盤的日線、甚至蓋掉當天真正的收盤。
+    所以最後一根若落在當地 17:00 之後或週末，算到下一個交易日（平日）。"""
+    lt = datetime.utcfromtimestamp(local_ts)
+    d = lt.date()
+    if last and (lt.hour >= 17 or d.weekday() >= 5):
+        d += timedelta(days=1)
+        while d.weekday() >= 5:
+            d += timedelta(days=1)
+    return d.isoformat()
 
 
 def intl_returns(closes, cap=15.0):

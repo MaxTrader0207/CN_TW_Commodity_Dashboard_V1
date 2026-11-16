@@ -597,3 +597,16 @@ def test_align_cards_to_lights():
     assert c[0]["direction"] == -1 and c[0]["tier"] == "強"
     secs[0]["light"].pop("basis")                                            # 狀態燈不是只用國際（沒通過檢驗）→ 不對齊
     assert "by_light" not in F.align_cards_to_lights(mk(), secs)[0]
+
+
+def test_yahoo_live_bar_belongs_to_next_session():
+    import calendar
+    from datetime import datetime as DT
+    import history as H
+    ts = lambda *a: calendar.timegm(DT(*a).timetuple())  # noqa: E731  （已是交易所當地時間）
+    assert H._bar_date(ts(2026, 11, 13, 0, 0), last=False) == "2026-11-13"
+    assert H._bar_date(ts(2026, 11, 13, 16, 59), last=True) == "2026-11-13"      # 週五收盤前：當天
+    assert H._bar_date(ts(2026, 11, 15, 19, 10), last=True) == "2026-11-16"      # 週日傍晚開的是週一的盤
+    assert H._bar_date(ts(2026, 11, 16, 18, 30), last=True) == "2026-11-17"      # 週一 18:00 後是週二的盤
+    assert H._bar_date(ts(2026, 11, 13, 18, 30), last=True) == "2026-11-16"      # 週五收盤後 → 下週一
+    assert H._bar_date(ts(2026, 11, 16, 18, 30), last=False) == "2026-11-16"     # 歷史日線不動
