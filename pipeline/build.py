@@ -716,6 +716,8 @@ def build_focus(cal, board, sectors, session, now, stocks, industry):
     # 盤前版：預測台股今天；日盤收盤版：預測下一個台股交易日
     target = next_tw_day(now.date(), include_today=(session == "night"))
     cards = focus.predict_cards(cal or {}, KLINE_DUMP, board, session, now.strftime("%Y-%m-%d"), target, stocks)
+    if session == "night":
+        focus.align_cards_to_lights(cards, sectors)
     L = (cal or {}).get("lights") or {}
     mode = L.get("pre" if session == "night" else "day") or {}
     reso = (cal or {}).get("resonance") or {}

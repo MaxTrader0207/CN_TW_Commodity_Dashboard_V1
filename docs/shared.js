@@ -228,8 +228,16 @@ const UI = (() => {
       sum.append(ch);
     });
     const det = el('details', 'u-more');
-    det.append(el('summary', null, dir ? '命中率與明細' : '今日訊號不明確（各商品 |z| < 0.5）・明細'));
-    if (dir) c.append(sum); else det.append(sum);
+    const BL = cd.by_light;
+    det.append(el('summary', null, dir ? '命中率與明細' : BL ? '合計訊號未達門檻・明細' : '今日訊號不明確（各商品 |z| < 0.5）・明細'));
+    if (dir || BL) c.append(sum); else det.append(sum);
+    if (BL) {
+      const z = `${BL.z > 0 ? '+' : ''}${BL.z} 倍`;
+      c.append(el('div', 'u-sub', dir
+        ? `方向與下方狀態燈一致：各商品加權後的訊號強度 ${z}（達 1 倍才給方向）。`
+        : `各商品加權後的訊號強度 ${z}，未達 1 倍，所以不給方向` + (BL.own && BL.lead?.length ? `；只有 ${BL.lead.join('、')} 單獨${BL.own > 0 ? '偏多' : '偏空'}，其他商品沒有跟上。` : '。') +
+          '開盤後檢驗過關的是加權後的訊號，單一商品的訊號沒有另外驗證。'));
+    }
     cd.items.forEach(x => {
       const r = el('div', 'u-row'), l = el('div', 'l');
       const t = el('div', 't', x.name); t.append(el('span', null, `${pct(x.ret)}${x.z == null ? '' : `（${x.z > 0 ? '+' : ''}${x.z}σ）`}`));

@@ -581,3 +581,19 @@ def test_open_stats_and_card_open_weak():
     assert cd["open_weak"] and cd["items"][0]["open"]["after"]["n"] == 27 and not cd["items"][0]["open_ok"]
     o["after"]["t"] = 2.5
     assert not F.predict_cards(cal, {}, board, "day", "2026-06-01", "2026-06-02", {})[0]["open_weak"]
+
+
+def test_align_cards_to_lights():
+    import focus as F
+    mk = lambda: [{"sector": "油電燃氣", "kind": "intl", "direction": -1, "tier": "中",  # noqa: E731
+                   "items": [{"name": "RBOB 汽油", "status": "有效", "strong": True, "dir": -1}, {"name": "Brent 原油", "status": "有效", "strong": False, "dir": 0}]},
+                  {"sector": "電器電纜", "kind": "cn", "direction": 1, "tier": "弱", "items": []}]
+    secs = [{"name": "油電燃氣", "light": {"basis": "intl", "state": 0, "z": -0.38, "strong": False}}, {"name": "電器電纜", "light": {"state": 1, "z": 1.2}}]
+    c = F.align_cards_to_lights(mk(), secs)
+    assert c[0]["direction"] == 0 and c[0]["tier"] is None and c[0]["by_light"] == {"z": -0.38, "own": -1, "lead": ["RBOB 汽油"]}
+    assert c[1]["direction"] == 1 and "by_light" not in c[1]                 # 陸期卡不動
+    secs[0]["light"].update(state=-1, z=-2.3, strong=True)
+    c = F.align_cards_to_lights(mk(), secs)
+    assert c[0]["direction"] == -1 and c[0]["tier"] == "強"
+    secs[0]["light"].pop("basis")                                            # 狀態燈不是只用國際（沒通過檢驗）→ 不對齊
+    assert "by_light" not in F.align_cards_to_lights(mk(), secs)[0]

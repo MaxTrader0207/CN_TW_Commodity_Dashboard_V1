@@ -287,6 +287,23 @@ def predict_cards(cal, klines, board, session, run_date, tw_next, stocks_today):
     return out
 
 
+def align_cards_to_lights(cards, sectors):
+    """盤前版：國際預測卡的方向跟狀態燈用同一個依據。
+    狀態燈是「只用國際隔夜、各商品加權」的分數（開盤後檢驗過關的就是這個算法）；預測卡原本只要有一個商品夠強就給方向，
+    兩邊會打架（例如只有汽油大跌：卡片偏空、燈沒亮）。以狀態燈為準，個別商品的強弱留在卡片明細。"""
+    by = {s["name"]: s.get("light") for s in sectors}
+    for cd in cards:
+        L = by.get(cd["sector"])
+        if cd.get("kind") != "intl" or not L or L.get("basis") != "intl":
+            continue
+        own = cd["direction"]
+        cd["direction"] = L["state"]
+        cd["tier"] = ("強" if L.get("strong") else "中") if L["state"] else None
+        cd["by_light"] = {"z": L["z"], "own": own,                      # own：照舊算法（個別商品）的方向，供明細說明
+                          "lead": [x["name"] for x in cd["items"] if x["status"] == "有效" and x["strong"] and x["dir"] == own] if own else []}
+    return cards
+
+
 # ── 只處理有實測支持的項目（其餘不抓日K、不算價差、不抓國際行情）──
 def verified_codes(cal, spreads=(), extra=()):
     """回傳 {"cn": 有實測支持的陸期商品與價差, "intl": 國際商品, "need": 需要抓日K的陸期代碼}；
