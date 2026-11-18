@@ -1,9 +1,9 @@
 {
- "run_at": "2026-11-18T06:17:42+08:00",
- "session": "night",
+ "run_at": "2026-11-18T17:10:13+08:00",
+ "session": "day",
  "ok": true,
  "error": "",
- "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/44188553342",
+ "run_url": "https://github.com/MaxTrader0207/CN_TW_Commodity_Dashboard_V1/actions/runs/44273365424",
  "sources": [
   {
    "id": "twse_holiday",
@@ -14,7 +14,7 @@
    "rows": 50,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-18T06:17:43+08:00"
+   "fetched_at": "2026-11-18T17:10:15+08:00"
   },
   {
    "id": "limits",
@@ -24,8 +24,8 @@
    "status": "ok",
    "rows": 36,
    "data_date": null,
-   "note": "上期所 ok 20 個商品（2026-11-18）；能源中心 ok 4 個商品（2026-11-18）；鄭商所 ok 16 個商品（2026-11-17）",
-   "fetched_at": "2026-11-18T06:17:47+08:00"
+   "note": "上期所 ok 20 個商品（2026-11-18）；能源中心 ok 4 個商品（2026-11-18）；鄭商所 ok 16 個商品（2026-11-18）",
+   "fetched_at": "2026-11-18T17:10:23+08:00"
   },
   {
    "id": "sina_kline",
@@ -36,7 +36,7 @@
    "rows": 27,
    "data_date": null,
    "note": "｜只抓有實測支持的 27 個商品",
-   "fetched_at": "2026-11-18T06:17:59+08:00"
+   "fetched_at": "2026-11-18T17:10:38+08:00"
   },
   {
    "id": "sina",
@@ -47,7 +47,7 @@
    "rows": 57,
    "data_date": "2026-11-18",
    "note": "",
-   "fetched_at": "2026-11-18T06:18:01+08:00"
+   "fetched_at": "2026-11-18T17:10:39+08:00"
   },
   {
    "id": "twse_info",
@@ -58,7 +58,7 @@
    "rows": 1089,
    "data_date": "2026-11-17",
    "note": "",
-   "fetched_at": "2026-11-18T06:18:01+08:00"
+   "fetched_at": "2026-11-18T17:10:40+08:00"
   },
   {
    "id": "isin_otc",
@@ -69,7 +69,7 @@
    "rows": 898,
    "data_date": null,
    "note": "",
-   "fetched_at": "2026-11-18T06:18:05+08:00"
+   "fetched_at": "2026-11-18T17:11:44+08:00"
   },
   {
    "id": "twse_quotes",
@@ -77,10 +77,10 @@
    "url": "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY_ALL?response=open_data",
    "used_for": "上市個股漲跌 → 類股與個股的實際表現",
    "status": "ok",
-   "rows": 1382,
-   "data_date": "2026-11-17",
+   "rows": 1380,
+   "data_date": "2026-11-18",
    "note": "採用官網（另：OpenAPI 2026-11-17）",
-   "fetched_at": "2026-11-18T06:18:05+08:00"
+   "fetched_at": "2026-11-18T17:11:46+08:00"
   },
   {
    "id": "tpex_quotes",
@@ -88,21 +88,21 @@
    "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",
    "used_for": "上櫃個股漲跌 → 類股與個股的實際表現",
    "status": "ok",
-   "rows": 4751,
-   "data_date": "2026-11-17",
+   "rows": 4834,
+   "data_date": "2026-11-18",
    "note": "",
-   "fetched_at": "2026-11-18T06:18:20+08:00"
+   "fetched_at": "2026-11-18T17:11:54+08:00"
   },
   {
    "id": "yahoo_intl",
-   "name": "Yahoo 國際期貨（盤前計分＋交叉確認）",
+   "name": "Yahoo 國際期貨（交叉確認）",
    "url": "https://query1.finance.yahoo.com/v8/finance/chart/XX=F?range=6mo&interval=1d",
-   "used_for": "隔夜美盤 → 台股",
+   "used_for": "國際價格 vs 陸期方向",
    "status": "ok",
    "rows": 13,
    "data_date": null,
-   "note": "｜13 項計入盤前分數",
-   "fetched_at": "2026-11-18T06:18:23+08:00"
+   "note": "",
+   "fetched_at": "2026-11-18T17:11:57+08:00"
   },
   {
    "id": "twse_index",
@@ -111,20 +111,20 @@
    "used_for": "多空類股的實際超額報酬",
    "status": "ok",
    "rows": null,
-   "data_date": "2026-11-17",
+   "data_date": "2026-11-18",
    "note": "",
-   "fetched_at": "2026-11-18T06:18:25+08:00"
+   "fetched_at": "2026-11-18T17:11:59+08:00"
   },
   {
    "id": "intraday",
-   "name": "盤中／夜盤資料蒐集（夜盤漲跌）",
-   "url": "pipeline/cache/intraday/night_snap.json",
-   "used_for": "累積後檢驗夜盤對台股當天的預測力（目前不計分）",
+   "name": "盤中／夜盤資料蒐集（陸期分鐘線、台股盤中類股指數）",
+   "url": "https://stock2.finance.sina.com.cn/futures/api/jsonp.php/var%20_XX0_30=/InnerFuturesNewService.getFewMinLine?symbol=XX0&type=30",
+   "used_for": "累積後檢驗陸期早盤對台股午盤的領先關係（目前不計分）",
    "status": "ok",
-   "rows": 25,
+   "rows": 27,
    "data_date": "2026-11-18",
-   "note": "",
-   "fetched_at": "2026-11-18T06:18:25+08:00"
+   "note": "陸期 285 天、台股 186 天",
+   "fetched_at": "2026-11-18T17:12:29+08:00"
   },
   {
    "id": "klines",
@@ -135,7 +135,7 @@
    "rows": 41,
    "data_date": null,
    "note": "不足 100 天：白銀、黃金、天然橡膠、丁二烯橡膠、紙漿、氧化鋁、低硫燃料油、20號膠、PVC、豆粕、黃大豆1號、黃大豆2號",
-   "fetched_at": "2026-11-18T06:18:25+08:00"
+   "fetched_at": "2026-11-18T17:12:29+08:00"
   }
  ]
 }
