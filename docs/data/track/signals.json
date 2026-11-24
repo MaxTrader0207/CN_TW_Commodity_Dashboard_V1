@@ -2935,5 +2935,143 @@
     "z": -0.45
    }
   ]
+ },
+ "2026-11-25_night": {
+  "run_at": "2026-11-25T06:17+08:00",
+  "session": "night",
+  "tw_date": "2026-11-24",
+  "weights": "實測",
+  "bull": [
+   {
+    "name": "紡織纖維",
+    "score": 92.0
+   },
+   {
+    "name": "塑膠",
+    "score": 48.2
+   },
+   {
+    "name": "油電燃氣",
+    "score": 37.5
+   }
+  ],
+  "bear": [
+   {
+    "name": "電器電纜",
+    "score": -148.3
+   },
+   {
+    "name": "航運",
+    "score": -38.5
+   },
+   {
+    "name": "鋼鐵",
+    "score": -21.3
+   }
+  ],
+  "conf": {
+   "紡織纖維": "A",
+   "塑膠": "A",
+   "油電燃氣": "A",
+   "水泥": "B",
+   "鋼鐵": "A",
+   "航運": "A",
+   "電器電纜": "A"
+  },
+  "focus_bull": [
+   {
+    "name": "紡織纖維",
+    "score": 92.0
+   },
+   {
+    "name": "塑膠",
+    "score": 48.2
+   },
+   {
+    "name": "油電燃氣",
+    "score": 37.5
+   }
+  ],
+  "focus_bear": [
+   {
+    "name": "電器電纜",
+    "score": -148.3
+   },
+   {
+    "name": "航運",
+    "score": -38.5
+   },
+   {
+    "name": "鋼鐵",
+    "score": -21.3
+   }
+  ],
+  "cards": [
+   {
+    "sector": "油電燃氣",
+    "direction": 0,
+    "target": "2026-11-25",
+    "kind": "intl",
+    "tier": null
+   },
+   {
+    "sector": "油電燃氣",
+    "direction": 0,
+    "target": "2026-11-25",
+    "kind": "cn",
+    "tier": null
+   },
+   {
+    "sector": "航運",
+    "direction": 0,
+    "target": "2026-11-25",
+    "kind": "cn",
+    "tier": null
+   },
+   {
+    "sector": "電器電纜",
+    "direction": -1,
+    "target": "2026-11-25",
+    "kind": "cn",
+    "tier": "中"
+   }
+  ],
+  "lights": [
+   {
+    "name": "紡織纖維",
+    "state": 0,
+    "z": 1.51
+   },
+   {
+    "name": "塑膠",
+    "state": 0,
+    "z": 0.81
+   },
+   {
+    "name": "油電燃氣",
+    "state": 0,
+    "z": 0.03
+   },
+   {
+    "name": "水泥",
+    "state": 0,
+    "z": 1.01
+   },
+   {
+    "name": "鋼鐵",
+    "state": 0,
+    "z": -0.26
+   },
+   {
+    "name": "航運",
+    "state": 0,
+    "z": -0.69
+   },
+   {
+    "name": "電器電纜",
+    "state": 0,
+    "z": -2.36
+   }
+  ]
  }
 }
